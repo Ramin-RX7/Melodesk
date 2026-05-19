@@ -5,13 +5,13 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc && vite build",
-    "start": "npm run build && electron ."
+    "start": "electron ."
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^25.8.0",
+    "@types/node": "^25.9.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
@@ -21,6 +21,7 @@
     "vite": "^8.0.13"
   },
   "dependencies": {
+    "chokidar": "^5.0.0",
     "music-metadata": "^11.12.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

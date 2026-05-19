@@ -1,19 +1,9 @@
 # Issues
 
-- library folder files are not scrollable which means most of them are not shown
-- fix the pictures of pages (genres, albums, artists) since the picture is removed from cache and it must be regenerated real-time. if it is better, generate the actual image files and use their path in the cache instead.
-- Play now progress bar does not let user select where to play ()
-- show full artist list of song (also songs with multiple artist must be present in each artist page)
-- library changes must reflect the pages cache
-- song details page is not responsive and also does not have scroll
-- pages items are not sorted correctly.
 
 # Features
-- library files are shown with only file names, add meta data like title, artists and albums to them (with ability to sort with all of the columns)
-- search in pages (each page must define it's own logic on how to search)
-- pages can set serting (count, alphabet) + descending (this must be beside the search of the page)
 - playlist
-    - 
+    -
 - Home page to show:
     - favorites
     - recently added
@@ -23,8 +13,7 @@
     - shuffle play
     - never played
     - statistics
-- queue
-    + buttons of the play now
+
 - song detail:
     - add to playlist
     - show lyrics
@@ -34,9 +23,5 @@
     - lyrics finder
     - cover art fix
 - song right click menu (on files, lists and playnow)
-- library must have a refresh button (in case of media file changes)
-- theme of the app must be taken from configs for example `#1db954`
 - track plays (count, recent)
 - equalizer
-- drag and drop on the app to play file (+check for playability)
-- music volume (inside app volume) (saved in config)

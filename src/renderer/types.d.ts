@@ -2,6 +2,8 @@ export interface UserConfig {
   doubleClickToPlay: boolean;
   libraryPaths: string[];
   minSongsForAlbum: number;
+  themeColor: string;
+  volume: number;
 }
 
 export interface FileItem {
@@ -13,6 +15,7 @@ export interface FileItem {
   metadata?: {
     title?: string;
     artist?: string;
+    artists?: string[];
     album?: string;
     genre?: string[];
     duration?: number;
@@ -30,6 +33,8 @@ declare global {
       updateConfig: (config: Partial<UserConfig>) => Promise<UserConfig>;
       getLibraryFiles: () => Promise<FileItem[]>;
       onLibraryUpdated: (callback: (files: FileItem[]) => void) => () => void;
+      refreshLibrary: () => Promise<void>;
+      getMetadata: (filePath: string) => Promise<FileItem>;
     };
   }
 }

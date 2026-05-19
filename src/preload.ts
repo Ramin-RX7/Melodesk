@@ -12,4 +12,6 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.on("library-updated", listener);
     return () => ipcRenderer.removeListener("library-updated", listener);
   },
+  refreshLibrary: () => ipcRenderer.invoke("refresh-library"),
+  getMetadata: (filePath: string) => ipcRenderer.invoke("get-metadata", filePath),
 });

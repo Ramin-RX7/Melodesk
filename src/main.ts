@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, protocol, net, Menu } from "electr
 import fs from "fs";
 import path from "path";
 import { pathToFileURL } from "url";
+import crypto from "crypto";
 
 /* ---------------- PROTOCOL ---------------- */
 
@@ -16,6 +17,8 @@ interface UserConfig {
   doubleClickToPlay: boolean;
   libraryPaths: string[];
   minSongsForAlbum: number;
+  themeColor: string;
+  volume: number;
 }
 
 interface FileItem {
@@ -27,10 +30,11 @@ interface FileItem {
   metadata?: {
     title?: string;
     artist?: string;
+    artists?: string[];
     album?: string;
     genre?: string[];
     duration?: number;
-    picture?: string; // Base64 picture
+    picture?: string; // Path or URL
   };
 }
 
@@ -38,10 +42,17 @@ interface FileItem {
 
 const CONFIG_PATH = path.join(app.getPath("userData"), "config.json");
 const CACHE_PATH = path.join(app.getPath("userData"), "library_cache.json");
+const ART_CACHE_DIR = path.join(app.getPath("userData"), "art_cache");
+
+if (!fs.existsSync(ART_CACHE_DIR)) {
+  fs.mkdirSync(ART_CACHE_DIR, { recursive: true });
+}
 const DEFAULT_CONFIG: UserConfig = {
   doubleClickToPlay: true,
   libraryPaths: [`D:\\music\\Favorite Fa`],
   minSongsForAlbum: 3,
+  themeColor: "#1db954",
+  volume: 0.5,
 };
 
 const getConfig = (): UserConfig => {
@@ -89,6 +100,91 @@ const saveCache = (cache: FileItem[]) => {
   }
 };
 
+/* ---------------- LIBRARY WATCHER ---------------- */
+
+let watcher: any = null;
+let chokidarModule: any = null;
+let updateTimeout: NodeJS.Timeout | null = null;
+
+const updateLibrary = async () => {
+  console.log("Starting library update...");
+  const config = getConfig();
+  let allFiles: FileItem[] = [];
+  for (const dirPath of config.libraryPaths) {
+    if (fs.existsSync(dirPath)) {
+      const files = await getAllMediaFiles(dirPath);
+      allFiles = allFiles.concat(files);
+    }
+  }
+  saveCache(allFiles);
+  console.log(`Library update complete. Found ${allFiles.length} files.`);
+  BrowserWindow.getAllWindows().forEach(win => {
+    win.webContents.send("library-updated", allFiles);
+  });
+};
+
+const setupWatcher = async () => {
+  if (watcher) {
+    console.log("Closing existing watcher...");
+    await watcher.close();
+    watcher = null;
+  }
+
+  const config = getConfig();
+  if (config.libraryPaths.length === 0) {
+    console.log("No library paths to watch.");
+    return;
+  }
+
+  console.log("Setting up watcher for paths:", config.libraryPaths);
+  if (!chokidarModule) {
+    chokidarModule = await eval('import("chokidar")');
+  }
+
+  // Only watch paths that exist
+  const existingPaths = config.libraryPaths.filter(p => fs.existsSync(p));
+
+  if (existingPaths.length === 0) return;
+
+  watcher = chokidarModule.watch(existingPaths, {
+    ignored: /(^|[\/\\])\../, // ignore dotfiles
+    persistent: true,
+    ignoreInitial: true,
+    depth: 99,
+  });
+
+  const debouncedUpdate = () => {
+    if (updateTimeout) clearTimeout(updateTimeout);
+    updateTimeout = setTimeout(async () => {
+      console.log("Library change detected, updating cache...");
+      await updateLibrary();
+    }, 2000); // Wait 2 seconds of silence before updating
+  };
+
+  watcher
+    .on("add", (path: string) => {
+      console.log(`File added: ${path}`);
+      debouncedUpdate();
+    })
+    .on("change", (path: string) => {
+      console.log(`File changed: ${path}`);
+      debouncedUpdate();
+    })
+    .on("unlink", (path: string) => {
+      console.log(`File removed: ${path}`);
+      debouncedUpdate();
+    })
+    .on("addDir", (path: string) => {
+      console.log(`Directory added: ${path}`);
+      debouncedUpdate();
+    })
+    .on("unlinkDir", (path: string) => {
+      console.log(`Directory removed: ${path}`);
+      debouncedUpdate();
+    })
+    .on("error", (error: Error) => console.error(`Watcher error: ${error}`));
+};
+
 /* ---------------- UTILS ---------------- */
 
 const isMediaFile = (fileName: string): boolean => {
@@ -97,7 +193,49 @@ const isMediaFile = (fileName: string): boolean => {
   return mediaExtensions.includes(ext);
 };
 
+const getMimeType = (filePath: string): string => {
+  const ext = path.extname(filePath).toLowerCase();
+  switch (ext) {
+    case ".mp3": return "audio/mpeg";
+    case ".wav": return "audio/wav";
+    case ".ogg": return "audio/ogg";
+    case ".m4a": return "audio/mp4";
+    case ".flac": return "audio/flac";
+    case ".jpg":
+    case ".jpeg": return "image/jpeg";
+    case ".png": return "image/png";
+    default: return "application/octet-stream";
+  }
+};
+
 let musicMetadataModule: any = null;
+
+const saveArt = (buffer: Buffer, format: string, filePath: string): string | undefined => {
+  try {
+    const hash = crypto.createHash("md5").update(filePath).digest("hex");
+    const ext = format.split("/")[1] || "jpg";
+    const artPath = path.join(ART_CACHE_DIR, `${hash}.${ext}`);
+
+    if (!fs.existsSync(artPath)) {
+      fs.writeFileSync(artPath, buffer);
+    }
+    return artPath;
+  } catch (err) {
+    console.error("Failed to save art:", err);
+    return undefined;
+  }
+};
+
+const getArtists = (metadata: any): string[] => {
+  if (metadata.common.artists && metadata.common.artists.length > 0) {
+    return metadata.common.artists;
+  }
+  if (metadata.common.artist) {
+    // Split by common separators if it's a single string
+    return metadata.common.artist.split(/[,;&]|\s+feat\.|\s+ft\./i).map((a: string) => a.trim()).filter((a: string) => a.length > 0);
+  }
+  return [];
+};
 
 const getDirectoryTree = async (dirPath: string): Promise<FileItem[]> => {
   try {
@@ -125,21 +263,20 @@ const getDirectoryTree = async (dirPath: string): Promise<FileItem[]> => {
         } else if (isMedia) {
           try {
             const metadata = await musicMetadataModule.parseFile(fullPath);
-            let pictureBase64 = undefined;
+            let artPath = undefined;
             if (metadata.common.picture && metadata.common.picture.length > 0) {
               const pic = metadata.common.picture[0];
-              // Ensure we use Buffer.from to get a real Node Buffer before base64 encoding
-              const base64Data = Buffer.from(pic.data).toString("base64");
-              pictureBase64 = `data:${pic.format};base64,${base64Data}`;
+              artPath = saveArt(Buffer.from(pic.data), pic.format, fullPath);
             }
 
             item.metadata = {
               title: metadata.common.title,
               artist: metadata.common.artist,
+              artists: getArtists(metadata),
               album: metadata.common.album,
               genre: metadata.common.genre,
               duration: metadata.format.duration,
-              picture: pictureBase64,
+              picture: artPath,
             };
           } catch (err) {
             console.error(`Failed to parse metadata for ${fullPath}:`, err);
@@ -180,12 +317,10 @@ const getAllMediaFiles = async (dirPath: string): Promise<FileItem[]> => {
       } else if (isMediaFile(file.name)) {
         try {
           const metadata = await musicMetadataModule.parseFile(fullPath);
-          let pictureBase64 = undefined;
+          let artPath = undefined;
           if (metadata.common.picture && metadata.common.picture.length > 0) {
             const pic = metadata.common.picture[0];
-            // Ensure we use Buffer.from to get a real Node Buffer before base64 encoding
-            const base64Data = Buffer.from(pic.data).toString("base64");
-            // pictureBase64 = `data:${pic.format};base64,${base64Data}`;
+            artPath = saveArt(Buffer.from(pic.data), pic.format, fullPath);
           }
 
           results.push({
@@ -196,10 +331,11 @@ const getAllMediaFiles = async (dirPath: string): Promise<FileItem[]> => {
             metadata: {
               title: metadata.common.title,
               artist: metadata.common.artist,
+              artists: getArtists(metadata),
               album: metadata.common.album,
               genre: metadata.common.genre,
               duration: metadata.format.duration,
-              // picture: pictureBase64,
+              picture: artPath,
             },
           });
         } catch (err) {
@@ -225,34 +361,36 @@ ipcMain.handle("get-config", () => {
   return getConfig();
 });
 
-ipcMain.handle("update-config", (_event, partialConfig: Partial<UserConfig>) => {
+ipcMain.handle("update-config", async (_event, partialConfig: Partial<UserConfig>) => {
   const currentConfig = getConfig();
   const newConfig = { ...currentConfig, ...partialConfig };
   saveConfig(newConfig);
+
+  // Re-setup watcher if library paths changed
+  if (partialConfig.libraryPaths) {
+    await setupWatcher();
+  }
+
   return newConfig;
 });
 
 ipcMain.handle("get-library-files", async () => {
   const cachedFiles = getCache();
 
-  // Start async update
+  // Always check if cache is consistent with library paths on startup/request
   const config = getConfig();
-  (async () => {
-    let allFiles: FileItem[] = [];
-    for (const dirPath of config.libraryPaths) {
-      const files = await getAllMediaFiles(dirPath);
-      allFiles = allFiles.concat(files);
-    }
-    saveCache(allFiles);
-    // Note: We don't have an easy way to push this to the renderer
-    // without a custom event, but the next time they call it they'll get fresh data.
-    // Or we can emit an IPC message.
-    BrowserWindow.getAllWindows().forEach(win => {
-      win.webContents.send("library-updated", allFiles);
-    });
-  })();
+  const allExisting = cachedFiles.filter(f => {
+    return config.libraryPaths.some(lp => f.path.startsWith(lp));
+  });
 
-  return cachedFiles;
+  if (allExisting.length !== cachedFiles.length) {
+    console.log("Cache contains stale paths, updating...");
+    updateLibrary();
+  } else if (cachedFiles.length === 0) {
+    updateLibrary();
+  }
+
+  return allExisting;
 });
 
 ipcMain.handle("show-context-menu", (event) => {
@@ -279,6 +417,52 @@ ipcMain.handle("select-directory", async () => {
   return result.filePaths[0];
 });
 
+ipcMain.handle("refresh-library", async () => {
+  await updateLibrary();
+});
+
+ipcMain.handle("get-metadata", async (_event, filePath: string) => {
+  if (!musicMetadataModule) {
+    musicMetadataModule = await eval('import("music-metadata")');
+  }
+
+  const isMedia = isMediaFile(filePath);
+  if (!isMedia) return null;
+
+  try {
+    const metadata = await musicMetadataModule.parseFile(filePath);
+    let artPath = undefined;
+    if (metadata.common.picture && metadata.common.picture.length > 0) {
+      const pic = metadata.common.picture[0];
+      artPath = saveArt(Buffer.from(pic.data), pic.format, filePath);
+    }
+
+    return {
+      name: path.basename(filePath),
+      path: filePath,
+      isDirectory: false,
+      isMedia: true,
+      metadata: {
+        title: metadata.common.title,
+        artist: metadata.common.artist,
+        artists: getArtists(metadata),
+        album: metadata.common.album,
+        genre: metadata.common.genre,
+        duration: metadata.format.duration,
+        picture: artPath,
+      },
+    };
+  } catch (err) {
+    console.error(`Failed to parse metadata for ${filePath}:`, err);
+    return {
+      name: path.basename(filePath),
+      path: filePath,
+      isDirectory: false,
+      isMedia: true,
+    };
+  }
+});
+
 /* ---------------- WINDOW ---------------- */
 
 function createWindow() {
@@ -296,19 +480,65 @@ function createWindow() {
 
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Setup file watcher
+  await setupWatcher();
+
+  // Also run a background update on startup
+  updateLibrary();
+
   // Handle media:// protocol
   protocol.handle("media", (request) => {
     try {
-      const url = new URL(request.url);
-      // The path is encoded in the "hostname" and "pathname" parts if we use media://encodedPath
-      // But it's easier to just grab everything after media://
       const encodedPath = request.url.slice("media://".length);
-      const decodedPath = decodeURIComponent(encodedPath);
+      let decodedPath = decodeURIComponent(encodedPath);
 
-      // On Windows, if the path was D:/music..., it might come out as D:/music...
-      // pathToFileURL handles this correctly if it's a valid absolute path
-      return net.fetch(pathToFileURL(decodedPath).toString());
+      // Normalize path for Windows
+      if (process.platform === "win32") {
+        if (decodedPath.startsWith("/") && /^\/[a-zA-Z]:/.test(decodedPath)) {
+          decodedPath = decodedPath.slice(1);
+        }
+      }
+
+      if (!fs.existsSync(decodedPath)) {
+        console.error(`File not found: ${decodedPath}`);
+        return new Response("File not found", { status: 404 });
+      }
+
+      const stats = fs.statSync(decodedPath);
+      const mimeType = getMimeType(decodedPath);
+      const range = request.headers.get("range");
+
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
+        const chunksize = (end - start) + 1;
+
+        const file = fs.createReadStream(decodedPath, { start, end });
+        const head = {
+          "Content-Range": `bytes ${start}-${end}/${stats.size}`,
+          "Accept-Ranges": "bytes",
+          "Content-Length": chunksize.toString(),
+          "Content-Type": mimeType,
+        };
+
+        return new Response(file as any, {
+          status: 206,
+          headers: head,
+        });
+      } else {
+        const head = {
+          "Content-Length": stats.size.toString(),
+          "Content-Type": mimeType,
+          "Accept-Ranges": "bytes",
+        };
+
+        return new Response(fs.createReadStream(decodedPath) as any, {
+          status: 200,
+          headers: head,
+        });
+      }
     } catch (error) {
       console.error("Protocol handler error:", error);
       return new Response("Invalid media URL", { status: 400 });
