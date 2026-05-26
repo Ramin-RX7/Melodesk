@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { DirectoryTree } from "./components/DirectoryTree";
+import { PlaylistView } from "./components/PlaylistView";
 import { PlaybackBar } from "./components/PlaybackBar";
 import { FileItem, UserConfig } from "./types";
 import {
@@ -352,10 +353,12 @@ export default function App() {
   };
 
   const renderQueue = () => {
+    let totalDuration = 0;
+    activeQueue.map((track, index) => totalDuration += track.metadata?.duration || 0)
     return (
       <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
         <div style={{ padding: "20px 30px", borderBottom: "1px solid #222", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#181818" }}>
-          <h2 style={{ margin: 0 }}>Play Queue ({activeQueue.length} songs)</h2>
+          <h2 style={{ margin: 0 }}>Play Queue ({activeQueue.length} songs: {Math.floor(totalDuration / 60)}:{Math.floor(totalDuration % 60).toString().padStart(2, '0')})</h2>
           <button
             onClick={() => setQueue([])}
             style={{ background: "none", border: "1px solid #444", color: "#888", padding: "6px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}
@@ -484,7 +487,7 @@ export default function App() {
             )}
           </div>
 
-          <div style={{ maxWidth: "800px", width: "100%" }}>
+          <div style={{ maxWidth: "1200px", width: "100%" }}>
             <h2 style={{
               fontSize: "clamp(24px, 5vw, 42px)",
               margin: "0 0 10px 0",
@@ -515,6 +518,12 @@ export default function App() {
                 </p>
               )}
             </div>
+            <div>
+              <p style={{ fontSize: "18px", margin: 0 }}>
+                {`Album: ${currentTrack.name} (${currentTrack.path})`}
+              </p>
+            </div>
+            <div style={{ marginBottom: "10%"}}></div>
           </div>
         </div>
       </div>
@@ -830,6 +839,7 @@ export default function App() {
             )}
           </div>
         </div>
+        <div style={{marginBottom: "2%"}}></div>
       </div>
     );
   };
@@ -1014,7 +1024,7 @@ export default function App() {
           view === 'artists' ? renderGroupedView('artist') :
             view === 'albums' ? renderGroupedView('album') :
               view === 'genres' ? renderGroupedView('genre') :
-                view === 'playlists' ? <div style={{ padding: 40 }}>Playlists (Coming Soon)</div> :
+                view === 'playlists' ? <PlaylistView allTracks={allTracks} themeColor={themeColor} onPlayTrack={playTrack} currentTrack={currentTrack} configDoubleClickToPlay={config?.doubleClickToPlay ?? true} /> :
                   view === 'queue' ? renderQueue() :
                     view === 'details' ? renderDetails() : null}
       </main>

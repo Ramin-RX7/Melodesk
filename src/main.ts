@@ -38,14 +38,26 @@ interface FileItem {
   };
 }
 
+interface Playlist {
+  id: string;
+  name: string;
+  songs: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 /* ---------------- CONFIG & CACHE ---------------- */
 
 const CONFIG_PATH = path.join(app.getPath("userData"), "config.json");
 const CACHE_PATH = path.join(app.getPath("userData"), "library_cache.json");
 const ART_CACHE_DIR = path.join(app.getPath("userData"), "art_cache");
+const PLAYLISTS_DIR = path.join(app.getPath("userData"), "playlists");
 
 if (!fs.existsSync(ART_CACHE_DIR)) {
   fs.mkdirSync(ART_CACHE_DIR, { recursive: true });
+}
+if (!fs.existsSync(PLAYLISTS_DIR)) {
+  fs.mkdirSync(PLAYLISTS_DIR, { recursive: true });
 }
 const DEFAULT_CONFIG: UserConfig = {
   doubleClickToPlay: true,
@@ -460,6 +472,84 @@ ipcMain.handle("get-metadata", async (_event, filePath: string) => {
       isDirectory: false,
       isMedia: true,
     };
+  }
+});
+
+/* ---------------- PLAYLIST IPC HANDLERS ---------------- */
+
+const getAllPlaylists = (): Playlist[] => {
+  try {
+    const files = fs.readdirSync(PLAYLISTS_DIR).filter(f => f.endsWith(".json"));
+    return files.map(f => {
+      const data = fs.readFileSync(path.join(PLAYLISTS_DIR, f), "utf-8");
+      return JSON.parse(data) as Playlist;
+    }).sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  } catch (error) {
+    console.error("Failed to read playlists:", error);
+    return [];
+  }
+};
+
+const savePlaylist = (playlist: Playlist) => {
+  const filePath = path.join(PLAYLISTS_DIR, `${playlist.id}.json`);
+  fs.writeFileSync(filePath, JSON.stringify(playlist, null, 2));
+};
+
+ipcMain.handle("get-playlists", () => {
+  return getAllPlaylists();
+});
+
+ipcMain.handle("get-playlist", (_event, id: string) => {
+  const filePath = path.join(PLAYLISTS_DIR, `${id}.json`);
+  try {
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, "utf-8");
+      return JSON.parse(data) as Playlist;
+    }
+  } catch (error) {
+    console.error("Failed to read playlist:", error);
+  }
+  return null;
+});
+
+ipcMain.handle("create-playlist", (_event, name: string) => {
+  const playlist: Playlist = {
+    id: crypto.randomUUID(),
+    name,
+    songs: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  savePlaylist(playlist);
+  return playlist;
+});
+
+ipcMain.handle("update-playlist", (_event, id: string, data: Partial<Pick<Playlist, 'name' | 'songs'>>) => {
+  const filePath = path.join(PLAYLISTS_DIR, `${id}.json`);
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    const existing = JSON.parse(fs.readFileSync(filePath, "utf-8")) as Playlist;
+    const updated: Playlist = {
+      ...existing,
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    savePlaylist(updated);
+    return updated;
+  } catch (error) {
+    console.error("Failed to update playlist:", error);
+    return null;
+  }
+});
+
+ipcMain.handle("delete-playlist", (_event, id: string) => {
+  const filePath = path.join(PLAYLISTS_DIR, `${id}.json`);
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (error) {
+    console.error("Failed to delete playlist:", error);
   }
 });
 

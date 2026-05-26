@@ -23,6 +23,14 @@ export interface FileItem {
   };
 }
 
+export interface Playlist {
+  id: string;
+  name: string;
+  songs: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 declare global {
   interface Window {
     api: {
@@ -35,6 +43,11 @@ declare global {
       onLibraryUpdated: (callback: (files: FileItem[]) => void) => () => void;
       refreshLibrary: () => Promise<void>;
       getMetadata: (filePath: string) => Promise<FileItem>;
+      getPlaylists: () => Promise<Playlist[]>;
+      getPlaylist: (id: string) => Promise<Playlist | null>;
+      createPlaylist: (name: string) => Promise<Playlist>;
+      updatePlaylist: (id: string, data: Partial<Pick<Playlist, 'name' | 'songs'>>) => Promise<Playlist>;
+      deletePlaylist: (id: string) => Promise<void>;
     };
   }
 }

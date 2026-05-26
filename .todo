@@ -1,9 +1,21 @@
 # Issues
+When turning shuffle on, the playing song should be moved to first step
 
 
 # Features
+- back button
 - playlist
-    -
+  - description
+  - preserve sort
+- song right click menu (on files, lists and playnow)
+- song detail:
+    - add to playlist
+    - show lyrics
+    - edit tags
+    - show more metadata
+    - selectable (navigateable artist, album, genre sections)
+    - lyrics finder
+    - cover art fix
 - Home page to show:
     - favorites
     - recently added
@@ -13,15 +25,5 @@
     - shuffle play
     - never played
     - statistics
-
-- song detail:
-    - add to playlist
-    - show lyrics
-    - edit tags
-    - show more metadata
-    - selectable (navigateable artist, album, genre sections)
-    - lyrics finder
-    - cover art fix
-- song right click menu (on files, lists and playnow)
 - track plays (count, recent)
 - equalizer

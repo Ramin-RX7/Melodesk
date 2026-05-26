@@ -14,4 +14,9 @@ contextBridge.exposeInMainWorld("api", {
   },
   refreshLibrary: () => ipcRenderer.invoke("refresh-library"),
   getMetadata: (filePath: string) => ipcRenderer.invoke("get-metadata", filePath),
+  getPlaylists: () => ipcRenderer.invoke("get-playlists"),
+  getPlaylist: (id: string) => ipcRenderer.invoke("get-playlist", id),
+  createPlaylist: (name: string) => ipcRenderer.invoke("create-playlist", name),
+  updatePlaylist: (id: string, data: any) => ipcRenderer.invoke("update-playlist", id, data),
+  deletePlaylist: (id: string) => ipcRenderer.invoke("delete-playlist", id),
 });
