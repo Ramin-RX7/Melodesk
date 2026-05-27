@@ -20,4 +20,6 @@ contextBridge.exposeInMainWorld("api", {
   updatePlaylist: (id: string, data: any) => ipcRenderer.invoke("update-playlist", id, data),
   deletePlaylist: (id: string) => ipcRenderer.invoke("delete-playlist", id),
   writeMetadata: (filePath: string, tags: any) => ipcRenderer.invoke("write-metadata", filePath, tags),
+  showFileInFolder: (filePath: string) => ipcRenderer.invoke("show-file-in-folder", filePath),
+  openExternalUrl: (url: string) => ipcRenderer.invoke("open-external-url", url),
 });

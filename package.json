@@ -4,9 +4,12 @@
   "description": "",
   "main": "dist/main.js",
   "scripts": {
-    "build": "tsc && vite build",
     "dev": "nodemon --watch src --ext ts,tsx,css,html --exec \"npm run build && electron .\"",
-    "start": "npm run build && electron ."
+    "start": "tsc && copyfiles -u 1 \"assets/**/*\" dist/assets && vite build && electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
   },
   "keywords": [],
   "author": "",
@@ -16,7 +19,9 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "copyfiles": "^2.4.1",
     "electron": "^29.4.6",
+    "electron-builder": "^26.8.1",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
@@ -29,5 +34,26 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-icons": "^5.6.0"
+  },
+  "build": {
+    "appId": "com.yourcompany.musicapp",
+    "productName": "MyMusicApp",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "icon": "assets/icon.ico"
+    }
   }
 }

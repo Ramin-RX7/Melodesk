@@ -26,6 +26,7 @@ export interface FileItem {
     format?: string;
     bitrate?: number;
     bpm?: number;
+    lyrics?: string;
   };
 }
 
@@ -55,6 +56,7 @@ declare global {
       updatePlaylist: (id: string, data: Partial<Pick<Playlist, 'name' | 'songs'>>) => Promise<Playlist>;
       deletePlaylist: (id: string) => Promise<void>;
       writeMetadata: (filePath: string, tags: any) => Promise<boolean>;
+      showFileInFolder: (filePath: string) => Promise<void>;openExternalUrl: (url: string) => Promise<void>;
     };
   }
 }

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, protocol, net, Menu } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, protocol, net, Menu, shell } from "electron";
 import fs from "fs";
 import path from "path";
 import { pathToFileURL } from "url";
@@ -35,6 +35,13 @@ interface FileItem {
     genre?: string[];
     duration?: number;
     picture?: string; // Path or URL
+    lyrics?: string;
+    year?: number;
+    trackNumber?: number;
+    fileSize?: number;
+    format?: string;
+    bitrate?: number;
+    bpm?: number;
   };
 }
 
@@ -295,6 +302,7 @@ const extractMetadata = (metadata: any, fullPath: string, artPath?: string) => {
     format: metadata.format.codec || metadata.format.container,
     bitrate: metadata.format.bitrate,
     bpm: metadata.common.bpm,
+    lyrics: metadata.common.lyrics ? (typeof metadata.common.lyrics === "string" ? metadata.common.lyrics : metadata.common.lyrics[0]?.text) : undefined,
   };
 };
 
@@ -593,20 +601,40 @@ ipcMain.handle("delete-playlist", (_event, id: string) => {
   }
 });
 
+ipcMain.handle("show-file-in-folder", async (_event, filePath: string) => {
+  shell.showItemInFolder(filePath);
+});
+
+ipcMain.handle("open-external-url", async (_event, url: string) => {
+  await shell.openExternal(url);
+});
+
 /* ---------------- WINDOW ---------------- */
 
 function createWindow() {
   const win = new BrowserWindow({
     width: 800,
     height: 600,
+    minWidth: 600,
+    minHeight: 300,
+    backgroundColor: "#121212",
+    show: false,
+    autoHideMenuBar: true,
+    icon: path.join(__dirname, "assets/icon.png"),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      preload: path.join(__dirname, "preload.js")
-    }
+      preload: path.join(__dirname, "preload.js"),
+      sandbox: true,
+      spellcheck: false,
+    },
   });
+  console.log(path.join(__dirname, "assets/icon.ico"));
   // Main window
-  win.setMenuBarVisibility(false);
+  // win.setMenuBarVisibility(false);
+  win.once("ready-to-show", () => {
+    win.show();
+  });
   win.loadFile(path.join(__dirname, "renderer/index.html"));
 
 }

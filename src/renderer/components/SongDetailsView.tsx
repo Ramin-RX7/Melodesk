@@ -15,6 +15,7 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [showLyricsModal, setShowLyricsModal] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -122,8 +123,8 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
 
       <div style={{ flex: 1, overflowY: "auto", padding: "40px 20px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "40px", alignItems: "flex-start", paddingBottom: "120px" }}>
         {/* Cover Art */}
-        <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", width: "min(400px, 100%)" }}>
-          <div style={{ width: "min(300px, 60vw)", aspectRatio: "1/1", backgroundColor: "#333", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", boxShadow: "0 10px 40px rgba(0,0,0,0.6)", overflow: "hidden", position: "relative" }}>
+        <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", height: "-webkit-fill-available" }}>
+          <div style={{ width: "inherit", aspectRatio: "1/1", backgroundColor: "#333", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", boxShadow: "0 10px 40px rgba(0,0,0,0.6)", overflow: "hidden", position: "relative" }}>
             {meta.picture ? (
               <img src={`media://${encodeURIComponent(meta.picture)}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
@@ -168,19 +169,32 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
             </div>
           ) : (
             <div style={{ textAlign: "center" }}>
-              <h2 style={{ fontSize: "clamp(24px, 5vw, 42px)", margin: "0 0 10px 0", lineHeight: 1.2 }}>
+              <h2 style={{ fontSize: "clamp(40px, 4vw, 100px)", margin: "0 0 10px 0", lineHeight: 1.2 }}>
                 {meta.title || currentTrack.name}
               </h2>
               {/* Navigable Links */}
               <div style={{ display: "flex", flexDirection: "column", gap: "5px", alignItems: "center", marginBottom: "20px" }}>
                 {meta.artist ? (
-                  <span onClick={() => onNavigate('artist', meta.artist!)} style={{ fontSize: "clamp(18px, 4vw, 24px)", color: themeColor, fontWeight: "bold", cursor: "pointer" }} onMouseOver={e => e.currentTarget.style.textDecoration = "underline"} onMouseOut={e => e.currentTarget.style.textDecoration = "none"}>
+                  <span
+                    onClick={() => onNavigate('artist', meta.artist!)}
+                    style={{ fontSize: "clamp(35px, 3vw, 90px)", color: themeColor, fontWeight: "bold", cursor: "pointer" }}
+                    // onMouseOver={e => e.currentTarget.style.textDecoration = "underline"}
+                    // onMouseOut={e => e.currentTarget.style.textDecoration = "none"}
+                  >
                     {meta.artist}
                   </span>
-                ) : <span style={{ color: "#888", fontSize: "18px" }}>Unknown Artist</span>}
+                ) : <span style={{ color: "#888", fontSize: "clamp(35px, 3vw, 90px)"}}>
+                      Unknown Artist
+                    </span>
+                }
 
                 {meta.album && (
-                  <span onClick={() => onNavigate('album', meta.album!)} style={{ fontSize: "18px", color: "#ccc", cursor: "pointer" }} onMouseOver={e => e.currentTarget.style.textDecoration = "underline"} onMouseOut={e => e.currentTarget.style.textDecoration = "none"}>
+                  <span
+                    onClick={() => onNavigate('album', meta.album!)}
+                    style={{ fontSize: "clamp(20px, 2vw, 70px)", color: "#ccc", cursor: "pointer", fontStyle: "italic"}}
+                    // onMouseOver={e => e.currentTarget.style.textDecoration = "underline"}
+                    // onMouseOut={e => e.currentTarget.style.textDecoration = "none"}
+                  >
                     {meta.album}
                   </span>
                 )}
@@ -208,18 +222,82 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
 
               {/* Action Buttons (Placeholders & Features) */}
               <div style={{ display: "flex", gap: "15px", justifyContent: "center", marginTop: "30px", flexWrap: "wrap" }}>
-                <button onClick={() => alert("Cover Art Fix: This feature is a UI placeholder as requested.")} style={{ backgroundColor: "#222", border: "1px solid #444", color: "#ccc", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+                <button 
+                  onClick={() => alert("Cover Art Fix: This feature is a UI placeholder as requested.")} 
+                  style={{ 
+                    backgroundColor: "#222", 
+                    border: "1px solid #444", 
+                    color: "#ccc", 
+                    padding: "10px 20px", 
+                    borderRadius: "8px", 
+                    cursor: "pointer", 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: "8px" 
+                  }}
+                >
                   <IoImage /> Fix Cover Art
                 </button>
-                <button onClick={() => alert("Show Lyrics: This feature is a UI placeholder as requested.")} style={{ backgroundColor: "#222", border: "1px solid #444", color: "#ccc", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+                <button
+                  onClick={() => setShowLyricsModal(true)}
+                  style={{
+                    backgroundColor: "#222",
+                    border: "1px solid #444",
+                    color: "#ccc",
+                    padding: "10px 20px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
+                  }}
+                >
                   <IoMusicalNotes /> Show Lyrics
                 </button>
-                <button onClick={() => alert("Find Lyrics: This feature is a UI placeholder as requested.")} style={{ backgroundColor: "#222", border: "1px solid #444", color: "#ccc", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <IoSearch /> Find Lyrics
-                </button>
+                {/* {!isEditing && (
+                  <button 
+                    onClick={() => isMp3 ? setIsEditing(true) : alert("Editing is only supported for MP3 files.")}
+                    style={{ 
+                      backgroundColor: "#222", 
+                      border: "1px solid #444", 
+                      color: "#ccc", 
+                      padding: "10px 20px", 
+                      borderRadius: "8px", 
+                      cursor: "pointer", 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: "8px" 
+                    }}
+                    title={isMp3 ? "" : "Only MP3 files can be edited"}
+                  >
+                    <IoCreate /> Edit Tags
+                  </button>
+                )}
+                <button 
+                  onClick={() => setShowPlaylistModal(true)}
+                  style={{ 
+                    backgroundColor: "#222", 
+                    border: "1px solid #444", 
+                    color: "#ccc", 
+                    padding: "10px 20px", 
+                    borderRadius: "8px", 
+                    cursor: "pointer", 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: "8px" 
+                  }}>
+                  <IoAdd /> Add to Playlist
+                </button> */}
               </div>
 
-              <div><div style={{ color: "#666", fontSize: "16px", paddingTop: "3%" }}>{currentTrack.path.replace("\\", "/")}</div></div>
+              <div>
+                <div 
+                  style={{ color: "#666", fontSize: "16px", paddingTop: "3%", cursor: "pointer", }} 
+                  onClick={() => window.api.showFileInFolder(currentTrack.path)}
+                >
+                  {currentTrack.path.replace(/\\/g, "/")}
+                </div>
+              </div>
 
             </div>
           )}
@@ -247,6 +325,86 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
                   </div>
                 ))
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showLyricsModal && (
+        <div
+          onClick={() => setShowLyricsModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 9999,
+            backdropFilter: "blur(4px)",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(700px, 90vw)",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              backgroundColor: "#181818",
+              border: "1px solid #333",
+              borderRadius: "16px",
+              padding: "24px",
+              color: "#fff",
+              boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "20px",
+              }}
+            >
+              <h2 style={{ margin: 0 }}>
+                Lyrics
+              </h2>
+
+              <button
+                onClick={() => {
+                  const query = `${meta.artist} ${meta.title} lyrics`;
+                  const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+                  window.api.openExternalUrl(url);
+                }}
+                style={{ backgroundColor: "#222", border: "1px solid #444", color: "#ccc", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+              >
+                <IoSearch /> Find Lyrics
+              </button>
+
+              <button
+                onClick={() => setShowLyricsModal(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#aaa",
+                  cursor: "pointer",
+                  fontSize: "24px",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                whiteSpace: "pre-wrap",
+                lineHeight: 1.8,
+                color: "#ddd",
+                userSelect: "text",
+                cursor: "text",
+              }}
+            >
+              {meta?.lyrics || "No lyrics available for this song."}
             </div>
           </div>
         </div>

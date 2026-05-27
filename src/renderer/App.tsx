@@ -64,27 +64,31 @@ export default function App() {
   };
 
   const handleShuffleToggle = () => {
+    if (!currentTrack) {
+      setIsShuffle((prev) => !prev);
+      return
+    };
+
     if (!isShuffle) {
-      // Enabling shuffle
-      const newShuffled = shuffleArray(queue);
-      // Ensure current track is at the current index in shuffled queue to avoid jumping
-      if (currentTrack) {
-        const currentIdxInShuffled = newShuffled.findIndex(t => t.path === currentTrack.path);
-        if (currentIdxInShuffled !== -1) {
-          // Move current track to position 0 for seamless playback?
-          // Actually, let's just find its new index.
-          setCurrentIndex(currentIdxInShuffled);
-        }
-      }
+      // Remove current track from queue before shuffling
+      const remainingTracks = queue.filter(
+        (t) => t.path !== currentTrack.path
+      );
+      // Shuffle remaining tracks
+      const shuffledRemaining = shuffleArray(remainingTracks);
+      // Put current track first
+      const newShuffled = [currentTrack, ...shuffledRemaining];
       setShuffledQueue(newShuffled);
+      // Current track is now first
+      setCurrentIndex(0);
     } else {
-      // Disabling shuffle
-      if (currentTrack) {
-        const originalIdx = queue.findIndex(t => t.path === currentTrack.path);
-        setCurrentIndex(originalIdx);
-      }
+      // Restore original queue position
+      const originalIdx = queue.findIndex(
+        (t) => t.path === currentTrack.path
+      );
+      setCurrentIndex(originalIdx);
     }
-    setIsShuffle(!isShuffle);
+    setIsShuffle((prev) => !prev);
   };
 
   const handleRepeatToggle = () => {
@@ -556,6 +560,14 @@ export default function App() {
 
       // Sort songs by title
       filteredSongs.sort((a, b) => {
+        // Albums should sort by track number
+        if (type === 'album') {
+          const trackA = a.metadata?.trackNumber ?? Number.MAX_SAFE_INTEGER;
+          const trackB = b.metadata?.trackNumber ?? Number.MAX_SAFE_INTEGER;
+          const res = trackA - trackB;
+          return sortDescending ? -res : res;
+        }
+        // Default sorting by title
         const titleA = a.metadata?.title || a.name;
         const titleB = b.metadata?.title || b.name;
         const res = titleA.localeCompare(titleB, undefined, { sensitivity: 'base' });
