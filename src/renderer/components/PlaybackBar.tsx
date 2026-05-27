@@ -194,7 +194,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
             )}
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
+            {/* <div style={{ fontSize: "11px", color: "#888", marginBottom: "2px", display: "flex", alignItems: "center", gap: "4px" }}>
               Play Now
               <button
                 onClick={onShowQueue}
@@ -203,7 +203,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
               >
                 <IoList />
               </button>
-            </div>
+            </div> */}
             <div
               onClick={onShowDetails}
               style={{ fontSize: "14px", fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}

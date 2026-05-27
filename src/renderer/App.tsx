@@ -306,6 +306,26 @@ export default function App() {
     console.log("exit: handleSeek", currentTime);
   };
 
+  const seekForward = () => {
+    if (!audioRef.current) return;
+
+    const audio = audioRef.current;
+    const newTime = Math.min(audio.duration || 0, audio.currentTime + 5);
+
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const seekBackward = () => {
+    if (!audioRef.current) return;
+
+    const audio = audioRef.current;
+    const newTime = Math.max(0, audio.currentTime - 5);
+
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
   const handleVolumeChange = async (newVolume: number) => {
     if (audioRef.current) {
       audioRef.current.volume = newVolume;
@@ -352,6 +372,75 @@ export default function App() {
     }
     setIsPlaying(!isPlaying);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement;
+
+      const isTyping =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable;
+
+      if (isTyping) return;
+
+      switch (event.code) {
+        case 'Space':
+          event.preventDefault();
+          togglePlay();
+          break;
+
+        case 'PageDown':
+          event.preventDefault();
+          handleNext();
+          break;
+
+        case 'PageUp':
+          event.preventDefault();
+          handlePrevious();
+          break;
+
+        case 'MediaTrackNext':
+          event.preventDefault();
+          handleNext();
+          break;
+
+        case 'MediaTrackPrevious':
+          event.preventDefault();
+          handlePrevious();
+          break;  
+        case 'ArrowRight':
+          event.preventDefault();
+          seekForward();
+          break;
+
+        case 'ArrowLeft':
+          event.preventDefault();
+          seekBackward();
+          break;
+
+        case 'ArrowUp':
+        case 'ArrowDown':
+          const target = event.target as HTMLElement;
+          const isScrollable = target.scrollHeight > target.clientHeight;
+          if (!isScrollable) return;
+          event.preventDefault();
+          const scrollAmount = 40;
+          if (event.code === 'ArrowDown') {
+            target.scrollTop += scrollAmount;
+          } else {
+            target.scrollTop -= scrollAmount;
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [togglePlay, handleNext, handlePrevious, seekForward, seekBackward]);
+
 
   const renderQueue = () => {
     let totalDuration = 0;
