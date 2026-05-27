@@ -1,21 +1,22 @@
 # Issues
 When turning shuffle on, the playing song should be moved to first step
-
+albums must be sorted by `album track number`
+most of the app parts work with `song.artist` attribute however it must be removed and use the `song.artists` list everywhere
 
 # Features
+save current playing track (for next app startup) (this should be configurable as on/off in user configs)
+- window size be preserved
 - back button
 - playlist
   - description
   - preserve sort
 - song right click menu (on files, lists and playnow)
 - song detail:
-    - add to playlist
-    - show lyrics
-    - edit tags
-    - show more metadata
-    - selectable (navigateable artist, album, genre sections)
+    - show in file explorer (when clicking on file path)
+    - cover art fix (just the option, currently this does not work, only shown in UI)
+    - show lyrics (just the option, currently this does not work, only shown in UI)
     - lyrics finder
-    - cover art fix
+
 - Home page to show:
     - favorites
     - recently added
@@ -27,3 +28,4 @@ When turning shuffle on, the playing song should be moved to first step
     - statistics
 - track plays (count, recent)
 - equalizer
+- Picture in picture

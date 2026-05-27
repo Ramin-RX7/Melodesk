@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
 import { DirectoryTree } from "./components/DirectoryTree";
 import { PlaylistView } from "./components/PlaylistView";
+import { SongDetailsView } from "./components/SongDetailsView";
 import { PlaybackBar } from "./components/PlaybackBar";
 import { FileItem, UserConfig } from "./types";
 import {
@@ -416,117 +417,27 @@ export default function App() {
     );
   };
 
+  const handleTrackUpdated = (updatedTrack: FileItem) => {
+    setCurrentTrack(updatedTrack);
+    setAllTracks(prev => prev.map(t => t.path === updatedTrack.path ? updatedTrack : t));
+  };
+
   const renderDetails = () => {
     if (!currentTrack) return <div style={{ padding: 20 }}>No track selected</div>;
-    const { title, artist, album, genre, picture } = currentTrack.metadata || {};
-
     return (
-      <div style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden"
-      }}>
-        <div style={{
-          padding: "20px",
-          display: "flex",
-          alignItems: "center",
-          borderBottom: "1px solid #333",
-          backgroundColor: "#181818",
-          flexShrink: 0
-        }}>
-          <button
-            onClick={() => setView(activeTab)}
-            style={{
-              background: "none",
-              border: "1px solid #444",
-              color: "#fff",
-              padding: "8px 16px",
-              borderRadius: "4px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            }}
-          >
-            <IoArrowBack /> Back
-          </button>
-        </div>
-
-        <div style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: "40px 20px",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          textAlign: "center",
-          gap: "30px",
-          paddingBottom: "120px" // Space for playback bar
-        }}>
-          <div style={{
-            width: "min(400px, 80vw)",
-            aspectRatio: "1/1",
-            backgroundColor: "#333",
-            borderRadius: "12px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "100px",
-            boxShadow: "0 10px 40px rgba(0,0,0,0.6)",
-            overflow: "hidden",
-            flexShrink: 0
-          }}>
-            {picture ? (
-              <img
-                src={`media://${encodeURIComponent(picture)}`}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              <IoMusicalNote style={{ color: "#555" }} />
-            )}
-          </div>
-
-          <div style={{ maxWidth: "1200px", width: "100%" }}>
-            <h2 style={{
-              fontSize: "clamp(24px, 5vw, 42px)",
-              margin: "0 0 10px 0",
-              lineHeight: 1.2
-            }}>
-              {title || currentTrack.name}
-            </h2>
-            <p style={{
-              fontSize: "clamp(18px, 4vw, 28px)",
-              color: themeColor,
-              margin: "0 0 15px 0",
-              fontWeight: "bold"
-            }}>
-              {artist || "Unknown Artist"}
-            </p>
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-              color: "#aaa"
-            }}>
-              <p style={{ fontSize: "18px", margin: 0 }}>
-                {album ? `Album: ${album}` : "No Album"}
-              </p>
-              {genre && genre.length > 0 && (
-                <p style={{ fontSize: "16px", color: "#666" }}>
-                  Genre: {genre.join(", ")}
-                </p>
-              )}
-            </div>
-            <div>
-              <p style={{ fontSize: "18px", margin: 0 }}>
-                {`Album: ${currentTrack.name} (${currentTrack.path})`}
-              </p>
-            </div>
-            <div style={{ marginBottom: "10%"}}></div>
-          </div>
-        </div>
-      </div>
+      <SongDetailsView
+        currentTrack={currentTrack}
+        themeColor={themeColor}
+        onBack={() => setView(activeTab)}
+        onNavigate={(type, name) => {
+          const tabName = `${type}s` as any;
+          setActiveTab(tabName);
+          setView(tabName);
+          setSearchQuery("");
+          setSelectedGroup({ type, name });
+        }}
+        onTrackUpdated={handleTrackUpdated}
+      />
     );
   };
 
@@ -538,7 +449,7 @@ export default function App() {
 
         const isMatch = type === 'artist' ? (meta.artists ? meta.artists.includes(selectedGroup.name) : meta.artist === selectedGroup.name) :
                         type === 'album' ? meta.album === selectedGroup.name :
-                        type === 'genre' ? meta.genre?.includes(selectedGroup.name) : false;
+                        type === 'genre' ? meta.genre?.some((g: string) =>g.toLowerCase() === selectedGroup.name.toLowerCase()) : false;
 
         if (!isMatch) return false;
 
@@ -660,6 +571,16 @@ export default function App() {
       );
     }
 
+    const normalizeGenre = (genre: string): string => {
+      return genre
+        .toLowerCase()
+        .split(' ')
+        .map(word =>
+          word.charAt(0).toUpperCase() + word.slice(1)
+        )
+        .join(' ');
+    };
+
     const groups: { [key: string]: number } = {};
     allTracks.forEach(track => {
       const meta = track.metadata;
@@ -672,8 +593,10 @@ export default function App() {
       } else if (type === 'album' && meta.album) {
         groups[meta.album] = (groups[meta.album] || 0) + 1;
       } else if (type === 'genre' && meta.genre) {
-        meta.genre.forEach(g => {
-          groups[g] = (groups[g] || 0) + 1;
+        meta.genre.forEach((g: string) => {
+          const normalizedGenre = normalizeGenre(g.trim());
+          groups[normalizedGenre] =
+            (groups[normalizedGenre] || 0) + 1;
         });
       }
     });

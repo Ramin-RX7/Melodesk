@@ -238,15 +238,64 @@ const saveArt = (buffer: Buffer, format: string, filePath: string): string | und
   }
 };
 
+const splitArtists = (value: string): string[] => {
+  return value
+    .split(/[,;&/]|\s+feat\.?\s+|\s+ft\.?\s+/i)
+    .map((a) => a.trim())
+    .filter(Boolean);
+};
+
 const getArtists = (metadata: any): string[] => {
-  if (metadata.common.artists && metadata.common.artists.length > 0) {
-    return metadata.common.artists;
+  const artistSet = new Set<string>();
+
+  // Main artists
+  if (Array.isArray(metadata.common.artists)) {
+    metadata.common.artists.forEach((a: string) => {
+      splitArtists(a).forEach((x) => artistSet.add(x));
+    });
   }
+
+  // Single artist string fallback
   if (metadata.common.artist) {
-    // Split by common separators if it's a single string
-    return metadata.common.artist.split(/[,;&]|\s+feat\.|\s+ft\./i).map((a: string) => a.trim()).filter((a: string) => a.length > 0);
+    splitArtists(metadata.common.artist).forEach((x) =>
+      artistSet.add(x)
+    );
   }
-  return [];
+
+  // Album artists
+  if (Array.isArray(metadata.common.albumartists)) {
+    metadata.common.albumartists.forEach((a: string) => {
+      splitArtists(a).forEach((x) => artistSet.add(x));
+    });
+  }
+
+  // Single album artist fallback
+  if (metadata.common.albumartist) {
+    splitArtists(metadata.common.albumartist).forEach((x) =>
+      artistSet.add(x)
+    );
+  }
+
+  return Array.from(artistSet);
+};
+
+const extractMetadata = (metadata: any, fullPath: string, artPath?: string) => {
+  const stats = fs.statSync(fullPath);
+  return {
+    title: metadata.common.title,
+    artist: metadata.common.artist,
+    artists: getArtists(metadata),
+    album: metadata.common.album,
+    genre: metadata.common.genre,
+    duration: metadata.format.duration,
+    picture: artPath,
+    year: metadata.common.year || (metadata.common.date ? parseInt(metadata.common.date.substring(0, 4)) : undefined),
+    trackNumber: metadata.common.track?.no,
+    fileSize: stats.size,
+    format: metadata.format.codec || metadata.format.container,
+    bitrate: metadata.format.bitrate,
+    bpm: metadata.common.bpm,
+  };
 };
 
 const getDirectoryTree = async (dirPath: string): Promise<FileItem[]> => {
@@ -281,15 +330,7 @@ const getDirectoryTree = async (dirPath: string): Promise<FileItem[]> => {
               artPath = saveArt(Buffer.from(pic.data), pic.format, fullPath);
             }
 
-            item.metadata = {
-              title: metadata.common.title,
-              artist: metadata.common.artist,
-              artists: getArtists(metadata),
-              album: metadata.common.album,
-              genre: metadata.common.genre,
-              duration: metadata.format.duration,
-              picture: artPath,
-            };
+            item.metadata = extractMetadata(metadata, fullPath, artPath);
           } catch (err) {
             console.error(`Failed to parse metadata for ${fullPath}:`, err);
           }
@@ -340,15 +381,7 @@ const getAllMediaFiles = async (dirPath: string): Promise<FileItem[]> => {
             path: fullPath,
             isDirectory: false,
             isMedia: true,
-            metadata: {
-              title: metadata.common.title,
-              artist: metadata.common.artist,
-              artists: getArtists(metadata),
-              album: metadata.common.album,
-              genre: metadata.common.genre,
-              duration: metadata.format.duration,
-              picture: artPath,
-            },
+            metadata: extractMetadata(metadata, fullPath, artPath),
           });
         } catch (err) {
           console.error(`Failed to parse metadata for ${fullPath}:`, err);
@@ -454,15 +487,7 @@ ipcMain.handle("get-metadata", async (_event, filePath: string) => {
       path: filePath,
       isDirectory: false,
       isMedia: true,
-      metadata: {
-        title: metadata.common.title,
-        artist: metadata.common.artist,
-        artists: getArtists(metadata),
-        album: metadata.common.album,
-        genre: metadata.common.genre,
-        duration: metadata.format.duration,
-        picture: artPath,
-      },
+      metadata: extractMetadata(metadata, filePath, artPath),
     };
   } catch (err) {
     console.error(`Failed to parse metadata for ${filePath}:`, err);
@@ -472,6 +497,21 @@ ipcMain.handle("get-metadata", async (_event, filePath: string) => {
       isDirectory: false,
       isMedia: true,
     };
+  }
+});
+
+let nodeId3Module: any = null;
+
+ipcMain.handle("write-metadata", async (_event, filePath: string, tags: any) => {
+  try {
+    if (!nodeId3Module) {
+      nodeId3Module = await eval('import("node-id3")');
+    }
+    const success = nodeId3Module.default.update(tags, filePath);
+    return success === true;
+  } catch (error) {
+    console.error("Failed to write metadata (node-id3 might not be installed):", error);
+    return false;
   }
 });
 

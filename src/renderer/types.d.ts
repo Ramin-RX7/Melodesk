@@ -20,6 +20,12 @@ export interface FileItem {
     genre?: string[];
     duration?: number;
     picture?: string;
+    year?: number;
+    trackNumber?: number;
+    fileSize?: number;
+    format?: string;
+    bitrate?: number;
+    bpm?: number;
   };
 }
 
@@ -48,6 +54,7 @@ declare global {
       createPlaylist: (name: string) => Promise<Playlist>;
       updatePlaylist: (id: string, data: Partial<Pick<Playlist, 'name' | 'songs'>>) => Promise<Playlist>;
       deletePlaylist: (id: string) => Promise<void>;
+      writeMetadata: (filePath: string, tags: any) => Promise<boolean>;
     };
   }
 }

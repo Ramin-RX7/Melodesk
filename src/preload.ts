@@ -19,4 +19,5 @@ contextBridge.exposeInMainWorld("api", {
   createPlaylist: (name: string) => ipcRenderer.invoke("create-playlist", name),
   updatePlaylist: (id: string, data: any) => ipcRenderer.invoke("update-playlist", id, data),
   deletePlaylist: (id: string) => ipcRenderer.invoke("delete-playlist", id),
+  writeMetadata: (filePath: string, tags: any) => ipcRenderer.invoke("write-metadata", filePath, tags),
 });
