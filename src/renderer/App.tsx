@@ -24,6 +24,7 @@ import { useLibrary } from "../hooks/useLibrary";
 import { useKeyboardControls } from "../hooks/useKeyboardControls";
 import { LibraryView } from "./components/LibraryView";
 import { Navbar } from "./components/Navbar/Navbar";
+import { GroupedView } from "./components/GroupedView/GroupedView";
 
 
 type Page = 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue';
@@ -342,330 +343,6 @@ export default function App() {
     );
   };
 
-  const renderGroupedView = (type: 'artist' | 'album' | 'genre') => {
-    if (selectedGroup) {
-      const filteredSongs = allTracks.filter(track => {
-        const meta = track.metadata;
-        if (!meta) return false;
-
-        const isMatch = type === 'artist' ? (meta.artists ? meta.artists.includes(selectedGroup.name) : meta.artist === selectedGroup.name) :
-          type === 'album' ? meta.album === selectedGroup.name :
-            type === 'genre' ? meta.genre?.some((g: string) => g.toLowerCase() === selectedGroup.name.toLowerCase()) : false;
-
-        if (!isMatch) return false;
-
-        // Internal search within the group
-        if (searchQuery) {
-          const query = searchQuery.toLowerCase();
-          const title = (meta.title || track.name).toLowerCase();
-          const artist = (meta.artist || "").toLowerCase();
-          const album = (meta.album || "").toLowerCase();
-          return title.includes(query) || artist.includes(query) || album.includes(query);
-        }
-
-        return true;
-      });
-
-      // Sort songs by title
-      filteredSongs.sort((a, b) => {
-        // Albums should sort by track number
-        if (type === 'album') {
-          const trackA = a.metadata?.trackNumber ?? Number.MAX_SAFE_INTEGER;
-          const trackB = b.metadata?.trackNumber ?? Number.MAX_SAFE_INTEGER;
-          const res = trackA - trackB;
-          return sortDescending ? -res : res;
-        }
-        // Default sorting by title
-        const titleA = a.metadata?.title || a.name;
-        const titleB = b.metadata?.title || b.name;
-        const res = titleA.localeCompare(titleB, undefined, { sensitivity: 'base' });
-        return sortDescending ? -res : res;
-      });
-
-      return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", paddingBottom: "100px" }}>
-          <div style={{ padding: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #333" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-              <button
-                onClick={() => {
-                  setSelectedGroup(null);
-                  setSearchQuery(""); // Clear search when going back
-                }}
-                style={{ background: "none", border: "1px solid #444", color: "#fff", padding: "6px 16px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
-              >
-                <IoArrowBack /> Back to {type.charAt(0).toUpperCase() + type.slice(1)}s
-              </button>
-              <h2 style={{ margin: 0 }}>{selectedGroup.name}</h2>
-            </div>
-
-            {/* Internal Search */}
-            <div style={{ position: "relative", width: "250px" }}>
-              <IoSearch style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#888" }} />
-              <input
-                type="text"
-                placeholder={`Search in ${selectedGroup.name}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: "100%",
-                  backgroundColor: "#222",
-                  border: "1px solid #333",
-                  borderRadius: "20px",
-                  padding: "8px 15px 8px 35px",
-                  color: "#fff",
-                  fontSize: "14px",
-                  outline: "none"
-                }}
-              />
-            </div>
-          </div>
-          <div style={{ flex: 1, overflowY: "auto", padding: "20px", paddingBottom: "120px" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "20px" }}>
-              {filteredSongs.map(song => (
-                <div
-                  key={song.path}
-                  onClick={() => handleFileSelect(song, filteredSongs)}
-                  onDoubleClick={() => config?.doubleClickToPlay && handleFileSelect(song, filteredSongs)}
-                  style={{
-                    backgroundColor: "#1e1e1e",
-                    padding: "15px",
-                    borderRadius: "10px",
-                    cursor: "pointer",
-                    textAlign: "center",
-                    border: currentTrack?.path === song.path ? `1px solid ${themeColor}` : "1px solid #333",
-                    transition: "background-color 0.2s"
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#282828"}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#1e1e1e"}
-                >
-                  <div style={{
-                    width: "100%",
-                    aspectRatio: "1/1",
-                    backgroundColor: "#333",
-                    borderRadius: "6px",
-                    marginBottom: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "40px",
-                    overflow: "hidden"
-                  }}>
-                    {song.metadata?.picture ? (
-                      <img
-                        src={`media://${encodeURIComponent(song.metadata.picture)}`}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    ) : (
-                      <IoMusicalNote style={{ color: "#555" }} />
-                    )}
-                  </div>
-                  <div style={{
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                    color: currentTrack?.path === song.path ? (themeColor) : "#fff"
-                  }}>
-                    {song.metadata?.title || song.name}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {song.metadata?.artist || "Unknown Artist"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    const groups: { [key: string]: number } = {};
-    allTracks.forEach(track => {
-      const meta = track.metadata;
-      if (!meta) return;
-      if (type === 'artist') {
-        const artists = meta.artists || (meta.artist ? [meta.artist] : []);
-        artists.forEach(a => {
-          groups[a] = (groups[a] || 0) + 1;
-        });
-      } else if (type === 'album' && meta.album) {
-        groups[meta.album] = (groups[meta.album] || 0) + 1;
-      } else if (type === 'genre' && meta.genre) {
-        meta.genre.forEach((g: string) => {
-          const normalizedGenre = normalizeGenre(g.trim());
-          groups[normalizedGenre] =
-            (groups[normalizedGenre] || 0) + 1;
-        });
-      }
-    });
-
-    let groupEntries = Object.entries(groups);
-    if (type === 'album' && config) {
-      groupEntries = groupEntries.filter(([_, count]) => count >= config.minSongsForAlbum);
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      groupEntries = groupEntries.filter(([name]) => name.toLowerCase().includes(query));
-    }
-
-    // Sort entries
-    groupEntries.sort((a, b) => {
-      let res = 0;
-      if (sortBy === 'count') {
-        res = a[1] - b[1];
-        if (res === 0) res = a[0].localeCompare(b[0], undefined, { sensitivity: 'base' });
-      } else {
-        res = a[0].localeCompare(b[0], undefined, { sensitivity: 'base' });
-      }
-      return sortDescending ? -res : res;
-    });
-
-    return (
-      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-        {/* Page Header with Search and Sort */}
-        <div style={{
-          padding: "20px 30px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          borderBottom: "1px solid #222",
-          backgroundColor: "#181818"
-        }}>
-          <h2 style={{ margin: 0 }}>{type.charAt(0).toUpperCase() + type.slice(1)}s</h2>
-
-          <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-            {/* Sort Controls */}
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#222", padding: "4px 12px", borderRadius: "20px", border: "1px solid #333" }}>
-              <span style={{ fontSize: "12px", color: "#888" }}>Sort by:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as GroupSortBy)}
-                style={{ backgroundColor: "transparent", color: "#fff", border: "none", fontSize: "13px", cursor: "pointer", outline: "none" }}
-              >
-                <option value="alphabet" style={{ backgroundColor: "#222" }}>Alphabet</option>
-                <option value="count" style={{ backgroundColor: "#222" }}>Song Count</option>
-              </select>
-              <button
-                onClick={() => setSortDescending(!sortDescending)}
-                style={{ background: "none", border: "none", color: sortDescending ? (themeColor) : "#888", display: "flex", alignItems: "center", cursor: "pointer", fontSize: "16px" }}
-                title={sortDescending ? "Descending" : "Ascending"}
-              >
-                <IoSwapVertical />
-              </button>
-            </div>
-
-            {/* Search Input */}
-            <div style={{ position: "relative", width: "300px" }}>
-              <IoSearch style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#888" }} />
-              <input
-                type="text"
-                placeholder={`Search ${type}s...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: "100%",
-                  backgroundColor: "#222",
-                  border: "1px solid #333",
-                  borderRadius: "20px",
-                  padding: "8px 15px 8px 35px",
-                  color: "#fff",
-                  fontSize: "14px",
-                  outline: "none"
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ flex: 1, overflowY: "auto", padding: "30px", paddingBottom: "120px" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "25px" }}>
-            {groupEntries.map(([name, count]) => {
-              // Find first track in group to get a picture
-              const firstTrack = allTracks.find(track => {
-                const meta = track.metadata;
-                if (!meta) return false;
-                if (type === 'artist') {
-                  return meta.artists ? meta.artists.includes(name) : meta.artist === name;
-                }
-                if (type === 'album') return meta.album === name;
-                if (type === 'genre') return meta.genre?.includes(name);
-                return false;
-              });
-              const picture = firstTrack?.metadata?.picture;
-
-              return (
-                <div
-                  key={name}
-                  onClick={() => {
-                    setSelectedGroup({ type, name });
-                    setSearchQuery(""); // Clear search when entering a group
-                  }}
-                  style={{
-                    backgroundColor: "#1e1e1e",
-                    padding: "20px",
-                    borderRadius: "12px",
-                    cursor: "pointer",
-                    textAlign: "center",
-                    transition: "all 0.2s",
-                    border: "1px solid #333"
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = "#282828";
-                    e.currentTarget.style.transform = "translateY(-5px)";
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = "#1e1e1e";
-                    e.currentTarget.style.transform = "translateY(0)";
-                  }}
-                >
-                  <div style={{
-                    width: "120px",
-                    height: "120px",
-                    backgroundColor: "#333",
-                    borderRadius: type === 'artist' ? "50%" : "8px",
-                    margin: "0 auto 15px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "50px",
-                    boxShadow: "0 5px 15px rgba(0,0,0,0.3)",
-                    overflow: "hidden"
-                  }}>
-                    {picture ? (
-                      <img
-                        src={`media://${encodeURIComponent(picture)}`}
-                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                      />
-                    ) : (
-                      type === 'artist' ? <IoPerson style={{ color: "#555" }} /> :
-                        type === 'album' ? <IoDisc style={{ color: "#555" }} /> :
-                          <IoMusicalNotes style={{ color: "#555" }} />
-                    )}
-                  </div>
-                  <div style={{ fontWeight: "bold", marginBottom: "5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {name}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#888" }}>
-                    {count} {count === 1 ? 'song' : 'songs'}
-                  </div>
-                </div>
-              );
-            })}
-            {groupEntries.length === 0 && (
-              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "50px", color: "#666" }}>
-                {searchQuery ? `No results for "${searchQuery}"` : `No ${type}s found in your library.`}
-              </div>
-            )}
-          </div>
-        </div>
-        <div style={{ marginBottom: "2%" }}></div>
-      </div>
-    );
-  };
-
   return (
     <div
       onDragOver={(e) => e.preventDefault()}
@@ -688,31 +365,98 @@ export default function App() {
         />
       )}
 
-      <main style={{
-        flex: 1,
-        minHeight: 0, // Critical for nested scrolling
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        position: "relative"
-      }}>
-        {view === 'library' ? <LibraryView
-            selectedLibraryPath={selectedLibraryPath}
-            tree={tree}
-            config={config}
-            themeColor={themeColor}
-            setSelectedLibraryPath={setSelectedLibraryPath}
-            handleFileSelect={handleFileSelect}
-            handleAddFolder={handleAddFolder}
-            handleRefreshLibrary={handleRefreshLibrary}
-            handleRemoveFolder={handleRemoveFolder}
-          /> :
-          view === 'artists' ? renderGroupedView('artist') :
-            view === 'albums' ? renderGroupedView('album') :
-              view === 'genres' ? renderGroupedView('genre') :
-                view === 'playlists' ? <PlaylistView allTracks={allTracks} themeColor={themeColor} onPlayTrack={playTrack} currentTrack={currentTrack} configDoubleClickToPlay={config?.doubleClickToPlay ?? true} /> :
-                  view === 'queue' ? <QueueView queue={activeQueue} currentIndex={currentIndex} themeColor={themeColor} onPlayTrack={playTrack} onClearQueue={() => setQueue([])} /> :
-                    view === 'details' ? renderDetails() : null}
+      <main
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          position: "relative"
+        }}
+      >
+        {(() => {
+          if (view === "library") {
+            return (
+              <LibraryView
+                selectedLibraryPath={selectedLibraryPath}
+                tree={tree}
+                config={config}
+                themeColor={themeColor}
+                setSelectedLibraryPath={setSelectedLibraryPath}
+                handleFileSelect={handleFileSelect}
+                handleAddFolder={handleAddFolder}
+                handleRefreshLibrary={handleRefreshLibrary}
+                handleRemoveFolder={handleRemoveFolder}
+              />
+            );
+          }
+
+          if (
+            view === "artists" ||
+            view === "albums" ||
+            view === "genres"
+          ) {
+            const groupedType =
+              view === "artists"
+                ? "artist"
+                : view === "albums"
+                  ? "album"
+                  : "genre";
+
+            return (
+              <GroupedView
+                type={groupedType}
+                allTracks={allTracks}
+                selectedGroup={selectedGroup}
+                searchQuery={searchQuery}
+                sortBy={sortBy}
+                sortDescending={sortDescending}
+                currentTrack={currentTrack}
+                config={config}
+                themeColor={themeColor}
+                setSelectedGroup={setSelectedGroup}
+                setSearchQuery={setSearchQuery}
+                setSortBy={setSortBy}
+                setSortDescending={setSortDescending}
+                normalizeGenre={normalizeGenre}
+                handleFileSelect={handleFileSelect}
+              />
+            );
+          }
+
+          if (view === "playlists") {
+            return (
+              <PlaylistView
+                allTracks={allTracks}
+                themeColor={themeColor}
+                onPlayTrack={playTrack}
+                currentTrack={currentTrack}
+                configDoubleClickToPlay={
+                  config?.doubleClickToPlay ?? true
+                }
+              />
+            );
+          }
+
+          if (view === "queue") {
+            return (
+              <QueueView
+                queue={activeQueue}
+                currentIndex={currentIndex}
+                themeColor={themeColor}
+                onPlayTrack={playTrack}
+                onClearQueue={() => setQueue([])}
+              />
+            );
+          }
+
+          if (view === "details") {
+            return renderDetails();
+          }
+
+          return null;
+        })()}
       </main>
 
       <PlaybackBar

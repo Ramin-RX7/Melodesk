@@ -1,0 +1,217 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.header {
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #222;
+    background-color: #181818;
+    flex-shrink: 0;
+}
+
+.headerLeft {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.title {
+    margin: 0;
+}
+
+.headerControls {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.sortControls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: #222;
+    padding: 4px 12px;
+    border-radius: 20px;
+    border: 1px solid #333;
+}
+
+.sortLabel {
+    font-size: 12px;
+    color: #888;
+}
+
+.sortSelect {
+    background-color: transparent;
+    color: #fff;
+    border: none;
+    outline: none;
+    cursor: pointer;
+}
+
+.sortButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+}
+
+.searchContainer {
+    position: relative;
+    width: 300px;
+}
+
+.searchIcon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #888;
+}
+
+.searchInput {
+    width: 100%;
+    background-color: #222;
+    border: 1px solid #333;
+    border-radius: 20px;
+    padding: 8px 15px 8px 35px;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
+}
+
+.scrollArea {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 30px;
+    padding-bottom: 120px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns:
+        repeat(auto-fill, minmax(180px, 1fr));
+    gap: 25px;
+}
+
+.songCard,
+
+.groupCard {
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 10px;
+    padding: 15px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.songCard:hover,
+
+.groupCard:hover {
+    background-color: #282828;
+}
+
+.groupCard:hover {
+    transform: translateY(-5px);
+}
+
+.songImage,
+
+.groupImage {
+    width: 100%;
+    aspect-ratio: 1/1;
+    background-color: #333;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.groupImage {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 15px;
+}
+
+.coverImage {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.songTitle,
+
+.groupName {
+    font-weight: bold;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.songArtist,
+
+.groupCount {
+    font-size: 12px;
+    color: #888;
+}
+
+.emptyState {
+    text-align: center;
+    padding: 50px;
+    color: #666;
+}
+
+.backButton {
+    background: none;
+    border: 1px solid #444;
+    color: white;
+    padding: 6px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.groupName {
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.groupNameTrack {
+    display: inline-block;
+    white-space: nowrap;
+    transform: translateX(0);
+}
+
+.groupCard:hover .groupNameTrack {
+    animation: marquee 6s linear infinite;
+}
+
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+
+    10% {
+        transform: translateX(0);
+    }
+
+    90% {
+        transform: translateX(-50%);
+    }
+
+    100% {
+        transform: translateX(0);
+    }
+}
