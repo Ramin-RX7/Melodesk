@@ -1,23 +1,10 @@
-import React, { useEffect, useState, useRef, useMemo } from "react";
-import {
-  IoArrowBack,
-  IoFolder,
-  IoPerson,
-  IoDisc,
-  IoMusicalNotes,
-  IoClose,
-  IoMusicalNote,
-  IoSearch,
-  IoSwapVertical
-} from "react-icons/io5";
+import React, { useEffect, useState } from "react";
 
-import { DirectoryTree } from "./components/DirectoryTree";
 import { PlaylistView } from "./components/PlaylistView";
 import { SongDetailsView } from "./components/SongDetailsView";
 import { PlaybackBar } from "./components/PlaybackBar";
 import { QueueView } from "./components/Queue/QueueView";
 import { FileItem, UserConfig } from "./types";
-import { shuffleArray } from "../utils/array";
 import { normalizeGenre } from "../utils/metadata";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { useLibrary } from "../hooks/useLibrary";
@@ -25,11 +12,12 @@ import { useKeyboardControls } from "../hooks/useKeyboardControls";
 import { LibraryView } from "./components/LibraryView";
 import { Navbar } from "./components/Navbar/Navbar";
 import { GroupedView } from "./components/GroupedView/GroupedView";
+import { useQueue } from "../hooks/useQueue";
+import { usePlaybackController } from "../hooks/usePlaybackController";
 
 
 type Page = 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue';
 type GroupSortBy = 'alphabet' | 'count';
-type RepeatMode = 'none' | 'one' | 'all';
 
 const DEFAULT_THEME_COLOR = "#1db954";
 
@@ -43,20 +31,21 @@ export default function App() {
   const [selectedGroup, setSelectedGroup] = useState<{ type: 'artist' | 'album' | 'genre', name: string } | null>(null);
   const [currentTrack, setCurrentTrack] = useState<FileItem | null>(null);
 
+  const handleTrackUpdated = (updatedTrack: FileItem) => {
+    setCurrentTrack(updatedTrack);
+    setAllTracks(prev => prev.map(t => t.path === updatedTrack.path ? updatedTrack : t));
+  };
+
+  // Single source of truth for theme color fallback
+  const themeColor = config?.themeColor || DEFAULT_THEME_COLOR;
+
   // Search and Sort states
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<GroupSortBy>('alphabet');
   const [sortDescending, setSortDescending] = useState(false);
 
-  // Queue and Playback States
-  const [queue, setQueue] = useState<FileItem[]>([]);
-  const [shuffledQueue, setShuffledQueue] = useState<FileItem[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(-1);
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [repeatMode, setRepeatMode] = useState<RepeatMode>('none');
-  const activeQueue = isShuffle ? shuffledQueue : queue;
-
   // Audio Player
+  const audioPlayerState = useAudioPlayer(config, setConfig);
   const {
     audioRef,
 
@@ -75,148 +64,49 @@ export default function App() {
 
     handleTimeUpdate,
     handleLoadedMetadata,
-  } = useAudioPlayer(config);
+    handleVolumeChange,
+  } = audioPlayerState;
 
+  // Queue and Playback States
+  const queueState = useQueue(currentTrack);
+  const {
+    queue, setQueue,
+    currentIndex, setCurrentIndex,
+    repeatMode, setRepeatMode,
+    isShuffle, setIsShuffle,
+    shuffledQueue, setShuffledQueue,
 
-  // Single source of truth for theme color fallback
-  const themeColor = config?.themeColor || DEFAULT_THEME_COLOR;
+    activeQueue,
+    handleShuffleToggle,
+    handleRepeatToggle,
+  } = queueState;
 
-  const handleShuffleToggle = () => {
-    if (!currentTrack) {
-      setIsShuffle((prev) => !prev);
-      return
-    };
-    if (!isShuffle) {
-      // Remove current track from queue before shuffling, Shuffle remaining tracks, Put current track first
-      const remainingTracks = queue.filter(
-        (t) => t.path !== currentTrack.path
-      );
-      const shuffledRemaining = shuffleArray(remainingTracks);
-      const newShuffled = [currentTrack, ...shuffledRemaining];
-      setShuffledQueue(newShuffled);
-      setCurrentIndex(0);
-    } else {
-      // Restore original queue position
-      const originalIdx = queue.findIndex(
-        (t) => t.path === currentTrack.path
-      );
-      setCurrentIndex(originalIdx);
-    }
-    setIsShuffle((prev) => !prev);
-  };
-
-  const handleRepeatToggle = () => {
-    const modes: RepeatMode[] = ['none', 'all', 'one'];
-    const nextMode = modes[(modes.indexOf(repeatMode) + 1) % modes.length];
-    setRepeatMode(nextMode);
-  };
-
-  const playTrack = (track: FileItem, newQueue?: FileItem[]) => {
-    setCurrentTrack(track);
-
-    if (newQueue) {
-      setQueue(newQueue);
-      if (isShuffle) {
-        const newShuffled = shuffleArray(newQueue);
-        setShuffledQueue(newShuffled);
-        setCurrentIndex(newShuffled.findIndex(t => t.path === track.path));
-      } else {
-        setCurrentIndex(newQueue.findIndex(t => t.path === track.path));
-      }
-    } else {
-      // Just update index in current active queue
-      setCurrentIndex(activeQueue.findIndex(t => t.path === track.path));
-    }
-
-    if (track.metadata?.duration) {
-      setDuration(track.metadata.duration);
-    } else {
-      setDuration(0);
-    }
-
-    if (audioRef.current) {
-      const normalizedPath = track.path.replace(/\\/g, "/");
-      audioRef.current.src = `media://${encodeURIComponent(normalizedPath)}`;
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
-  };
-
-  const handleShufflePlay = (songs: FileItem[]) => {
-    if (songs.length === 0) return;
-    const shuffled = shuffleArray([...songs]);
-    const firstSong = shuffled[0];
-
-    setQueue(songs); // Original queue
-    setShuffledQueue(shuffled);
-    setCurrentIndex(0);
-    setIsShuffle(true);
-    
-    setCurrentTrack(firstSong);
-    if (firstSong.metadata?.duration) setDuration(firstSong.metadata.duration);
-    else setDuration(0);
-
-    if (audioRef.current) {
-      const normalizedPath = firstSong.path.replace(/\\/g, "/");
-      audioRef.current.src = `media://${encodeURIComponent(normalizedPath)}`;
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
-  };
-
-  const handleNext = () => {
-    if (activeQueue.length === 0) return;
-
-    let nextIdx = currentIndex + 1;
-    if (nextIdx >= activeQueue.length) {
-      if (repeatMode === 'all') {
-        nextIdx = 0;
-      } else {
-        return; // End of queue
-      }
-    }
-    playTrack(activeQueue[nextIdx]);
-  };
-
-  const handlePrevious = () => {
-    if (activeQueue.length === 0) return;
-
-    // If more than 3 seconds in, restart track
-    if (currentTime > 3) {
-      if (audioRef.current) audioRef.current.currentTime = 0;
-      return;
-    }
-
-    let prevIdx = currentIndex - 1;
-    if (prevIdx < 0) {
-      if (repeatMode === 'all') {
-        prevIdx = activeQueue.length - 1;
-      } else {
-        return; // Start of queue
-      }
-    }
-    playTrack(activeQueue[prevIdx]);
-  };
-
-  const handleEnded = () => {
-    if (repeatMode === 'one') {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play();
-      }
-    } else {
-      handleNext();
-    }
-  };
-
-  const handleTrackUpdated = (updatedTrack: FileItem) => {
-    setCurrentTrack(updatedTrack);
-    setAllTracks(prev => prev.map(t => t.path === updatedTrack.path ? updatedTrack : t));
-  };
-
-
+  // Use library
   useLibrary(setAllTracks, setTree, selectedLibraryPath);
 
+  // Utilities that use both Playback and Queue
+  const {
+    playTrack,
+    handleShufflePlay,
+    handleNext,
+    handlePrevious,
+    handleEnded,
+    handleDrop,
+  } = usePlaybackController({
+    queueState,
+    audioState: audioPlayerState,
+    currentTrack,
+    setCurrentTrack,
+  });
+
+  // Keyboard Controls
+  useKeyboardControls({
+    togglePlay,
+    handleNext,
+    handlePrevious,
+    seekForward,
+    seekBackward,
+  });
 
   useEffect(() => {
     // Add global styles to remove margins
@@ -267,31 +157,6 @@ export default function App() {
     };
   }, []);
 
-  const handleAddFolder = async () => {
-    const path = await window.api.selectDirectory();
-    if (path && config) {
-      if (!config.libraryPaths.includes(path)) {
-        const newConfig = await window.api.updateConfig({
-          libraryPaths: [...config.libraryPaths, path]
-        });
-        setConfig(newConfig);
-      }
-    }
-  };
-
-  const handleRemoveFolder = async (e: React.MouseEvent, path: string) => {
-    e.stopPropagation();
-    if (config) {
-      const newConfig = await window.api.updateConfig({
-        libraryPaths: config.libraryPaths.filter(p => p !== path)
-      });
-      setConfig(newConfig);
-      if (selectedLibraryPath === path) {
-        setSelectedLibraryPath(null);
-      }
-    }
-  };
-
   const handleTabChange = (tab: Exclude<Page, 'details' | 'queue'>) => {
     setActiveTab(tab);
     setView(tab);
@@ -299,32 +164,6 @@ export default function App() {
     setSearchQuery(""); // Clear search on tab change
     if (tab !== 'library') {
       setSelectedLibraryPath(null);
-    }
-  };
-
-  const handleVolumeChange = async (newVolume: number) => {
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
-    if (config) {
-      const newConfig = await window.api.updateConfig({ volume: newVolume });
-      setConfig(newConfig);
-    }
-  };
-
-  const handleRefreshLibrary = async () => {
-    await window.api.refreshLibrary();
-  };
-
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      const file = files[0];
-      const item = await window.api.getMetadata(file.path);
-      if (item && item.isMedia) {
-        playTrack(item, [item]);
-      }
     }
   };
 
@@ -336,33 +175,6 @@ export default function App() {
         playTrack(item, contextQueue);
       }
     }
-  };
-
-  useKeyboardControls({
-    togglePlay,
-    handleNext,
-    handlePrevious,
-    seekForward,
-    seekBackward,
-  });
-
-  const renderDetails = () => {
-    if (!currentTrack) return <div style={{ padding: 20 }}>No track selected</div>;
-    return (
-      <SongDetailsView
-        currentTrack={currentTrack}
-        themeColor={themeColor}
-        onBack={() => setView(activeTab)}
-        onNavigate={(type, name) => {
-          const tabName = `${type}s` as any;
-          setActiveTab(tabName);
-          setView(tabName);
-          setSearchQuery("");
-          setSelectedGroup({ type, name });
-        }}
-        onTrackUpdated={handleTrackUpdated}
-      />
-    );
   };
 
   return (
@@ -404,12 +216,10 @@ export default function App() {
                 selectedLibraryPath={selectedLibraryPath}
                 tree={tree}
                 config={config}
+                setConfig={setConfig}
                 themeColor={themeColor}
                 setSelectedLibraryPath={setSelectedLibraryPath}
                 handleFileSelect={handleFileSelect}
-                handleAddFolder={handleAddFolder}
-                handleRefreshLibrary={handleRefreshLibrary}
-                handleRemoveFolder={handleRemoveFolder}
               />
             );
           }
@@ -475,7 +285,21 @@ export default function App() {
           }
 
           if (view === "details") {
-            return renderDetails();
+            return view === "details" && currentTrack ? (
+              <SongDetailsView
+                currentTrack={currentTrack}
+                themeColor={themeColor}
+                onBack={() => setView(activeTab)}
+                onNavigate={(type, name) => {
+                  const tabName = `${type}s` as any;
+                  setActiveTab(tabName);
+                  setView(tabName);
+                  setSearchQuery("");
+                  setSelectedGroup({ type, name });
+                }}
+                onTrackUpdated={handleTrackUpdated}
+              />
+            ) : null;
           }
 
           return null;

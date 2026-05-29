@@ -3,7 +3,8 @@ import { useRef, useState, useEffect } from "react";
 const SEEK_AMOUNT = 5;
 
 export function useAudioPlayer(
-    config: any
+    config: any,
+    setConfig: (config: any) => void
 ) {
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -12,6 +13,8 @@ export function useAudioPlayer(
     const [currentTime, setCurrentTime] = useState(0);
 
     const [duration, setDuration] = useState(0);
+
+    const [isShuffle, setIsShuffle] = useState(false);
 
     const togglePlay = () => {
         if (!audioRef.current) return;
@@ -71,6 +74,17 @@ export function useAudioPlayer(
         }
     };
 
+
+    const handleVolumeChange = async (newVolume: number) => {
+        if (audioRef.current) {
+        audioRef.current.volume = newVolume;
+        }
+        if (config) {
+        const newConfig = await window.api.updateConfig({ volume: newVolume });
+        setConfig(newConfig);
+        }
+    };
+
     useEffect(() => {
         if (config && audioRef.current) {
             audioRef.current.volume = config.volume;
@@ -95,5 +109,6 @@ export function useAudioPlayer(
 
         handleTimeUpdate,
         handleLoadedMetadata,
+        handleVolumeChange,
     };
 }
