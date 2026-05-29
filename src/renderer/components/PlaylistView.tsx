@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { FileItem, Playlist } from "../types";
+import { formatArtists } from "../../utils/metadata";
 import { IoArrowBack, IoAdd, IoTrash, IoSearch, IoMusicalNote, IoSwapVertical } from "react-icons/io5";
 
 interface PlaylistViewProps {
@@ -238,7 +239,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ color: currentTrack?.path === track.path ? themeColor : "#fff", fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.metadata?.title || track.name}</div>
-                <div style={{ flex: 1, color: "#888", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.metadata?.artists?.join(", ") || "Unknown Artist"}</div>
+                <div title={formatArtists(track.metadata?.artists).full} style={{ flex: 1, color: "#888", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formatArtists(track.metadata?.artists).display}</div>
               </div>
               <div style={{ color: "#666", fontSize: "13px", padding: "0 20px" }}>
                 {track.metadata?.duration ? `${Math.floor(track.metadata.duration / 60)}:${Math.floor(track.metadata.duration % 60).toString().padStart(2, '0')}` : "-:--"}
@@ -267,7 +268,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
                     <div key={track.path} style={{ display: "flex", alignItems: "center", gap: "15px", padding: "10px", borderBottom: "1px solid #222" }}>
                       <div style={{ flex: 1, overflow: "hidden" }}>
                         <div style={{ fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.metadata?.title || track.name}</div>
-                        <div style={{ color: "#888", fontSize: "12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.metadata?.artists?.join(", ")}</div>
+                        <div title={formatArtists(track.metadata?.artists).full} style={{ color: "#888", fontSize: "12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formatArtists(track.metadata?.artists).display}</div>
                       </div>
                       <button disabled={isAdded} onClick={() => handleAddSong(track)} style={{ backgroundColor: isAdded ? "#333" : themeColor, color: "#fff", border: "none", padding: "6px 16px", borderRadius: "20px", cursor: isAdded ? "default" : "pointer", opacity: isAdded ? 0.5 : 1 }}>
                         {isAdded ? "Added" : "Add"}

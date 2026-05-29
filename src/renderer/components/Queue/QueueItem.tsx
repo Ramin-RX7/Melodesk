@@ -1,4 +1,5 @@
 import { IoMusicalNote } from "react-icons/io5";
+import { formatArtists } from "../../../utils/metadata";
 
 import { FileItem, UserConfig } from "../../types";
 
@@ -87,6 +88,7 @@ export function QueueItem({
                 </div>
 
                 <div
+                    title={formatArtists(track.metadata?.artists).full}
                     style={{
                         fontSize: "12px",
                         color: "#888",
@@ -95,7 +97,7 @@ export function QueueItem({
                         whiteSpace: "nowrap",
                     }}
                 >
-                    {track.metadata?.artists?.join(", ") || "Unknown Artist"}
+                    {formatArtists(track.metadata?.artists).display}
                 </div>
             </div>
 

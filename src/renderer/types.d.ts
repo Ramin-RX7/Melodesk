@@ -5,6 +5,11 @@ export interface UserConfig {
   themeColor: string;
   volume: number;
 }
+export interface ArtistInfo {
+  name: string;
+  bio?: string;
+  picture?: string;
+}
 
 export interface FileItem {
   name: string;
@@ -56,7 +61,11 @@ declare global {
       updatePlaylist: (id: string, data: Partial<Pick<Playlist, 'name' | 'songs'>>) => Promise<Playlist>;
       deletePlaylist: (id: string) => Promise<void>;
       writeMetadata: (filePath: string, tags: any) => Promise<boolean>;
-      showFileInFolder: (filePath: string) => Promise<void>;openExternalUrl: (url: string) => Promise<void>;
+      getArtistInfo: (name: string) => Promise<ArtistInfo | null>;
+      updateArtistInfo: (name: string, data: Partial<ArtistInfo>) => Promise<ArtistInfo>;
+      selectArtistImage: () => Promise<string | null>;
+      showFileInFolder: (filePath: string) => Promise<void>;
+      openExternalUrl: (url: string) => Promise<void>;
     };
   }
 }

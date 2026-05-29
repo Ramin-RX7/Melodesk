@@ -23,6 +23,19 @@ export function GroupCard({
     picture,
     onClick
 }: Props) {
+    const [customPicture, setCustomPicture] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (type === "artist") {
+            window.api.getArtistInfo(name).then(info => {
+                if (info && info.picture) {
+                    setCustomPicture(info.picture);
+                }
+            }).catch(console.error);
+        }
+    }, [type, name]);
+
+    const displayPicture = customPicture || picture;
 
     return (
         <div
@@ -38,9 +51,9 @@ export function GroupCard({
                             : "8px"
                 }}
             >
-                {picture ? (
+                {displayPicture ? (
                     <img
-                        src={`media://${encodeURIComponent(picture)}`}
+                        src={`media://${encodeURIComponent(displayPicture.replace(/\\/g, "/"))}`}
                         className={styles.coverImage}
                     />
                 ) : (

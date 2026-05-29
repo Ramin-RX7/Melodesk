@@ -1,5 +1,6 @@
 import { IoMusicalNote } from "react-icons/io5";
-import { FileItem } from "../../types";
+import { FileItem } from "../../../renderer/types";
+import { formatArtists } from "../../../utils/metadata";
 import styles from "./GroupedView.module.css";
 
 type Props = {
@@ -52,8 +53,8 @@ export function SongCard({
                 {song.metadata?.title || song.name}
             </div>
 
-            <div className={styles.songArtist}>
-                {song.metadata?.artists?.join(", ") || "Unknown Artist"}
+            <div title={formatArtists(song.metadata?.artists).full} className={styles.songArtist}>
+                {formatArtists(song.metadata?.artists).display}
             </div>
         </div>
     );

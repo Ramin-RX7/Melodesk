@@ -9,6 +9,7 @@ import {
   IoCaretUp,
   IoCaretDown
 } from "react-icons/io5";
+import { formatArtists } from "../../utils/metadata";
 
 interface DirectoryTreeProps {
   items: FileItem[];
@@ -85,8 +86,8 @@ const TreeItem: React.FC<{
             <div style={{ flex: 1, fontSize: "13px", color: "#bbb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {item.metadata?.title || "-"}
             </div>
-            <div style={{ flex: 1, fontSize: "13px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {item.metadata?.artists?.join(", ") || "-"}
+            <div title={formatArtists(item.metadata?.artists).full} style={{ flex: 1, fontSize: "13px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {formatArtists(item.metadata?.artists).display}
             </div>
             <div style={{ flex: 1, fontSize: "13px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {item.metadata?.album || "-"}

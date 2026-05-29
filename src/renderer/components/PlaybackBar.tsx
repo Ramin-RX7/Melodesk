@@ -97,14 +97,14 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
 
   const getDisplayText = () => {
     if (!currentTrack) return { title: "No track selected", artist: "" };
-    const { title, artist } = currentTrack.metadata || {};
+    const { title, artists } = currentTrack.metadata || {};
     return {
       title: title || currentTrack.name,
-      artist: artist || "Unknown Artist"
+      artists: artists || "Unknown Artist"
     };
   };
 
-  const { title, artist } = getDisplayText();
+  const { title, artists } = getDisplayText();
 
   return (
     <div
@@ -215,7 +215,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
                 onClick={onShowDetails}
                 style={{ fontSize: "12px", color: "#aaa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
               >
-                {artist}
+                {artists}
               </div>
             )}
           </div>

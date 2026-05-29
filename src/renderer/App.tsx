@@ -142,6 +142,28 @@ export default function App() {
     }
   };
 
+  const handleShufflePlay = (songs: FileItem[]) => {
+    if (songs.length === 0) return;
+    const shuffled = shuffleArray([...songs]);
+    const firstSong = shuffled[0];
+
+    setQueue(songs); // Original queue
+    setShuffledQueue(shuffled);
+    setCurrentIndex(0);
+    setIsShuffle(true);
+    
+    setCurrentTrack(firstSong);
+    if (firstSong.metadata?.duration) setDuration(firstSong.metadata.duration);
+    else setDuration(0);
+
+    if (audioRef.current) {
+      const normalizedPath = firstSong.path.replace(/\\/g, "/");
+      audioRef.current.src = `media://${encodeURIComponent(normalizedPath)}`;
+      audioRef.current.play();
+      setIsPlaying(true);
+    }
+  };
+
   const handleNext = () => {
     if (activeQueue.length === 0) return;
 
@@ -421,6 +443,7 @@ export default function App() {
                 setSortDescending={setSortDescending}
                 normalizeGenre={normalizeGenre}
                 handleFileSelect={handleFileSelect}
+                handleShufflePlay={handleShufflePlay}
               />
             );
           }
