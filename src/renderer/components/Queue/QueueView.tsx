@@ -1,7 +1,9 @@
+import { useMemo, useRef } from "react";
+
 import { QueueHeader } from "./QueueHeader";
 import { QueueItem } from "./QueueItem";
 import { FileItem } from "../../types";
-import { useMemo } from "react";
+
 
 type QueueViewProps = {
     queue: FileItem[];
@@ -24,6 +26,22 @@ export function QueueView({
             0
         );
     }, [queue]);
+    const listRef = useRef<HTMLDivElement>(null);
+    const scrollToCurrent = () => {
+        const container = listRef.current;
+        if (!container) return;
+
+        const activeEl = container.querySelector(
+            `[data-active="true"]`
+        ) as HTMLElement | null;
+
+        if (activeEl) {
+            activeEl.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+        }
+    };
 
     return (
         <div
@@ -38,9 +56,11 @@ export function QueueView({
                 totalSongs={queue.length}
                 totalDuration={totalDuration}
                 onClear={onClearQueue}
+                scrollToCurrent={scrollToCurrent}
             />
 
             <div
+                ref={listRef}
                 style={{
                     flex: 1,
                     overflowY: "auto",

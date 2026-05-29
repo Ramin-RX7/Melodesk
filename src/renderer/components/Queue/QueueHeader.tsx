@@ -1,15 +1,17 @@
-import {formatDuration} from "../../../utils/time";
+import { formatDuration } from "../../../utils/time";
 
 type QueueHeaderProps = {
     totalSongs: number;
     totalDuration: number;
     onClear: () => void;
+    scrollToCurrent: () => void;
 };
 
 export function QueueHeader({
     totalSongs,
     totalDuration,
     onClear,
+    scrollToCurrent
 }: QueueHeaderProps) {
     const minutes = Math.floor(totalDuration / 60);
     const seconds = Math.floor(totalDuration % 60)
@@ -30,21 +32,37 @@ export function QueueHeader({
             <h2 style={{ margin: 0 }}>
                 Play Queue ({totalSongs} songs: {formatDuration(totalDuration)})
             </h2>
-
-            <button
-                onClick={onClear}
-                style={{
-                    background: "none",
-                    border: "1px solid #444",
-                    color: "#888",
-                    padding: "6px 12px",
-                    borderRadius: "4px",
-                    cursor: "pointer",
-                    fontSize: "12px",
-                }}
-            >
-                Clear Queue
-            </button>
+            <div>
+                <button
+                    onClick={scrollToCurrent}
+                    style={{
+                        marginRight: "10px",
+                        background: "#222",
+                        border: "1px solid #333",
+                        color: "#fff",
+                        padding: "6px 12px",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                    }}
+                >
+                    Go to current
+                </button>
+                <button
+                    onClick={onClear}
+                    style={{
+                        background: "none",
+                        border: "1px solid #444",
+                        color: "#888",
+                        padding: "6px 12px",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                    }}
+                >
+                    Clear Queue
+                </button>
+            </div>
         </div>
     );
 }

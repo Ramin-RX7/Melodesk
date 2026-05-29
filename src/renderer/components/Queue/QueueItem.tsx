@@ -20,6 +20,7 @@ export function QueueItem({
 }: QueueItemProps) {
     return (
         <div
+            data-active={isActive}
             onClick={onClick}
             style={{
                 display: "flex",
