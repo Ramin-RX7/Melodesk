@@ -95,7 +95,7 @@ export function QueueItem({
                         whiteSpace: "nowrap",
                     }}
                 >
-                    {track.metadata?.artist || "Unknown Artist"}
+                    {track.metadata?.artists?.join(", ") || "Unknown Artist"}
                 </div>
             </div>
 

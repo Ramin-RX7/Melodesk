@@ -25,9 +25,7 @@ export function GroupList({
                     if (!meta) return false;
 
                     if (type === "artist") {
-                        return meta.artists
-                            ? meta.artists.includes(name)
-                            : meta.artist === name;
+                        return meta.artists?.includes(name);
                     }
 
                     if (type === "album") {

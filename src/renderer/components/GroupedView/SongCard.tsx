@@ -53,7 +53,7 @@ export function SongCard({
             </div>
 
             <div className={styles.songArtist}>
-                {song.metadata?.artist || "Unknown Artist"}
+                {song.metadata?.artists?.join(", ") || "Unknown Artist"}
             </div>
         </div>
     );

@@ -86,7 +86,7 @@ const TreeItem: React.FC<{
               {item.metadata?.title || "-"}
             </div>
             <div style={{ flex: 1, fontSize: "13px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {item.metadata?.artist || "-"}
+              {item.metadata?.artists?.join(", ") || "-"}
             </div>
             <div style={{ flex: 1, fontSize: "13px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {item.metadata?.album || "-"}
@@ -152,7 +152,7 @@ export const DirectoryTree: React.FC<DirectoryTreeProps> = ({
       switch (sortCol) {
         case 'name': valA = a.name; valB = b.name; break;
         case 'title': valA = a.metadata?.title || a.name; valB = b.metadata?.title || b.name; break;
-        case 'artist': valA = a.metadata?.artist || ''; valB = b.metadata?.artist || ''; break;
+        case 'artist': valA = a.metadata?.artists?.[0] || ''; valB = b.metadata?.artists?.[0] || ''; break;
         case 'album': valA = a.metadata?.album || ''; valB = b.metadata?.album || ''; break;
         case 'duration': valA = a.metadata?.duration || 0; valB = b.metadata?.duration || 0; break;
       }

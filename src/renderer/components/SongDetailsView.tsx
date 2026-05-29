@@ -32,7 +32,7 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
     if (isEditing) {
       setFormData({
         title: currentTrack.metadata?.title || "",
-        artist: currentTrack.metadata?.artist || "",
+        artist: currentTrack.metadata?.artists?.join(", ") || currentTrack.metadata?.artist || "",
         album: currentTrack.metadata?.album || "",
         genre: currentTrack.metadata?.genre?.join(", ") || "",
         year: currentTrack.metadata?.year?.toString() || "",
@@ -144,7 +144,7 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
                   <input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: "#111", border: "1px solid #444", borderRadius: "6px", color: "#fff", outline: "none" }} />
                 </div>
                 <div>
-                  <label style={{ display: "block", color: "#888", fontSize: "12px", marginBottom: "5px" }}>Artist</label>
+                  <label style={{ display: "block", color: "#888", fontSize: "12px", marginBottom: "5px" }}>Artists (comma separated)</label>
                   <input type="text" value={formData.artist} onChange={e => setFormData({ ...formData, artist: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: "#111", border: "1px solid #444", borderRadius: "6px", color: "#fff", outline: "none" }} />
                 </div>
                 <div>
@@ -174,19 +174,23 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
               </h2>
               {/* Navigable Links */}
               <div style={{ display: "flex", flexDirection: "column", gap: "5px", alignItems: "center", marginBottom: "20px" }}>
-                {meta.artist ? (
-                  <span
-                    onClick={() => onNavigate('artist', meta.artist!)}
-                    style={{ fontSize: "clamp(35px, 3vw, 90px)", color: themeColor, fontWeight: "bold", cursor: "pointer" }}
-                    // onMouseOver={e => e.currentTarget.style.textDecoration = "underline"}
-                    // onMouseOut={e => e.currentTarget.style.textDecoration = "none"}
-                  >
-                    {meta.artist}
-                  </span>
-                ) : <span style={{ color: "#888", fontSize: "clamp(35px, 3vw, 90px)"}}>
-                      Unknown Artist
-                    </span>
-                }
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
+                  {meta.artists && meta.artists.length > 0 ? (
+                    meta.artists.map((artist, idx) => (
+                      <React.Fragment key={idx}>
+                        <span
+                          onClick={() => onNavigate('artist', artist)}
+                          style={{ fontSize: "clamp(35px, 3vw, 90px)", color: themeColor, fontWeight: "bold", cursor: "pointer" }}
+                          // onMouseOver={e => e.currentTarget.style.textDecoration = "underline"}
+                          // onMouseOut={e => e.currentTarget.style.textDecoration = "none"}
+                        >
+                          {artist}
+                        </span>
+                        {idx < meta.artists!.length - 1 && <span style={{ fontSize: "clamp(35px, 3vw, 90px)", color: "#888" }}>,</span>}
+                      </React.Fragment>
+                    ))
+                  ) : <span style={{ color: "#888", fontSize: "clamp(35px, 3vw, 90px)" }}>Unknown Artist</span>}
+                </div>
 
                 {meta.album && (
                   <span

@@ -14,9 +14,7 @@ export function getFilteredSongs(
 
         const isMatch =
             type === "artist"
-                ? meta.artists
-                    ? meta.artists.includes(selectedGroup)
-                    : meta.artist === selectedGroup
+                ? meta.artists?.includes(selectedGroup)
                 : type === "album"
                     ? meta.album === selectedGroup
                     : type === "genre"
@@ -31,7 +29,7 @@ export function getFilteredSongs(
             const query = searchQuery.toLowerCase();
 
             const title = (meta.title || track.name).toLowerCase();
-            const artist = (meta.artist || "").toLowerCase();
+            const artist = (meta.artists?.join(", ") || "").toLowerCase();
             const album = (meta.album || "").toLowerCase();
 
             return (
@@ -84,10 +82,9 @@ export function getGroupEntries(
         if (!meta) return;
 
         if (type === "artist") {
-            const artists = meta.artists || (meta.artist ? [meta.artist] : []);
-
-            artists.forEach(a => {
-                groups[a] = (groups[a] || 0) + 1;
+            const artists = meta.artists || [];
+            artists.forEach(artist => {
+                groups[artist] = (groups[artist] || 0) + 1;
             });
         }
 

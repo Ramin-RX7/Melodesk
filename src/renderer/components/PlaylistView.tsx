@@ -151,7 +151,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
       const q = searchQuery.toLowerCase();
       filteredTracks = filteredTracks.filter(({ track }) => 
         (track.metadata?.title || track.name).toLowerCase().includes(q) ||
-        (track.metadata?.artist || "").toLowerCase().includes(q)
+        (track.metadata?.artists?.join(", ") || "").toLowerCase().includes(q)
       );
     }
 
@@ -161,7 +161,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
         if (sortBy === 'title') {
           res = (a.track.metadata?.title || a.track.name).localeCompare(b.track.metadata?.title || b.track.name);
         } else if (sortBy === 'artist') {
-          res = (a.track.metadata?.artist || "").localeCompare(b.track.metadata?.artist || "");
+          res = (a.track.metadata?.artists?.[0] || "").localeCompare(b.track.metadata?.artists?.[0] || "");
         } else if (sortBy === 'duration') {
           res = (a.track.metadata?.duration || 0) - (b.track.metadata?.duration || 0);
         }
@@ -238,7 +238,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ color: currentTrack?.path === track.path ? themeColor : "#fff", fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.metadata?.title || track.name}</div>
-                <div style={{ color: "#888", fontSize: "12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.metadata?.artist || "Unknown Artist"}</div>
+                <div style={{ flex: 1, color: "#888", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.metadata?.artists?.join(", ") || "Unknown Artist"}</div>
               </div>
               <div style={{ color: "#666", fontSize: "13px", padding: "0 20px" }}>
                 {track.metadata?.duration ? `${Math.floor(track.metadata.duration / 60)}:${Math.floor(track.metadata.duration % 60).toString().padStart(2, '0')}` : "-:--"}
@@ -261,13 +261,13 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
                 <input type="text" placeholder="Search library..." value={addSearchQuery} onChange={(e) => setAddSearchQuery(e.target.value)} style={{ width: "100%", backgroundColor: "#222", border: "1px solid #444", borderRadius: "8px", padding: "10px 15px", color: "#fff", outline: "none" }} />
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "10px" }}>
-                {allTracks.filter(t => (t.metadata?.title || t.name).toLowerCase().includes(addSearchQuery.toLowerCase()) || (t.metadata?.artist || "").toLowerCase().includes(addSearchQuery.toLowerCase())).map(track => {
+                {allTracks.filter(t => (t.metadata?.title || t.name).toLowerCase().includes(addSearchQuery.toLowerCase()) || (t.metadata?.artists?.join(", ") || "").toLowerCase().includes(addSearchQuery.toLowerCase())).map(track => {
                   const isAdded = selectedPlaylist.songs.includes(track.path);
                   return (
                     <div key={track.path} style={{ display: "flex", alignItems: "center", gap: "15px", padding: "10px", borderBottom: "1px solid #222" }}>
                       <div style={{ flex: 1, overflow: "hidden" }}>
                         <div style={{ fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.metadata?.title || track.name}</div>
-                        <div style={{ color: "#888", fontSize: "12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.metadata?.artist}</div>
+                        <div style={{ color: "#888", fontSize: "12px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{track.metadata?.artists?.join(", ")}</div>
                       </div>
                       <button disabled={isAdded} onClick={() => handleAddSong(track)} style={{ backgroundColor: isAdded ? "#333" : themeColor, color: "#fff", border: "none", padding: "6px 16px", borderRadius: "20px", cursor: isAdded ? "default" : "pointer", opacity: isAdded ? 0.5 : 1 }}>
                         {isAdded ? "Added" : "Add"}
