@@ -171,6 +171,39 @@ export function usePlaybackController({
         navigator.mediaSession.setActionHandler("previoustrack", () => {
             handlePrevious(); // you must provide this
         });
+
+
+        let track = currentTrack;
+        if (!track?.metadata?.picture) return;
+        const convert = () => {
+            const normalized = track.metadata?.picture?.replace(/\\/g, "/");
+
+            fetch(`file://${normalized}`)
+                .then((res) => res.blob())
+                .then((blob) => {
+                    const reader = new FileReader();
+
+                    reader.onloadend = () => {
+                        const base64 = reader.result as string;
+
+                        navigator.mediaSession.metadata = new MediaMetadata({
+                            title: track.metadata?.title || track.name,
+                            artist: track.metadata?.artist || "Unknown",
+                            album: track.metadata?.album || "",
+                            artwork: [
+                                {
+                                    src: base64,
+                                    sizes: "512x512",
+                                    type: "image/png",
+                                },
+                            ],
+                        });
+                    };
+                    reader.readAsDataURL(blob);
+                });
+        };
+        convert();
+
     }, [handleNext, handlePrevious]);
 
     return {
