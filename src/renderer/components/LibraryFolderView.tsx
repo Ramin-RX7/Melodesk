@@ -1,0 +1,65 @@
+// LibraryFolderView.tsx
+
+import { IoArrowBack } from "react-icons/io5";
+import { DirectoryTree } from "./DirectoryTree";
+
+export function LibraryFolderView({
+    selectedLibraryPath,
+    setSelectedLibraryPath,
+    tree,
+    config,
+    themeColor,
+    handleFileSelect,
+}: any) {
+    return (
+        <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+
+            <div style={{
+                padding: "10px 20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "15px",
+                borderBottom: "1px solid #333",
+                backgroundColor: "#181818",
+                flexShrink: 0
+            }}>
+                <button
+                    onClick={() => setSelectedLibraryPath(null)}
+                    style={{
+                        background: "none",
+                        border: "1px solid #444",
+                        color: "#fff",
+                        padding: "4px 12px",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "12px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px"
+                    }}
+                >
+                    <IoArrowBack /> Back
+                </button>
+
+                <span style={{
+                    fontSize: "13px",
+                    color: "#aaa",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap"
+                }}>
+                    {selectedLibraryPath}
+                </span>
+            </div>
+
+            <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: "120px" }}>
+                <DirectoryTree
+                    items={tree}
+                    onFileSelect={handleFileSelect}
+                    useDoubleClick={config?.doubleClickToPlay ?? true}
+                    themeColor={themeColor}
+                />
+            </div>
+        </div>
+    );
+}

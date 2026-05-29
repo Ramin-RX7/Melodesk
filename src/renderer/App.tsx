@@ -1,9 +1,4 @@
 import React, { useEffect, useState, useRef, useMemo } from "react";
-import { DirectoryTree } from "./components/DirectoryTree";
-import { PlaylistView } from "./components/PlaylistView";
-import { SongDetailsView } from "./components/SongDetailsView";
-import { PlaybackBar } from "./components/PlaybackBar";
-import { FileItem, UserConfig } from "./types";
 import {
   IoArrowBack,
   IoFolder,
@@ -15,6 +10,21 @@ import {
   IoSearch,
   IoSwapVertical
 } from "react-icons/io5";
+
+import { DirectoryTree } from "./components/DirectoryTree";
+import { PlaylistView } from "./components/PlaylistView";
+import { SongDetailsView } from "./components/SongDetailsView";
+import { PlaybackBar } from "./components/PlaybackBar";
+import { QueueView } from "./components/Queue/QueueView";
+import { FileItem, UserConfig } from "./types";
+import { shuffleArray } from "../utils/array";
+import { normalizeGenre } from "../utils/metadata";
+import { useAudioPlayer } from "../hooks/useAudioPlayer";
+import { useLibrary } from "../hooks/useLibrary";
+import { useKeyboardControls } from "../hooks/useKeyboardControls";
+import { LibraryView } from "./components/LibraryView";
+import { Navbar } from "./components/Navbar/Navbar";
+
 
 type Page = 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue';
 type GroupSortBy = 'alphabet' | 'count';
@@ -31,10 +41,6 @@ export default function App() {
   const [selectedLibraryPath, setSelectedLibraryPath] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<{ type: 'artist' | 'album' | 'genre', name: string } | null>(null);
   const [currentTrack, setCurrentTrack] = useState<FileItem | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Search and Sort states
   const [searchQuery, setSearchQuery] = useState("");
@@ -47,39 +53,46 @@ export default function App() {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isShuffle, setIsShuffle] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>('none');
-
   const activeQueue = isShuffle ? shuffledQueue : queue;
+
+  // Audio Player
+  const {
+    audioRef,
+
+    isPlaying,
+    currentTime,
+    duration,
+
+    setDuration,
+    setIsPlaying,
+
+    togglePlay,
+
+    handleSeek,
+    seekForward,
+    seekBackward,
+
+    handleTimeUpdate,
+    handleLoadedMetadata,
+  } = useAudioPlayer(config);
+
 
   // Single source of truth for theme color fallback
   const themeColor = config?.themeColor || DEFAULT_THEME_COLOR;
-
-  // Utility to shuffle an array
-  const shuffleArray = <T,>(array: T[]): T[] => {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-  };
 
   const handleShuffleToggle = () => {
     if (!currentTrack) {
       setIsShuffle((prev) => !prev);
       return
     };
-
     if (!isShuffle) {
-      // Remove current track from queue before shuffling
+      // Remove current track from queue before shuffling, Shuffle remaining tracks, Put current track first
       const remainingTracks = queue.filter(
         (t) => t.path !== currentTrack.path
       );
-      // Shuffle remaining tracks
       const shuffledRemaining = shuffleArray(remainingTracks);
-      // Put current track first
       const newShuffled = [currentTrack, ...shuffledRemaining];
       setShuffledQueue(newShuffled);
-      // Current track is now first
       setCurrentIndex(0);
     } else {
       // Restore original queue position
@@ -173,6 +186,15 @@ export default function App() {
     }
   };
 
+  const handleTrackUpdated = (updatedTrack: FileItem) => {
+    setCurrentTrack(updatedTrack);
+    setAllTracks(prev => prev.map(t => t.path === updatedTrack.path ? updatedTrack : t));
+  };
+
+
+  useLibrary(setAllTracks, setTree, selectedLibraryPath);
+
+
   useEffect(() => {
     // Add global styles to remove margins
     const style = document.createElement('style');
@@ -222,35 +244,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (config && audioRef.current) {
-      audioRef.current.volume = config.volume;
-    }
-  }, [config]);
-
-  useEffect(() => {
-    // Subscribe to updates
-    const unsubscribe = window.api.onLibraryUpdated((updatedFiles) => {
-      setAllTracks(updatedFiles);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (selectedLibraryPath) {
-      const loadTree = async () => {
-        try {
-          const data = await window.api.getDirectoryTree(selectedLibraryPath);
-          setTree(data);
-        } catch (error) {
-          console.error("Failed to load directory tree:", error);
-        }
-      };
-      loadTree();
-    }
-  }, [selectedLibraryPath]);
-
   const handleAddFolder = async () => {
     const path = await window.api.selectDirectory();
     if (path && config) {
@@ -284,50 +277,6 @@ export default function App() {
     if (tab !== 'library') {
       setSelectedLibraryPath(null);
     }
-  };
-
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      const audioDuration = audioRef.current.duration;
-      if (isFinite(audioDuration) && audioDuration > 0) {
-        setDuration(audioDuration);
-      }
-    }
-  };
-
-  const handleSeek = (time: number) => {
-    if (audioRef.current) {
-      console.log("enter: handleSeek", time);
-      audioRef.current.currentTime = time;
-      setCurrentTime(time);
-    }
-    console.log("exit: handleSeek", currentTime);
-  };
-
-  const seekForward = () => {
-    if (!audioRef.current) return;
-
-    const audio = audioRef.current;
-    const newTime = Math.min(audio.duration || 0, audio.currentTime + 5);
-
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
-  };
-
-  const seekBackward = () => {
-    if (!audioRef.current) return;
-
-    const audio = audioRef.current;
-    const newTime = Math.max(0, audio.currentTime - 5);
-
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
   };
 
   const handleVolumeChange = async (newVolume: number) => {
@@ -366,154 +315,13 @@ export default function App() {
     }
   };
 
-  const togglePlay = () => {
-    if (!audioRef.current || !currentTrack) return;
-
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      audioRef.current.play();
-    }
-    setIsPlaying(!isPlaying);
-  };
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement;
-
-      const isTyping =
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.isContentEditable;
-
-      if (isTyping) return;
-
-      switch (event.code) {
-        case 'Space':
-          event.preventDefault();
-          togglePlay();
-          break;
-
-        case 'PageDown':
-          event.preventDefault();
-          handleNext();
-          break;
-
-        case 'PageUp':
-          event.preventDefault();
-          handlePrevious();
-          break;
-
-        case 'MediaTrackNext':
-          event.preventDefault();
-          handleNext();
-          break;
-
-        case 'MediaTrackPrevious':
-          event.preventDefault();
-          handlePrevious();
-          break;  
-        case 'ArrowRight':
-          event.preventDefault();
-          seekForward();
-          break;
-
-        case 'ArrowLeft':
-          event.preventDefault();
-          seekBackward();
-          break;
-
-        case 'ArrowUp':
-        case 'ArrowDown':
-          const target = event.target as HTMLElement;
-          const isScrollable = target.scrollHeight > target.clientHeight;
-          if (!isScrollable) return;
-          event.preventDefault();
-          const scrollAmount = 40;
-          if (event.code === 'ArrowDown') {
-            target.scrollTop += scrollAmount;
-          } else {
-            target.scrollTop -= scrollAmount;
-          }
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [togglePlay, handleNext, handlePrevious, seekForward, seekBackward]);
-
-
-  const renderQueue = () => {
-    let totalDuration = 0;
-    activeQueue.map((track, index) => totalDuration += track.metadata?.duration || 0)
-    return (
-      <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        <div style={{ padding: "20px 30px", borderBottom: "1px solid #222", display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "#181818" }}>
-          <h2 style={{ margin: 0 }}>Play Queue ({activeQueue.length} songs: {Math.floor(totalDuration / 60)}:{Math.floor(totalDuration % 60).toString().padStart(2, '0')})</h2>
-          <button
-            onClick={() => setQueue([])}
-            style={{ background: "none", border: "1px solid #444", color: "#888", padding: "6px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "12px" }}
-          >
-            Clear Queue
-          </button>
-        </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: "10px 0", paddingBottom: "120px" }}>
-          {activeQueue.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "50px", color: "#666" }}>Queue is empty</div>
-          ) : (
-            activeQueue.map((track, index) => (
-              <div
-                key={`${track.path}-${index}`}
-                onClick={() => playTrack(track)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "15px",
-                  padding: "10px 30px",
-                  cursor: "pointer",
-                  backgroundColor: index === currentIndex ? `${themeColor}22` : "transparent",
-                  borderLeft: index === currentIndex ? `4px solid ${themeColor}` : "4px solid transparent",
-                  transition: "background-color 0.2s"
-                }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = index === currentIndex ? `${themeColor}33` : "#222"}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = index === currentIndex ? `${themeColor}22` : "transparent"}
-              >
-                <div style={{ width: "30px", textAlign: "center", color: index === currentIndex ? (themeColor) : "#666", fontSize: "14px" }}>
-                  {index + 1}
-                </div>
-                <div style={{ width: "40px", height: "40px", backgroundColor: "#333", borderRadius: "4px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {track.metadata?.picture ? (
-                    <img src={`media://${encodeURIComponent(track.metadata.picture)}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    <IoMusicalNote style={{ color: "#555" }} />
-                  )}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: "bold", color: index === currentIndex ? (themeColor) : "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {track.metadata?.title || track.name}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {track.metadata?.artist || "Unknown Artist"}
-                  </div>
-                </div>
-                <div style={{ color: "#666", fontSize: "13px" }}>
-                  {track.metadata?.duration ? `${Math.floor(track.metadata.duration / 60)}:${Math.floor(track.metadata.duration % 60).toString().padStart(2, '0')}` : "-:--"}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const handleTrackUpdated = (updatedTrack: FileItem) => {
-    setCurrentTrack(updatedTrack);
-    setAllTracks(prev => prev.map(t => t.path === updatedTrack.path ? updatedTrack : t));
-  };
+  useKeyboardControls({
+    togglePlay,
+    handleNext,
+    handlePrevious,
+    seekForward,
+    seekBackward,
+  });
 
   const renderDetails = () => {
     if (!currentTrack) return <div style={{ padding: 20 }}>No track selected</div>;
@@ -541,8 +349,8 @@ export default function App() {
         if (!meta) return false;
 
         const isMatch = type === 'artist' ? (meta.artists ? meta.artists.includes(selectedGroup.name) : meta.artist === selectedGroup.name) :
-                        type === 'album' ? meta.album === selectedGroup.name :
-                        type === 'genre' ? meta.genre?.some((g: string) =>g.toLowerCase() === selectedGroup.name.toLowerCase()) : false;
+          type === 'album' ? meta.album === selectedGroup.name :
+            type === 'genre' ? meta.genre?.some((g: string) => g.toLowerCase() === selectedGroup.name.toLowerCase()) : false;
 
         if (!isMatch) return false;
 
@@ -671,16 +479,6 @@ export default function App() {
         </div>
       );
     }
-
-    const normalizeGenre = (genre: string): string => {
-      return genre
-        .toLowerCase()
-        .split(' ')
-        .map(word =>
-          word.charAt(0).toUpperCase() + word.slice(1)
-        )
-        .join(' ');
-    };
 
     const groups: { [key: string]: number } = {};
     allTracks.forEach(track => {
@@ -843,8 +641,8 @@ export default function App() {
                       />
                     ) : (
                       type === 'artist' ? <IoPerson style={{ color: "#555" }} /> :
-                      type === 'album' ? <IoDisc style={{ color: "#555" }} /> :
-                      <IoMusicalNotes style={{ color: "#555" }} />
+                        type === 'album' ? <IoDisc style={{ color: "#555" }} /> :
+                          <IoMusicalNotes style={{ color: "#555" }} />
                     )}
                   </div>
                   <div style={{ fontWeight: "bold", marginBottom: "5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -863,147 +661,10 @@ export default function App() {
             )}
           </div>
         </div>
-        <div style={{marginBottom: "2%"}}></div>
+        <div style={{ marginBottom: "2%" }}></div>
       </div>
     );
   };
-
-  const renderLibrary = () => {
-    if (selectedLibraryPath) {
-      return (
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          height: "100%",
-          overflow: "hidden"
-        }}>
-          <div style={{
-            padding: "10px 20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "15px",
-            borderBottom: "1px solid #333",
-            backgroundColor: "#181818",
-            flexShrink: 0
-          }}>
-            <button
-              onClick={() => setSelectedLibraryPath(null)}
-              style={{ background: "none", border: "1px solid #444", color: "#fff", padding: "4px 12px", borderRadius: "4px", cursor: "pointer", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}
-            >
-              <IoArrowBack /> Back
-            </button>
-            <span style={{ fontSize: "13px", color: "#aaa", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {selectedLibraryPath}
-            </span>
-          </div>
-          <div style={{
-            flex: 1,
-            overflowY: "auto",
-            minHeight: 0,
-            paddingBottom: "120px"
-          }}>
-            <DirectoryTree
-              items={tree}
-              onFileSelect={handleFileSelect}
-              useDoubleClick={config?.doubleClickToPlay ?? true}
-              themeColor={themeColor}
-            />
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div style={{ padding: "30px", overflowY: "auto", height: "100%", paddingBottom: "120px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "30px" }}>
-          <h2 style={{ margin: 0 }}>Library Folders</h2>
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button
-              onClick={handleRefreshLibrary}
-              style={{ backgroundColor: "#333", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "20px", fontWeight: "bold", cursor: "pointer", transition: "transform 0.2s" }}
-              onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.05)"}
-              onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
-            >
-              Refresh Library
-            </button>
-            <button
-              onClick={handleAddFolder}
-              style={{ backgroundColor: themeColor, color: "#fff", border: "none", padding: "10px 20px", borderRadius: "20px", fontWeight: "bold", cursor: "pointer", transition: "transform 0.2s" }}
-              onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.05)"}
-              onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
-            >
-              Add Folder
-            </button>
-          </div>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "20px" }}>
-          {config?.libraryPaths.map((path) => (
-            <div
-              key={path}
-              onClick={() => setSelectedLibraryPath(path)}
-              style={{
-                backgroundColor: "#1e1e1e",
-                padding: "20px",
-                borderRadius: "10px",
-                cursor: "pointer",
-                transition: "background-color 0.2s",
-                position: "relative",
-                border: "1px solid #333"
-              }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#282828"}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = "#1e1e1e"}
-            >
-              <div style={{ fontSize: "40px", marginBottom: "10px", color: themeColor }}>
-                <IoFolder />
-              </div>
-              <div style={{ fontWeight: "bold", marginBottom: "5px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {path.split(/[\\/]/).pop()}
-              </div>
-              <div style={{ fontSize: "12px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {path}
-              </div>
-              <button
-                onClick={(e) => handleRemoveFolder(e, path)}
-                style={{
-                  position: "absolute",
-                  top: "10px",
-                  right: "10px",
-                  background: "none",
-                  border: "none",
-                  color: "#666",
-                  fontSize: "18px",
-                  cursor: "pointer",
-                  padding: "5px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}
-                onMouseOver={(e) => e.currentTarget.style.color = "#ff4444"}
-                onMouseOut={(e) => e.currentTarget.style.color = "#666"}
-              >
-                <IoClose />
-              </button>
-            </div>
-          ))}
-          {(!config || config.libraryPaths.length === 0) && (
-            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "50px", color: "#666" }}>
-              No folders added to library. Click "Add Folder" to start.
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const navItemStyle = (tab: Page): React.CSSProperties => ({
-    padding: "10px 20px",
-    cursor: "pointer",
-    borderBottom: activeTab === tab ? `3px solid ${themeColor}` : "3px solid transparent",
-    color: activeTab === tab ? "#fff" : "#888",
-    fontWeight: activeTab === tab ? "bold" : "normal",
-    transition: "all 0.2s"
-  });
 
   return (
     <div
@@ -1018,22 +679,13 @@ export default function App() {
         fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
         overflow: "hidden"
       }}>
-      {view !== 'details' && (
-        <nav style={{
-          display: "flex",
-          backgroundColor: "#000",
-          padding: "0 20px",
-          gap: "10px",
-          borderBottom: "1px solid #222",
-          flexShrink: 0
-        }}>
-          <div style={navItemStyle('library')} onClick={() => handleTabChange('library')}>Library</div>
-          <div style={navItemStyle('artists')} onClick={() => handleTabChange('artists')}>Artists</div>
-          <div style={navItemStyle('albums')} onClick={() => handleTabChange('albums')}>Albums</div>
-          <div style={navItemStyle('genres')} onClick={() => handleTabChange('genres')}>Genres</div>
-          <div style={navItemStyle('playlists')} onClick={() => handleTabChange('playlists')}>Playlists</div>
-          <div style={{ ...navItemStyle('queue' as any), marginLeft: 'auto' }} onClick={() => setView('queue')}>Queue</div>
-        </nav>
+      {view !== "details" && (
+        <Navbar
+          activeTab={activeTab}
+          themeColor={themeColor}
+          onTabChange={handleTabChange}
+          onQueueClick={() => setView("queue")}
+        />
       )}
 
       <main style={{
@@ -1044,12 +696,22 @@ export default function App() {
         flexDirection: "column",
         position: "relative"
       }}>
-        {view === 'library' ? renderLibrary() :
+        {view === 'library' ? <LibraryView
+            selectedLibraryPath={selectedLibraryPath}
+            tree={tree}
+            config={config}
+            themeColor={themeColor}
+            setSelectedLibraryPath={setSelectedLibraryPath}
+            handleFileSelect={handleFileSelect}
+            handleAddFolder={handleAddFolder}
+            handleRefreshLibrary={handleRefreshLibrary}
+            handleRemoveFolder={handleRemoveFolder}
+          /> :
           view === 'artists' ? renderGroupedView('artist') :
             view === 'albums' ? renderGroupedView('album') :
               view === 'genres' ? renderGroupedView('genre') :
                 view === 'playlists' ? <PlaylistView allTracks={allTracks} themeColor={themeColor} onPlayTrack={playTrack} currentTrack={currentTrack} configDoubleClickToPlay={config?.doubleClickToPlay ?? true} /> :
-                  view === 'queue' ? renderQueue() :
+                  view === 'queue' ? <QueueView queue={activeQueue} currentIndex={currentIndex} themeColor={themeColor} onPlayTrack={playTrack} onClearQueue={() => setQueue([])} /> :
                     view === 'details' ? renderDetails() : null}
       </main>
 
