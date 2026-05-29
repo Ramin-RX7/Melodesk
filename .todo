@@ -17,6 +17,7 @@ most of the app parts work with `song.artist` attribute however it must be remov
     - cover art fix (just the option, currently this does not work, only shown in UI)
     - show lyrics (synchronized)
 
+- track plays (count, recent)
 - Home page to show:
     - favorites
     - recently added
@@ -26,6 +27,5 @@ most of the app parts work with `song.artist` attribute however it must be remov
     - shuffle play
     - never played
     - statistics
-- track plays (count, recent)
 - equalizer
 - Picture in picture

@@ -68,7 +68,7 @@ if (!fs.existsSync(PLAYLISTS_DIR)) {
 }
 const DEFAULT_CONFIG: UserConfig = {
   doubleClickToPlay: true,
-  libraryPaths: [`D:\\music\\Favorite Fa`],
+  libraryPaths: [],
   minSongsForAlbum: 3,
   themeColor: "#1db954",
   volume: 0.5,
