@@ -11,6 +11,7 @@ type Props = {
   setConfig: (config: any) => void;
 
   handleFileSelect: (file: any) => void;
+  onContextMenu?: (e: React.MouseEvent, song: any) => void;
 };
 
 export function LibraryView(props: Props) {

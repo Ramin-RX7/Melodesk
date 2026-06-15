@@ -92,6 +92,7 @@ export default function App() {
     handlePrevious,
     handleEnded,
     handleDrop,
+    playNext,
   } = usePlaybackController({
     queueState,
     audioState: audioPlayerState,
@@ -157,6 +158,38 @@ export default function App() {
     };
   }, []);
 
+  const showContextMenu = async (e: React.MouseEvent, song: FileItem) => {
+    e.preventDefault();
+    const action = await window.api.showSongContextMenu(song);
+    if (!action) return;
+
+    if (action.type === 'play-next') {
+        playNext(song);
+    } else if (action.type === 'go-to-album') {
+        const tabName = 'albums';
+        setActiveTab(tabName);
+        setView(tabName);
+        setSearchQuery("");
+        setSelectedGroup({ type: 'album', name: song.metadata?.album || 'Unknown Album' });
+    } else if (action.type === 'go-to-artist') {
+        const tabName = 'artists';
+        setActiveTab(tabName);
+        setView(tabName);
+        setSearchQuery("");
+        setSelectedGroup({ type: 'artist', name: action.artist });
+    } else if (action.type === 'open-details') {
+        setCurrentTrack(song);
+        setView('details');
+    } else if (action.type === 'add-to-playlist') {
+        const playlist = await window.api.getPlaylist(action.playlistId);
+        if (playlist) {
+            await window.api.updatePlaylist(action.playlistId, {
+                songs: [...playlist.songs, song.path]
+            });
+        }
+    }
+  };
+
   const handleTabChange = (tab: Exclude<Page, 'details' | 'queue'>) => {
     setActiveTab(tab);
     setView(tab);
@@ -220,6 +253,7 @@ export default function App() {
                 themeColor={themeColor}
                 setSelectedLibraryPath={setSelectedLibraryPath}
                 handleFileSelect={handleFileSelect}
+                onContextMenu={showContextMenu}
               />
             );
           }
@@ -254,6 +288,7 @@ export default function App() {
                 normalizeGenre={normalizeGenre}
                 handleFileSelect={handleFileSelect}
                 handleShufflePlay={handleShufflePlay}
+                onContextMenu={showContextMenu}
               />
             );
           }
@@ -268,6 +303,7 @@ export default function App() {
                 configDoubleClickToPlay={
                   config?.doubleClickToPlay ?? true
                 }
+                onContextMenu={showContextMenu}
               />
             );
           }
@@ -280,6 +316,7 @@ export default function App() {
                 themeColor={themeColor}
                 onPlayTrack={playTrack}
                 onClearQueue={() => setQueue([])}
+                onContextMenu={showContextMenu}
               />
             );
           }
@@ -324,6 +361,7 @@ export default function App() {
         volume={config?.volume ?? 0.5}
         onVolumeChange={handleVolumeChange}
         themeColor={themeColor}
+        onContextMenu={showContextMenu}
       />
 
       <audio

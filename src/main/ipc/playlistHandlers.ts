@@ -15,7 +15,7 @@ interface Playlist {
 }
 
 
-const getAllPlaylists = (): Playlist[] => {
+export const getAllPlaylists = (): Playlist[] => {
     try {
         const files = fs.readdirSync(PLAYLISTS_DIR).filter(f => f.endsWith(".json"));
         return files.map(f => {

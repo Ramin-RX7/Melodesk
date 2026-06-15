@@ -43,12 +43,19 @@ export interface Playlist {
   updatedAt: string;
 }
 
+export type ContextMenuAction = 
+  | { type: 'play-next' }
+  | { type: 'go-to-album' }
+  | { type: 'go-to-artist', artist: string }
+  | { type: 'open-details' }
+  | { type: 'add-to-playlist', playlistId: string };
+
 declare global {
   interface Window {
     api: {
       selectDirectory: () => Promise<string | null>;
       getDirectoryTree: (dirPath: string) => Promise<FileItem[]>;
-      showContextMenu: () => Promise<void>;
+      showSongContextMenu: (song: FileItem) => Promise<ContextMenuAction | null>;
       getConfig: () => Promise<UserConfig>;
       updateConfig: (config: Partial<UserConfig>) => Promise<UserConfig>;
       getLibraryFiles: () => Promise<FileItem[]>;

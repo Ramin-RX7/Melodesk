@@ -66,8 +66,8 @@ type Props = {
         song: FileItem,
         queue?: FileItem[]
     ) => void;
-
     handleShufflePlay?: (songs: FileItem[]) => void;
+    onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 };
 
 export function GroupedView({
@@ -94,7 +94,8 @@ export function GroupedView({
     normalizeGenre,
 
     handleFileSelect,
-    handleShufflePlay
+    handleShufflePlay,
+    onContextMenu
 }: Props) {
     const [artistInfo, setArtistInfo] = useState<ArtistInfo | null>(null);
     const [isEditingArtist, setIsEditingArtist] = useState(false);
@@ -241,6 +242,7 @@ export function GroupedView({
                         onSongClick={(song) =>
                             handleFileSelect(song, songs)
                         }
+                        onContextMenu={onContextMenu}
                     />
                 </div>
             </div>

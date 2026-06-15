@@ -9,6 +9,7 @@ type Props = {
     themeColor: string;
     onClick: () => void;
     onDoubleClick: () => void;
+    onContextMenu?: (e: React.MouseEvent) => void;
 };
 
 export function SongCard({
@@ -16,13 +17,15 @@ export function SongCard({
     currentTrack,
     themeColor,
     onClick,
-    onDoubleClick
+    onDoubleClick,
+    onContextMenu
 }: Props) {
     return (
         <div
             className={styles.songCard}
             onClick={onClick}
             onDoubleClick={onDoubleClick}
+            onContextMenu={onContextMenu}
             style={{
                 border:
                     currentTrack?.path === song.path

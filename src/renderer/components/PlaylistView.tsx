@@ -9,9 +9,10 @@ interface PlaylistViewProps {
   onPlayTrack: (track: FileItem, queue: FileItem[]) => void;
   currentTrack: FileItem | null;
   configDoubleClickToPlay: boolean;
+  onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 }
 
-export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack, configDoubleClickToPlay }: PlaylistViewProps) {
+export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack, configDoubleClickToPlay, onContextMenu }: PlaylistViewProps) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -225,6 +226,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
               onDragOver={(e) => e.preventDefault()}
               onClick={() => onPlayTrack(track, tracks)}
               onDoubleClick={() => configDoubleClickToPlay && onPlayTrack(track, tracks)}
+              onContextMenu={(e) => onContextMenu?.(e, track)}
               style={{
                 display: "flex", alignItems: "center", gap: "15px", padding: "10px 30px", cursor: "pointer",
                 borderBottom: "1px solid #222",

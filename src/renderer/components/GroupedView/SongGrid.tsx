@@ -12,6 +12,7 @@ type Props = {
     themeColor: string;
     onBack: () => void;
     onSongClick: (song: FileItem) => void;
+    onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 };
 
 export function SongGrid({
@@ -22,7 +23,8 @@ export function SongGrid({
     config,
     themeColor,
     onBack,
-    onSongClick
+    onSongClick,
+    onContextMenu
 }: Props) {
     return (
         <div className={styles.page}>
@@ -39,6 +41,7 @@ export function SongGrid({
                                 onSongClick(song);
                             }
                         }}
+                        onContextMenu={(e) => onContextMenu?.(e, song)}
                     />
                 ))}
             </div>

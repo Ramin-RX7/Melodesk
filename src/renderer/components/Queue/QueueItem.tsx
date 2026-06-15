@@ -10,6 +10,7 @@ type QueueItemProps = {
     isActive: boolean;
     themeColor: string;
     onClick: () => void;
+    onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 };
 
 export function QueueItem({
@@ -18,11 +19,13 @@ export function QueueItem({
     isActive,
     themeColor,
     onClick,
+    onContextMenu,
 }: QueueItemProps) {
     return (
         <div
             data-active={isActive}
             onClick={onClick}
+            onContextMenu={(e) => onContextMenu?.(e, track)}
             style={{
                 display: "flex",
                 alignItems: "center",

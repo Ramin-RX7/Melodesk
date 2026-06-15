@@ -10,6 +10,7 @@ export function LibraryFolderView({
     config,
     themeColor,
     handleFileSelect,
+    onContextMenu,
 }: any) {
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
@@ -58,6 +59,7 @@ export function LibraryFolderView({
                     onFileSelect={handleFileSelect}
                     useDoubleClick={config?.doubleClickToPlay ?? true}
                     themeColor={themeColor}
+                    onContextMenu={onContextMenu}
                 />
             </div>
         </div>

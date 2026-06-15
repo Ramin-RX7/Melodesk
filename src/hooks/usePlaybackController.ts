@@ -205,6 +205,24 @@ export function usePlaybackController({
         convert();
 
     }, [handleNext, handlePrevious]);
+    const playNext = (track: FileItem) => {
+        if (activeQueue.length === 0) {
+            playTrack(track);
+            return;
+        }
+        
+        const newQueue = [...queue];
+        if (isShuffle) {
+            const newShuffled = [...shuffledQueue];
+            newShuffled.splice(currentIndex + 1, 0, track);
+            setShuffledQueue(newShuffled);
+            // Add to end of regular queue so it's kept
+            newQueue.push(track);
+        } else {
+            newQueue.splice(currentIndex + 1, 0, track);
+        }
+        setQueue(newQueue);
+    };
 
     return {
         playTrack,
@@ -213,5 +231,6 @@ export function usePlaybackController({
         handlePrevious,
         handleEnded,
         handleDrop,
+        playNext,
     }
 }

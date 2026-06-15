@@ -16,6 +16,7 @@ interface DirectoryTreeProps {
   onFileSelect: (item: FileItem, contextQueue?: FileItem[]) => void;
   useDoubleClick: boolean;
   themeColor: string;
+  onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 }
 
 type SortColumn = 'name' | 'title' | 'artist' | 'album' | 'duration';
@@ -28,7 +29,8 @@ const TreeItem: React.FC<{
   isRoot?: boolean;
   themeColor: string;
   allFiles: FileItem[];
-}> = ({ item, onFileSelect, useDoubleClick, isRoot = false, themeColor, allFiles }) => {
+  onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
+}> = ({ item, onFileSelect, useDoubleClick, isRoot = false, themeColor, allFiles, onContextMenu }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleClick = () => {
@@ -57,6 +59,11 @@ const TreeItem: React.FC<{
       <div
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
+        onContextMenu={(e) => {
+          if (item.isMedia && onContextMenu) {
+            onContextMenu(e, item);
+          }
+        }}
         style={{
           padding: "6px 8px",
           borderRadius: "4px",
@@ -108,6 +115,7 @@ const TreeItem: React.FC<{
               useDoubleClick={useDoubleClick}
               themeColor={themeColor}
               allFiles={allFiles}
+              onContextMenu={onContextMenu}
             />
           ))}
         </div>
@@ -121,6 +129,7 @@ export const DirectoryTree: React.FC<DirectoryTreeProps> = ({
   onFileSelect,
   useDoubleClick,
   themeColor,
+  onContextMenu,
 }) => {
   const [sortCol, setSortCol] = useState<SortColumn>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
@@ -232,6 +241,7 @@ export const DirectoryTree: React.FC<DirectoryTreeProps> = ({
             isRoot={true}
             themeColor={themeColor}
             allFiles={allMediaFiles}
+            onContextMenu={onContextMenu}
           />
         ))}
       </div>

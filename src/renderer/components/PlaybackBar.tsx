@@ -34,6 +34,7 @@ interface PlaybackBarProps {
   volume: number;
   onVolumeChange: (volume: number) => void;
   themeColor: string;
+  onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 }
 
 export const PlaybackBar: React.FC<PlaybackBarProps> = ({
@@ -54,6 +55,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
   volume,
   onVolumeChange,
   themeColor,
+  onContextMenu,
 }) => {
   const [localTime, setLocalTime] = React.useState(currentTime);
   const isDragging = React.useRef(false);
@@ -91,8 +93,9 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
   };
 
   const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    window.api.showContextMenu();
+    if (currentTrack && onContextMenu) {
+      onContextMenu(e, currentTrack);
+    }
   };
 
   const getDisplayText = () => {
