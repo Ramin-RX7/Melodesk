@@ -26,4 +26,7 @@ contextBridge.exposeInMainWorld("api", {
   selectArtistImage: () => ipcRenderer.invoke("select-artist-image"),
   showFileInFolder: (filePath: string) => ipcRenderer.invoke("show-file-in-folder", filePath),
   openExternalUrl: (url: string) => ipcRenderer.invoke("open-external-url", url),
+  getSession: () => ipcRenderer.invoke("get-session"),
+  saveSession: (data: any) => ipcRenderer.invoke("save-session", data),
+  clearSession: () => ipcRenderer.invoke("clear-session"),
 });

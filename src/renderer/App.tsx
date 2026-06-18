@@ -4,7 +4,7 @@ import { PlaylistView } from "./components/PlaylistView";
 import { SongDetailsView } from "./components/SongDetailsView";
 import { PlaybackBar } from "./components/PlaybackBar";
 import { QueueView } from "./components/Queue/QueueView";
-import { FileItem, UserConfig } from "./types";
+import { FileItem, SessionData, UserConfig } from "./types";
 import { normalizeGenre } from "../utils/metadata";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { useLibrary } from "../hooks/useLibrary";
@@ -151,6 +151,34 @@ export default function App() {
         // Load initial library tracks from cache immediately
         const tracks = await window.api.getLibraryFiles();
         setAllTracks(tracks);
+
+        if (userConfig.restoreSession) {
+          const session = await window.api.getSession();
+          if (session && session.queue.length > 0) {
+            const trackMap = new Map(tracks.map(t => [t.path, t]));
+            const restoredQueue = session.queue.map(p => trackMap.get(p)).filter(Boolean) as FileItem[];
+            const restoredShuffled = session.shuffledQueue.map(p => trackMap.get(p)).filter(Boolean) as FileItem[];
+            if (restoredQueue.length > 0) {
+              setQueue(restoredQueue);
+              setShuffledQueue(restoredShuffled.length > 0 ? restoredShuffled : restoredQueue);
+              setIsShuffle(session.isShuffle);
+              setRepeatMode(session.repeatMode);
+              const activeLen = session.isShuffle ? restoredShuffled.length : restoredQueue.length;
+              const clampedIndex = Math.max(0, Math.min(session.currentIndex, activeLen - 1));
+              setCurrentIndex(clampedIndex);
+              const activeList = session.isShuffle ? restoredShuffled : restoredQueue;
+              const trackToRestore = (session.currentTrackPath ? trackMap.get(session.currentTrackPath) : null) ?? activeList[clampedIndex];
+              if (trackToRestore) {
+                setCurrentTrack(trackToRestore);
+                if (trackToRestore.metadata?.duration) setDuration(trackToRestore.metadata.duration);
+                if (audioRef.current) {
+                  const normalizedPath = trackToRestore.path.replace(/\\/g, "/");
+                  audioRef.current.src = `media://${encodeURIComponent(normalizedPath)}`;
+                }
+              }
+            }
+          }
+        }
       } catch (error) {
         console.error("Failed to load config or initial library:", error);
       }
@@ -161,6 +189,27 @@ export default function App() {
       document.head.removeChild(style);
     };
   }, []);
+
+  useEffect(() => {
+    if (!config) return;
+
+    if (!config.restoreSession) {
+      window.api.clearSession();
+      return;
+    }
+
+    if (!currentTrack) return;
+
+    const data: SessionData = {
+      currentTrackPath: currentTrack.path,
+      queue: queue.map(t => t.path),
+      shuffledQueue: shuffledQueue.map(t => t.path),
+      currentIndex,
+      isShuffle,
+      repeatMode,
+    };
+    window.api.saveSession(data);
+  }, [currentTrack, queue, shuffledQueue, currentIndex, isShuffle, repeatMode, config?.restoreSession]);
 
   const showGroupContextMenu = async (e: React.MouseEvent, _name: string, songs: FileItem[]) => {
     e.preventDefault();

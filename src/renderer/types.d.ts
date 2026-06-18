@@ -5,6 +5,16 @@ export interface UserConfig {
   themeColor: string;
   volume: number;
   removeCurrentSongBehavior: "prevent" | "play-next";
+  restoreSession: boolean;
+}
+
+export interface SessionData {
+  currentTrackPath: string | null;
+  queue: string[];
+  shuffledQueue: string[];
+  currentIndex: number;
+  isShuffle: boolean;
+  repeatMode: 'none' | 'one' | 'all';
 }
 export interface ArtistInfo {
   name: string;
@@ -83,6 +93,9 @@ declare global {
       selectArtistImage: () => Promise<string | null>;
       showFileInFolder: (filePath: string) => Promise<void>;
       openExternalUrl: (url: string) => Promise<void>;
+      getSession: () => Promise<SessionData | null>;
+      saveSession: (data: SessionData) => Promise<void>;
+      clearSession: () => Promise<void>;
     };
   }
 }

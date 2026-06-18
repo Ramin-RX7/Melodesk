@@ -14,6 +14,7 @@ const DEFAULT_CONFIG: UserConfig = {
   themeColor: "#1db954",
   volume: 0.5,
   removeCurrentSongBehavior: "play-next",
+  restoreSession: true,
 };
 
 export const getConfig = (): UserConfig => {

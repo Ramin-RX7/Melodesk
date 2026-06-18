@@ -5,11 +5,13 @@ import { registerMenuHandlers } from "./menuHandlers";
 import { registerMetadataHandlers } from "./metadataHandlers";
 import { setupPlaylistHandlers } from "./playlistHandlers";
 import { registerShellHandlers } from "./shellHandlers";
+import { setupSessionHandlers } from "./sessionHandlers";
 
 
 export function registerIpcHandlers() {
   setupArtistHandlers();
   setupPlaylistHandlers();
+  setupSessionHandlers();
   registerConfigHandlers();
   registerLibraryHandlers();
   registerMenuHandlers();
