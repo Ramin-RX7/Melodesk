@@ -1,3 +1,4 @@
+import React from "react";
 import { FileItem } from "../../types";
 import styles from "./GroupedView.module.css";
 import { GroupCard } from "./GroupCard";
@@ -8,13 +9,15 @@ type Props = {
     type: GroupType;
     allTracks: FileItem[];
     onSelect: (name: string) => void;
+    onContextMenu?: (e: React.MouseEvent, name: string) => void;
 };
 
 export function GroupList({
     entries,
     type,
     allTracks,
-    onSelect
+    onSelect,
+    onContextMenu
 }: Props) {
     return (
         <div className={styles.grid}>
@@ -47,6 +50,7 @@ export function GroupList({
                         count={count}
                         picture={firstTrack?.metadata?.picture}
                         onClick={() => onSelect(name)}
+                        onContextMenu={onContextMenu ? (e) => onContextMenu(e, name) : undefined}
                     />
                 );
             })}

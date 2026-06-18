@@ -3,6 +3,46 @@ import { BrowserWindow, ipcMain, Menu } from "electron";
 import { getAllPlaylists } from "./playlistHandlers";
 
 export function registerMenuHandlers() {
+    ipcMain.handle("show-group-context-menu", (event, _groupName: string) => {
+        return new Promise((resolve) => {
+            let actionSelected = false;
+            const playlists = getAllPlaylists();
+
+            const handleAction = (action: any) => {
+                actionSelected = true;
+                resolve(action);
+            };
+
+            const template: any[] = [
+                { label: "Play", click: () => handleAction({ type: "group-play" }) },
+                { label: "Play Next", click: () => handleAction({ type: "group-play-next" }) },
+                { type: "separator" as const },
+            ];
+
+            if (playlists.length > 0) {
+                template.push({
+                    label: "Add to Playlist",
+                    submenu: playlists.map((p: any) => ({
+                        label: p.name,
+                        click: () => handleAction({ type: "group-add-to-playlist", playlistId: p.id })
+                    }))
+                });
+            } else {
+                template.push({ label: "Add to Playlist", enabled: false });
+            }
+
+            const menu = Menu.buildFromTemplate(template);
+            menu.popup({
+                window: BrowserWindow.fromWebContents(event.sender)!,
+                callback: () => {
+                    setTimeout(() => {
+                        if (!actionSelected) resolve(null);
+                    }, 10);
+                }
+            });
+        });
+    });
+
     ipcMain.handle("show-song-context-menu", (event, song) => {
         return new Promise((resolve) => {
             let actionSelected = false;

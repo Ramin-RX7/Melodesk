@@ -221,10 +221,28 @@ export function usePlaybackController({
             const newShuffled = [...shuffledQueue];
             newShuffled.splice(currentIndex + 1, 0, track);
             setShuffledQueue(newShuffled);
-            // Add to end of regular queue so it's kept
             newQueue.push(track);
         } else {
             newQueue.splice(currentIndex + 1, 0, track);
+        }
+        setQueue(newQueue);
+    };
+
+    const playNextMultiple = (tracks: FileItem[]) => {
+        if (tracks.length === 0) return;
+        if (activeQueue.length === 0) {
+            playTrack(tracks[0], tracks);
+            return;
+        }
+
+        const newQueue = [...queue];
+        if (isShuffle) {
+            const newShuffled = [...shuffledQueue];
+            newShuffled.splice(currentIndex + 1, 0, ...tracks);
+            setShuffledQueue(newShuffled);
+            newQueue.push(...tracks);
+        } else {
+            newQueue.splice(currentIndex + 1, 0, ...tracks);
         }
         setQueue(newQueue);
     };
@@ -267,6 +285,7 @@ export function usePlaybackController({
         handleEnded,
         handleDrop,
         playNext,
+        playNextMultiple,
         handleRemoveFromQueue,
     }
 }

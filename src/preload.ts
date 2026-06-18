@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld("api", {
   selectDirectory: () => ipcRenderer.invoke("select-directory"),
   getDirectoryTree: (dirPath: string) => ipcRenderer.invoke("get-directory-tree", dirPath),
   showSongContextMenu: (song: any) => ipcRenderer.invoke("show-song-context-menu", song),
+  showGroupContextMenu: (groupName: string) => ipcRenderer.invoke("show-group-context-menu", groupName),
   getConfig: () => ipcRenderer.invoke("get-config"),
   updateConfig: (config: any) => ipcRenderer.invoke("update-config", config),
   getLibraryFiles: () => ipcRenderer.invoke("get-library-files"),

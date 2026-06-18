@@ -44,12 +44,17 @@ export interface Playlist {
   updatedAt: string;
 }
 
-export type ContextMenuAction = 
+export type ContextMenuAction =
   | { type: 'play-next' }
   | { type: 'go-to-album' }
   | { type: 'go-to-artist', artist: string }
   | { type: 'open-details' }
   | { type: 'add-to-playlist', playlistId: string };
+
+export type GroupContextMenuAction =
+  | { type: 'group-play' }
+  | { type: 'group-play-next' }
+  | { type: 'group-add-to-playlist', playlistId: string };
 
 declare global {
   interface Window {
@@ -57,6 +62,7 @@ declare global {
       selectDirectory: () => Promise<string | null>;
       getDirectoryTree: (dirPath: string) => Promise<FileItem[]>;
       showSongContextMenu: (song: FileItem) => Promise<ContextMenuAction | null>;
+      showGroupContextMenu: (groupName: string) => Promise<GroupContextMenuAction | null>;
       getConfig: () => Promise<UserConfig>;
       updateConfig: (config: Partial<UserConfig>) => Promise<UserConfig>;
       getLibraryFiles: () => Promise<FileItem[]>;

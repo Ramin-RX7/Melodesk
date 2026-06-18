@@ -94,6 +94,7 @@ export default function App() {
     handleEnded,
     handleDrop,
     playNext,
+    playNextMultiple,
     handleRemoveFromQueue,
   } = usePlaybackController({
     config,
@@ -160,6 +161,27 @@ export default function App() {
       document.head.removeChild(style);
     };
   }, []);
+
+  const showGroupContextMenu = async (e: React.MouseEvent, _name: string, songs: FileItem[]) => {
+    e.preventDefault();
+    if (songs.length === 0) return;
+    const action = await window.api.showGroupContextMenu(_name);
+    if (!action) return;
+
+    if (action.type === 'group-play') {
+      playTrack(songs[0], songs);
+    } else if (action.type === 'group-play-next') {
+      playNextMultiple(songs);
+    } else if (action.type === 'group-add-to-playlist') {
+      const playlist = await window.api.getPlaylist(action.playlistId);
+      if (playlist) {
+        const newPaths = songs.map(s => s.path).filter(p => !playlist.songs.includes(p));
+        await window.api.updatePlaylist(action.playlistId, {
+          songs: [...playlist.songs, ...newPaths]
+        });
+      }
+    }
+  };
 
   const showContextMenu = async (e: React.MouseEvent, song: FileItem) => {
     e.preventDefault();
@@ -292,6 +314,7 @@ export default function App() {
                 handleFileSelect={handleFileSelect}
                 handleShufflePlay={handleShufflePlay}
                 onContextMenu={showContextMenu}
+                onGroupContextMenu={showGroupContextMenu}
               />
             );
           }

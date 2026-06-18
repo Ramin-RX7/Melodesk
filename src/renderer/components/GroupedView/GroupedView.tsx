@@ -68,6 +68,7 @@ type Props = {
     ) => void;
     handleShufflePlay?: (songs: FileItem[]) => void;
     onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
+    onGroupContextMenu?: (e: React.MouseEvent, name: string, songs: FileItem[]) => void;
 };
 
 export function GroupedView({
@@ -95,7 +96,8 @@ export function GroupedView({
 
     handleFileSelect,
     handleShufflePlay,
-    onContextMenu
+    onContextMenu,
+    onGroupContextMenu
 }: Props) {
     const [artistInfo, setArtistInfo] = useState<ArtistInfo | null>(null);
     const [isEditingArtist, setIsEditingArtist] = useState(false);
@@ -169,6 +171,15 @@ export function GroupedView({
                             {handleShufflePlay && (
                                 <button onClick={() => handleShufflePlay(songs)} style={{ display: "flex", alignItems: "center", gap: "5px", backgroundColor: themeColor, color: "#fff", border: "none", padding: "6px 12px", borderRadius: "20px", cursor: "pointer", fontWeight: "bold" }}>
                                     <IoShuffle /> Shuffle Play
+                                </button>
+                            )}
+                            {onGroupContextMenu && (
+                                <button
+                                    onClick={(e) => onGroupContextMenu(e, selectedGroup.name, songs)}
+                                    style={{ background: "none", border: "1px solid #444", color: "#aaa", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}
+                                    title="More options"
+                                >
+                                    ···
                                 </button>
                             )}
                         </div>
@@ -347,6 +358,10 @@ export function GroupedView({
 
                         setSearchQuery("");
                     }}
+                    onContextMenu={onGroupContextMenu ? (e, name) => {
+                        const groupSongs = getFilteredSongs(allTracks, name, type, "", false);
+                        onGroupContextMenu(e, name, groupSongs);
+                    } : undefined}
                 />
 
                 {entries.length === 0 && (

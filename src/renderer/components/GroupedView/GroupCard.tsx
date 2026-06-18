@@ -3,7 +3,7 @@ import {
     IoMusicalNotes,
     IoPerson
 } from "react-icons/io5";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import styles from "./GroupedView.module.css";
 import { GroupType } from "./types";
@@ -14,6 +14,7 @@ type Props = {
     count: number;
     picture?: string;
     onClick: () => void;
+    onContextMenu?: (e: React.MouseEvent) => void;
 };
 
 export function GroupCard({
@@ -21,7 +22,8 @@ export function GroupCard({
     name,
     count,
     picture,
-    onClick
+    onClick,
+    onContextMenu
 }: Props) {
     const [customPicture, setCustomPicture] = useState<string | null>(null);
 
@@ -41,6 +43,7 @@ export function GroupCard({
         <div
             className={styles.groupCard}
             onClick={onClick}
+            onContextMenu={onContextMenu}
         >
             <div
                 className={styles.groupImage}
