@@ -1,212 +1,137 @@
 # AGENT GUIDE
 
-This document defines how AI agents must operate within this project.
-All rules are strict unless explicitly overridden by the user.
-
----
-
 ## 1. Project Overview
 
-- Project: Desktop Music/Video Player
-- Platform: Electron (desktop app)
-- Goal: A modern, customizable media player with dynamic UI pages driven by user configuration
+Desktop Music/Video Player built with Electron + React + TypeScript.
+A modern, customizable media player with a dark UI and dynamic pages driven by user config.
 
 ---
 
-## 2. Tech Stack
+## 2. Core Rules
 
-- Desktop Framework: Electron
-- Frontend: React
-- Backend: Node.js (Electron main process)
-- Language: TypeScript (assumed; follow if present)
-- UI Styling: (follow existing setup; do not introduce new systems)
+### Dependencies
 
----
+- NEVER install or modify `package.json` without explicit user approval.
+- If a dependency is needed: explain why, suggest the package, wait for confirmation.
 
-## 3. Core Principles
+### Scope
 
-### 3.1 Full-Stack Feature Rule (CRITICAL)
+- Only modify files directly related to the task.
+- Do NOT refactor unrelated code or restructure the project unless asked.
 
-Every feature must include:
+### Architecture
 
-- UI implementation (React)
-- Backend logic (Electron/Node)
-- Communication layer (IPC or equivalent)
+- UI (React): presentation only — no business logic inside components.
+- Backend (Electron/Node): logic, file system, media handling.
+- All UI ↔ backend interactions go through the IPC layer.
+- Every feature must have UI + backend + IPC — no half-implementations.
 
-DO NOT implement frontend-only or backend-only features unless explicitly instructed.
+### UI
 
----
+- Dark theme, clean and minimal.
+- Functional components, small and reusable.
+- Components must be modular and decoupled from hardcoded routing (UI is eventually config-driven).
 
-### 3.2 Dependency Control (STRICT)
+### Code Style
 
-- NEVER install or add new dependencies automatically
-- NEVER modify `package.json` without explicit user approval
-- If a dependency is needed:
-  1. Explain why
-  2. Suggest the package
-  3. WAIT for confirmation
-
-Violating this rule is a critical failure.
+- Follow existing patterns. No new abstractions unless necessary.
+- No unnecessary comments. No placeholder logic.
 
 ---
 
-### 3.3 Scope Control
+## 3. Terminology
 
-- Only modify files directly related to the task
-- Do NOT refactor unrelated code
-- Do NOT restructure the project unless explicitly asked
-
----
-
-## 4. Architecture Guidelines
-
-### 4.1 Separation of Concerns
-
-- UI (React): presentation only
-- Backend (Electron/Node): logic, file system, media handling
-- Communication: handled via IPC layer
-
-Business logic must NOT live inside React components.
+- **pages**: tabs of the app (Library, Artists, Albums, Genres, Playlists, Queue).
+- **config**: JSON saved in appData — stores user-editable settings (library paths, theme, volume, etc.).
+- **cache**: JSON snapshot of all scanned library files saved to disk for fast startup. Updated asynchronously in the background.
 
 ---
 
-### 4.2 IPC Communication
+## 4. File Structure
 
-All UI ↔ backend interactions must:
+```text
+src/
+├── main.ts                          # Electron entry — creates BrowserWindow, registers IPC + protocol + watcher
+├── preload.ts                       # Exposes window.api to renderer via contextBridge
 
-- Use a clear, consistent IPC pattern
-- Be typed (if TypeScript is used)
-- Be centralized (avoid scattered IPC calls)
+├── hooks/                           # React hooks (state + lifecycle only, no UI)
+│   ├── useAudioPlayer.ts            # HTML5 audio element state (play/pause, seek, duration, volume)
+│   ├── useQueue.ts                  # Playback queue state, shuffle, repeat mode, current index
+│   ├── usePlaybackController.ts     # Coordinates audio + queue; next/prev navigation; queue mutations
+│   ├── useKeyboardControls.ts       # Keyboard shortcuts (Space, PageUp/Down, arrows)
+│   └── useLibrary.ts                # Subscribes to library-updated events; loads directory trees
 
----
+├── types/
+│   └── queue.ts                     # RepeatMode type ("none" | "all" | "one")
 
-### 4.3 Config-Driven UI (IMPORTANT)
+├── utils/
+│   ├── array.ts                     # shuffleArray() — Fisher-Yates
+│   ├── metadata.ts                  # normalizeGenre(), formatArtists()
+│   └── time.ts                      # formatDuration() — seconds → MM:SS
 
-- UI pages will eventually be dynamically rendered from user configuration
-- Components must be:
-  - modular
-  - reusable
-  - decoupled from hardcoded routing
+├── renderer/                        # React frontend
+│   ├── main.tsx                     # Mounts <App /> to #root
+│   ├── index.html                   # HTML entry point
+│   ├── App.tsx                      # Root component — global state, tab routing, hooks wiring
+│   ├── types.d.ts                   # Shared interfaces: UserConfig, FileItem, Playlist, ArtistInfo, ContextMenuAction; declares window.api
+│   ├── css-modules.d.ts             # CSS Modules type shim
+│   │
+│   └── components/
+│       ├── Navbar/
+│       │   ├── Navbar.tsx           # Tab navigation bar
+│       │   ├── navConfig.ts         # Tab config array
+│       │   ├── types.ts             # Page and NavTab types
+│       │   └── Navbar.module.css
+│       │
+│       ├── LibraryView.tsx          # Switches between folder list and directory tree
+│       ├── LibraryFoldersView.tsx   # Shows library paths with Add/Remove/Refresh
+│       ├── LibraryFolderView.tsx    # Directory tree for a selected library path
+│       ├── DirectoryTree.tsx        # Recursive folder/file tree with expand/collapse and sorting
+│       │
+│       ├── GroupedView/
+│       │   ├── GroupedView.tsx      # Container for Artists/Albums/Genres views; search + sort
+│       │   ├── GroupList.tsx        # Grid of group cards
+│       │   ├── SongGrid.tsx         # Grid of song cards filtered to selected group
+│       │   ├── GroupCard.tsx        # Card: group name, count, picture
+│       │   ├── SongCard.tsx         # Card: song artwork, title, artist
+│       │   ├── GroupedViewHeader.tsx # Header with title and sort/filter controls
+│       │   ├── groupedView.utils.ts # getFilteredSongs(), getGroupEntries()
+│       │   ├── types.ts             # GroupType, GroupSortBy, SelectedGroup
+│       │   └── GroupedView.module.css
+│       │
+│       ├── PlaybackBar.tsx          # Bottom control bar — track info, play controls, progress, volume, repeat/shuffle
+│       │
+│       ├── Queue/
+│       │   ├── QueueView.tsx        # Full queue list with header and clear button
+│       │   ├── QueueItem.tsx        # Single queue row — number, title, artist, duration, remove button
+│       │   └── QueueHeader.tsx      # Queue stats (count, total duration) and controls
+│       │
+│       ├── PlaylistView.tsx         # Playlist page — create, view, edit, add/remove songs, drag-reorder, sort
+│       └── SongDetailsView.tsx      # Full-screen detail — metadata, editable tags, album art, lyrics, add-to-playlist
 
-Avoid tightly coupling UI to fixed page structures.
-
----
-
-## 5. UI/UX Requirements
-
-### 5.1 Design
-
-- Modern UI is required
-- Default theme: DARK
-- Clean, minimal, media-focused design
-
-### 5.2 Component Rules (Very important)
-
-- Prefer functional components
-- Keep components small and reusable
-- Avoid deeply nested structures
-
----
-
-## 6. Coding Conventions
-
-### Do
-
-- Follow existing patterns in the codebase
-- Use descriptive names
-- Keep functions focused and small
-- Reuse existing utilities and services
-
-### Don’t
-
-- Do NOT introduce new libraries
-- Do NOT over-engineer abstractions
-- Do NOT rewrite working code unnecessarily
-
----
-
-## 7. File Structure (Follow Existing)
-
-Typical expectations:
-
-- `/ui` or `/renderer` → React frontend
-- `/main` → Electron backend
-- `/services` → shared logic / API layer
-- `/ipc` → communication handlers
-
-Do not change structure unless instructed.
-
----
-
-## 8. How to Handle Tasks
-
-### Step 1: Understand
-
-- Analyze the request
-- Identify UI + backend requirements
-
-### Step 2: Plan (for non-trivial tasks)
-
-Provide:
-
-- Files to modify
-- Approach
-- Any assumptions
-
-### Step 3: Implement
-
-- Keep changes minimal
-- Follow existing patterns
-- Ensure UI + backend integration
-
----
-
-## 9. Output Expectations
-
-- Clean, readable, maintainable code
-- No unnecessary comments
-- No placeholder logic unless requested
-- Fully working feature (UI + backend)
-
----
-
-## 10. When You Need a Dependency
-
-You MUST respond like this:
-
-> This feature would benefit from [package name] because [reason].
-> Do you want me to proceed with adding it?
-
-Then STOP.
-
----
-
-## 11. When Uncertain
-
-- Ask for clarification
-- Do NOT guess
-- Do NOT invent requirements
-
----
-
-## 12. Anti-Patterns to Avoid
-
-- UI calling backend logic directly without IPC
-- Hardcoded UI pages that cannot be made dynamic
-- Adding state management libraries without approval
-- Large, monolithic components
-- Silent dependency installation
-
----
-
-## 13. Preferred Behavior
-
-- Be conservative with changes
-- Be explicit with assumptions
-- Prioritize consistency over cleverness
-
-## 14. current project overview
-
-- `pages` refer to the tabs of the app like `genres`, `artists`, `albums`, `playlists` that each are responsible to show specific type of things
-- `config` refers to a json file saved in the appdata directory. it is responsible to save configs that are editable by user. These fields are not all neccessarilly editable currently by user but later on it will be defined.
-- `cache` of the songs refers to a cache that is saved from all of the files of the library directories that is responsible to save their data so on startup, the `pages` data are loaded and user don't have to wait. though syncing and updating this cache will be done on startup asynchronously.
+└── main/                            # Electron main process
+    │
+    ├── ipc/
+    │   ├── index.ts                 # Registers all IPC handler modules
+    │   ├── libraryHandlers.ts       # get-library-files, get-directory-tree, select-directory, refresh-library
+    │   ├── configHandlers.ts        # get-config, update-config
+    │   ├── metadataHandlers.ts      # get-metadata
+    │   ├── playlistHandlers.ts      # get-playlists, get-playlist, create-playlist, update-playlist, delete-playlist
+    │   ├── artistHandlers.ts        # get-artist-info, update-artist-info, select-artist-image
+    │   ├── menuHandlers.ts          # show-song-context-menu (play-next, go-to-album/artist, open-details, add-to-playlist)
+    │   └── shellHandlers.ts         # show-file-in-folder, open-external-url
+    │
+    ├── protocols/
+    │   └── mediaProtocol.ts         # Registers media:// protocol — streams audio/images, handles range requests
+    │
+    └── services/
+        ├── configService.ts         # Loads/saves userData/config.json; default config schema lives here
+        ├── cacheService.ts          # In-memory + disk cache at userData/library_cache.json
+        ├── metadataService.ts       # Extracts tags from music files via music-metadata; saves album art
+        │
+        └── library/
+            ├── libraryScanner.ts    # Recursive directory scan; builds FileItem tree; extracts metadata
+            ├── libraryUpdater.ts    # Scans all configured paths; updates cache; broadcasts library-updated
+            ├── libraryWatcher.ts    # Chokidar watcher on library paths; debounced (2s) change detection
+            └── mediaUtils.ts        # isMediaFile() — checks extension against supported formats
+```
