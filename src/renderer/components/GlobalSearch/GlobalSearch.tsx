@@ -54,11 +54,15 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onNavi
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setIsOpen(false); setQuery(""); }
+      if (e.key === "Escape" && (isOpen || query)) {
+        e.stopPropagation();
+        setIsOpen(false);
+        setQuery("");
+      }
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [isOpen, query]);
 
   const results = useMemo(() => {
     if (!q) return null;

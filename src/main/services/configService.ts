@@ -16,6 +16,7 @@ const DEFAULT_CONFIG: UserConfig = {
   removeCurrentSongBehavior: "play-next",
   restoreSession: true,
   searchResultsPerCategory: 4,
+  navigationHistorySize: 20,
 };
 
 export const getConfig = (): UserConfig => {

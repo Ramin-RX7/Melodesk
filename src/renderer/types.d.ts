@@ -7,6 +7,7 @@ export interface UserConfig {
   removeCurrentSongBehavior: "prevent" | "play-next";
   restoreSession: boolean;
   searchResultsPerCategory: number;
+  navigationHistorySize: number;
 }
 
 export interface SessionData {

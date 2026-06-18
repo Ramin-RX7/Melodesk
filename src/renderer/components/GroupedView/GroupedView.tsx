@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
     IoSearch,
     IoSwapVertical,
@@ -42,9 +42,9 @@ type Props = {
 
     themeColor: string;
 
-    setSelectedGroup: (
-        group: SelectedGroup | null
-    ) => void;
+    onGroupSelect: (group: SelectedGroup) => void;
+    onGoBack: () => void;
+    onScrollRef?: (el: HTMLDivElement | null) => void;
 
     setSearchQuery: (
         query: string
@@ -87,7 +87,9 @@ export function GroupedView({
 
     themeColor,
 
-    setSelectedGroup,
+    onGroupSelect,
+    onGoBack,
+    onScrollRef,
     setSearchQuery,
     setSortBy,
     setSortDescending,
@@ -99,6 +101,10 @@ export function GroupedView({
     onContextMenu,
     onGroupContextMenu
 }: Props) {
+    const scrollAreaRef = useCallback((el: HTMLDivElement | null) => {
+        onScrollRef?.(el);
+    }, [onScrollRef]);
+
     const [artistInfo, setArtistInfo] = useState<ArtistInfo | null>(null);
     const [isEditingArtist, setIsEditingArtist] = useState(false);
     const [editBio, setEditBio] = useState("");
@@ -156,10 +162,7 @@ export function GroupedView({
                     <div className={styles.headerLeft}>
                         <button
                             className={styles.backButton}
-                            onClick={() => {
-                                setSelectedGroup(null);
-                                setSearchQuery("");
-                            }}
+                            onClick={onGoBack}
                         >
                             Back to {type}s
                         </button>
@@ -202,8 +205,8 @@ export function GroupedView({
                 </div>
 
                 {/* SCROLLABLE CONTENT */}
-                <div className={styles.scrollArea}>
-                    
+                <div className={styles.scrollArea} key="detail" ref={scrollAreaRef}>
+
                     {/* ARTIST PROFILE */}
                     {type === 'artist' && artistInfo && (
                         <div style={{ display: "flex", gap: "30px", padding: "20px", backgroundColor: "#1e1e1e", borderRadius: "12px", marginBottom: "20px", border: "1px solid #333" }}>
@@ -344,20 +347,13 @@ export function GroupedView({
             </div>
 
             {/* SCROLLABLE CONTENT */}
-            <div className={styles.scrollArea}>
+            <div className={styles.scrollArea} key="list" ref={scrollAreaRef}>
 
                 <GroupList
                     entries={entries}
                     type={type}
                     allTracks={allTracks}
-                    onSelect={(name) => {
-                        setSelectedGroup({
-                            type,
-                            name
-                        });
-
-                        setSearchQuery("");
-                    }}
+                    onSelect={(name) => onGroupSelect({ type, name })}
                     onContextMenu={onGroupContextMenu ? (e, name) => {
                         const groupSongs = getFilteredSongs(allTracks, name, type, "", false);
                         onGroupContextMenu(e, name, groupSongs);

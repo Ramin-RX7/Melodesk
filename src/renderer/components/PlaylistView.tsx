@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { FileItem, Playlist } from "../types";
 import { formatArtists } from "../../utils/metadata";
 import { IoArrowBack, IoAdd, IoTrash, IoSearch, IoMusicalNote, IoSwapVertical, IoPencil, IoCheckmark, IoClose } from "react-icons/io5";
@@ -10,14 +10,17 @@ interface PlaylistViewProps {
   currentTrack: FileItem | null;
   configDoubleClickToPlay: boolean;
   onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
-  playlistToOpen?: string | null;
-  onPlaylistOpened?: () => void;
+  selectedPlaylistId: string | null;
+  onPlaylistSelect: (id: string) => void;
+  onPlaylistClose: () => void;
+  onPlaylistDeleted?: (id: string) => void;
+  onScrollRef?: (el: HTMLElement | null) => void;
   initialSearch?: string;
 }
 
-export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack, configDoubleClickToPlay, onContextMenu, playlistToOpen, onPlaylistOpened, initialSearch }: PlaylistViewProps) {
+export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack, configDoubleClickToPlay, onContextMenu, selectedPlaylistId, onPlaylistSelect, onPlaylistClose, onPlaylistDeleted, onScrollRef, initialSearch }: PlaylistViewProps) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
+  const selectedPlaylist = playlists.find(p => p.id === selectedPlaylistId) ?? null;
   const [isCreating, setIsCreating] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,6 +35,10 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
   // Drag and drop state for reordering
   const dragItem = useRef<number | null>(null);
   const dragOverItem = useRef<number | null>(null);
+
+  const scrollAreaRef = useCallback((el: HTMLElement | null) => {
+    onScrollRef?.(el);
+  }, [onScrollRef]);
 
   useEffect(() => {
     loadPlaylists();
@@ -49,16 +56,6 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
   useEffect(() => {
     if (initialSearch !== undefined) setListSearchQuery(initialSearch);
   }, [initialSearch]);
-
-  useEffect(() => {
-    if (playlistToOpen && playlists.length > 0) {
-      const target = playlists.find(p => p.id === playlistToOpen);
-      if (target) {
-        setSelectedPlaylist(target);
-        onPlaylistOpened?.();
-      }
-    }
-  }, [playlistToOpen, playlists]);
 
   const loadPlaylists = async () => {
     try {
@@ -87,8 +84,8 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
       try {
         await window.api.deletePlaylist(id);
         setPlaylists(playlists.filter(p => p.id !== id));
-        if (selectedPlaylist?.id === id) {
-          setSelectedPlaylist(null);
+        if (selectedPlaylistId === id) {
+          onPlaylistDeleted?.(id);
         }
       } catch (error) {
         console.error("Failed to delete playlist:", error);
@@ -101,7 +98,6 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
     const newSongs = [...selectedPlaylist.songs, track.path];
     try {
       const updated = await window.api.updatePlaylist(selectedPlaylist.id, { songs: newSongs });
-      setSelectedPlaylist(updated);
       setPlaylists(playlists.map(p => p.id === updated.id ? updated : p));
     } catch (error) {
       console.error("Failed to add song:", error);
@@ -113,7 +109,6 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
     const newSongs = selectedPlaylist.songs.filter((_, i) => i !== indexToRemove);
     try {
       const updated = await window.api.updatePlaylist(selectedPlaylist.id, { songs: newSongs });
-      setSelectedPlaylist(updated);
       setPlaylists(playlists.map(p => p.id === updated.id ? updated : p));
     } catch (error) {
       console.error("Failed to remove song:", error);
@@ -136,7 +131,6 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
 
     try {
       const updated = await window.api.updatePlaylist(selectedPlaylist.id, { songs: newSongs });
-      setSelectedPlaylist(updated);
       setPlaylists(playlists.map(p => p.id === updated.id ? updated : p));
     } catch (error) {
       console.error("Failed to reorder songs:", error);
@@ -148,7 +142,6 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
     if (!selectedPlaylist) return;
     const updated = await window.api.updatePlaylist(selectedPlaylist.id, { sortBy: newSortBy });
     if (updated) {
-      setSelectedPlaylist(updated);
       setPlaylists(playlists.map(p => p.id === updated.id ? updated : p));
     }
   };
@@ -159,7 +152,6 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
     if (!selectedPlaylist) return;
     const updated = await window.api.updatePlaylist(selectedPlaylist.id, { sortDescending: newDesc });
     if (updated) {
-      setSelectedPlaylist(updated);
       setPlaylists(playlists.map(p => p.id === updated.id ? updated : p));
     }
   };
@@ -170,7 +162,6 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
     if (editDescription === (selectedPlaylist.description ?? "")) return;
     const updated = await window.api.updatePlaylist(selectedPlaylist.id, { description: editDescription });
     if (updated) {
-      setSelectedPlaylist(updated);
       setPlaylists(playlists.map(p => p.id === updated.id ? updated : p));
     }
   };
@@ -244,7 +235,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
             {renderGridCover(selectedPlaylist)}
           </div>
           <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", flex: 1 }}>
-            <button onClick={() => { setSelectedPlaylist(null); setSearchQuery(""); }} style={{ alignSelf: "flex-start", background: "none", border: "1px solid #444", color: "#fff", padding: "6px 16px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", marginBottom: "auto" }}>
+            <button onClick={() => { setSearchQuery(""); onPlaylistClose(); }} style={{ alignSelf: "flex-start", background: "none", border: "1px solid #444", color: "#fff", padding: "6px 16px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", marginBottom: "auto" }}>
               <IoArrowBack /> Back to Playlists
             </button>
             <h1 style={{ margin: "0 0 6px 0", fontSize: "36px" }}>{selectedPlaylist.name}</h1>
@@ -309,7 +300,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
           </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: "10px 0" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "10px 0" }} key="detail" ref={scrollAreaRef}>
           {filteredTracks.map(({ track, originalIndex }, i) => (
             <div
               key={`${track.path}-${originalIndex}`}
@@ -405,12 +396,12 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "30px", paddingBottom: "120px" }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "30px", paddingBottom: "120px" }} key="grid" ref={scrollAreaRef}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "25px" }}>
           {filteredPlaylists.map(playlist => (
             <div
               key={playlist.id}
-              onClick={() => setSelectedPlaylist(playlist)}
+              onClick={() => onPlaylistSelect(playlist.id)}
               style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "12px", cursor: "pointer", textAlign: "center", transition: "all 0.2s", border: "1px solid #333", position: "relative" }}
               onMouseOver={(e) => { e.currentTarget.style.backgroundColor = "#282828"; e.currentTarget.style.transform = "translateY(-5px)"; }}
               onMouseOut={(e) => { e.currentTarget.style.backgroundColor = "#1e1e1e"; e.currentTarget.style.transform = "translateY(0)"; }}

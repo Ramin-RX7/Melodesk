@@ -13,6 +13,8 @@ type Props = {
   config: UserConfig | null;
   onPlaySong: (song: FileItem, queue: FileItem[]) => void;
   onGlobalSearchNavigate: (target: GlobalSearchNavTarget) => void;
+  canGoBack: boolean;
+  onGoBack: () => void;
 };
 
 export function Navbar({
@@ -24,9 +26,21 @@ export function Navbar({
   config,
   onPlaySong,
   onGlobalSearchNavigate,
+  canGoBack,
+  onGoBack,
 }: Props) {
   return (
     <nav className={styles.nav}>
+      <button
+        className={styles.backButton}
+        onClick={onGoBack}
+        disabled={!canGoBack}
+        title="Go back"
+        style={{ color: canGoBack ? themeColor : "#444" }}
+      >
+        ‹
+      </button>
+
       {navItems.map(({ label, tab }) => {
         const isActive = activeTab === tab;
 

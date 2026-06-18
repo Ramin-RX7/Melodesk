@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 type Params = {
     togglePlay: () => void;
@@ -6,6 +6,7 @@ type Params = {
     handlePrevious: () => void;
     seekForward: () => void;
     seekBackward: () => void;
+    goBack?: () => void;
 };
 
 export function useKeyboardControls({
@@ -14,7 +15,12 @@ export function useKeyboardControls({
     handlePrevious,
     seekForward,
     seekBackward,
+    goBack,
 }: Params) {
+    // Stable ref so the event listeners never need to re-register when goBack changes
+    const goBackRef = useRef(goBack);
+    useEffect(() => { goBackRef.current = goBack; });
+
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             const target = event.target as HTMLElement;
@@ -27,6 +33,10 @@ export function useKeyboardControls({
             if (isTyping) return;
 
             switch (event.code) {
+                case "Escape":
+                    goBackRef.current?.();
+                    break;
+
                 case "Space":
                     event.preventDefault();
                     togglePlay();
@@ -75,10 +85,20 @@ export function useKeyboardControls({
             }
         };
 
+        const handleMouseUp = (event: MouseEvent) => {
+            // Mouse button 3 = side "back" button on most mice
+            if (event.button === 3) {
+                event.preventDefault();
+                goBackRef.current?.();
+            }
+        };
+
         window.addEventListener("keydown", handleKeyDown);
+        window.addEventListener("mouseup", handleMouseUp);
 
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("mouseup", handleMouseUp);
         };
     }, [
         togglePlay,

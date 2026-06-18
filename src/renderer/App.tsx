@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { PlaylistView } from "./components/PlaylistView";
 import { SongDetailsView } from "./components/SongDetailsView";
@@ -19,6 +19,19 @@ import { usePlaybackController } from "../hooks/usePlaybackController";
 
 type Page = 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue';
 type GroupSortBy = 'alphabet' | 'count';
+
+type NavSnapshot = {
+  view: Page;
+  activeTab: Exclude<Page, 'details' | 'queue'>;
+  selectedGroup: { type: 'artist' | 'album' | 'genre', name: string } | null;
+  searchQuery: string;
+  sortBy: GroupSortBy;
+  sortDescending: boolean;
+  selectedLibraryPath: string | null;
+  openPlaylistId: string | null;
+  playlistsSearch: string;
+  scrollTop: number;
+};
 
 const DEFAULT_THEME_COLOR = "#1db954";
 
@@ -45,9 +58,18 @@ export default function App() {
   const [sortBy, setSortBy] = useState<GroupSortBy>('alphabet');
   const [sortDescending, setSortDescending] = useState(false);
 
-  // Global search → playlist navigation
-  const [playlistToOpen, setPlaylistToOpen] = useState<string | null>(null);
+  // Navigation history
+  const [navHistory, setNavHistory] = useState<NavSnapshot[]>([]);
+
+  // Controlled open playlist (replaces playlistToOpen)
+  const [openPlaylistId, setOpenPlaylistId] = useState<string | null>(null);
   const [playlistsGlobalSearch, setPlaylistsGlobalSearch] = useState("");
+
+  // Scroll container tracking for history restore
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
+  const pendingScrollRestoreRef = useRef<number>(0);
+  // Forward ref so useKeyboardControls can reference handleGoBack before it's declared
+  const handleGoBackRef = useRef<() => void>(() => {});
 
   // Audio Player
   const audioPlayerState = useAudioPlayer(config, setConfig);
@@ -116,7 +138,9 @@ export default function App() {
     handlePrevious,
     seekForward,
     seekBackward,
+    goBack: () => handleGoBackRef.current(),
   });
+
 
   useEffect(() => {
     // Add global styles to remove margins
@@ -216,14 +240,79 @@ export default function App() {
     window.api.saveSession(data);
   }, [currentTrack, queue, shuffledQueue, currentIndex, isShuffle, repeatMode, config?.restoreSession]);
 
+  const handleScrollRef = (el: HTMLElement | null) => {
+    scrollContainerRef.current = el;
+    if (el && pendingScrollRestoreRef.current > 0) {
+      const pos = pendingScrollRestoreRef.current;
+      pendingScrollRestoreRef.current = 0;
+      requestAnimationFrame(() => { el.scrollTop = pos; });
+    }
+  };
+
+  const pushNav = () => {
+    const snap: NavSnapshot = {
+      view,
+      activeTab,
+      selectedGroup,
+      searchQuery,
+      sortBy,
+      sortDescending,
+      selectedLibraryPath,
+      openPlaylistId,
+      playlistsSearch: playlistsGlobalSearch,
+      scrollTop: scrollContainerRef.current?.scrollTop ?? 0,
+    };
+    const limit = config?.navigationHistorySize ?? 20;
+    setNavHistory(prev => [...prev.slice(-(limit - 1)), snap]);
+  };
+
+  const handleGoBack = () => {
+    setNavHistory(prev => {
+      if (prev.length === 0) {
+        if (selectedGroup) { setSelectedGroup(null); setSearchQuery(''); }
+        else if (openPlaylistId) { setOpenPlaylistId(null); }
+        else if (view === 'details') { setView(activeTab); }
+        return prev;
+      }
+      const snap = prev[prev.length - 1];
+      setView(snap.view as Page);
+      setActiveTab(snap.activeTab);
+      setSelectedGroup(snap.selectedGroup);
+      setSearchQuery(snap.searchQuery);
+      setSortBy(snap.sortBy);
+      setSortDescending(snap.sortDescending);
+      setSelectedLibraryPath(snap.selectedLibraryPath);
+      setOpenPlaylistId(snap.openPlaylistId);
+      setPlaylistsGlobalSearch(snap.playlistsSearch);
+      pendingScrollRestoreRef.current = snap.scrollTop;
+      return prev.slice(0, -1);
+    });
+  };
+
+  handleGoBackRef.current = handleGoBack;
+
+  const handleGroupSelect = (group: { type: 'artist' | 'album' | 'genre', name: string }) => {
+    pushNav();
+    setSelectedGroup(group);
+    setSearchQuery('');
+  };
+
+  const handlePlaylistSelect = (id: string) => {
+    pushNav();
+    setOpenPlaylistId(id);
+  };
+
+  const handlePlaylistClose = () => handleGoBack();
+
   const handleGlobalSearchNavigate = (target: GlobalSearchNavTarget) => {
+    pushNav();
     const tabName = target.tab as Exclude<Page, 'details' | 'queue'>;
     setActiveTab(tabName);
     setView(tabName);
     setSelectedGroup(null);
 
     if (target.tab === 'playlists') {
-      if (target.playlistId) setPlaylistToOpen(target.playlistId);
+      if (target.playlistId) setOpenPlaylistId(target.playlistId);
       if (target.query !== undefined) setPlaylistsGlobalSearch(target.query);
     } else {
       if (target.query !== undefined) setSearchQuery(target.query);
@@ -264,18 +353,19 @@ export default function App() {
     if (action.type === 'play-next') {
         playNext(song);
     } else if (action.type === 'go-to-album') {
-        const tabName = 'albums';
-        setActiveTab(tabName);
-        setView(tabName);
+        pushNav();
+        setActiveTab('albums');
+        setView('albums');
         setSearchQuery("");
         setSelectedGroup({ type: 'album', name: song.metadata?.album || 'Unknown Album' });
     } else if (action.type === 'go-to-artist') {
-        const tabName = 'artists';
-        setActiveTab(tabName);
-        setView(tabName);
+        pushNav();
+        setActiveTab('artists');
+        setView('artists');
         setSearchQuery("");
         setSelectedGroup({ type: 'artist', name: action.artist });
     } else if (action.type === 'open-details') {
+        pushNav();
         setCurrentTrack(song);
         setView('details');
     } else if (action.type === 'add-to-playlist') {
@@ -289,10 +379,11 @@ export default function App() {
   };
 
   const handleTabChange = (tab: Exclude<Page, 'details' | 'queue'>) => {
+    pushNav();
     setActiveTab(tab);
     setView(tab);
     setSelectedGroup(null);
-    setSearchQuery(""); // Clear search on tab change
+    setSearchQuery("");
     if (tab !== 'library') {
       setSelectedLibraryPath(null);
     }
@@ -326,11 +417,13 @@ export default function App() {
           activeTab={activeTab}
           themeColor={themeColor}
           onTabChange={handleTabChange}
-          onQueueClick={() => setView("queue")}
+          onQueueClick={() => { pushNav(); setView("queue"); }}
           allTracks={allTracks}
           config={config}
           onPlaySong={(song, queue) => playTrack(song, queue)}
           onGlobalSearchNavigate={handleGlobalSearchNavigate}
+          canGoBack={navHistory.length > 0}
+          onGoBack={handleGoBack}
         />
       )}
 
@@ -383,7 +476,9 @@ export default function App() {
                 currentTrack={currentTrack}
                 config={config}
                 themeColor={themeColor}
-                setSelectedGroup={setSelectedGroup}
+                onGroupSelect={handleGroupSelect}
+                onGoBack={handleGoBack}
+                onScrollRef={handleScrollRef}
                 setSearchQuery={setSearchQuery}
                 setSortBy={setSortBy}
                 setSortDescending={setSortDescending}
@@ -405,8 +500,11 @@ export default function App() {
                 currentTrack={currentTrack}
                 configDoubleClickToPlay={config?.doubleClickToPlay ?? true}
                 onContextMenu={showContextMenu}
-                playlistToOpen={playlistToOpen}
-                onPlaylistOpened={() => setPlaylistToOpen(null)}
+                selectedPlaylistId={openPlaylistId}
+                onPlaylistSelect={handlePlaylistSelect}
+                onPlaylistClose={handlePlaylistClose}
+                onPlaylistDeleted={(id) => { if (openPlaylistId === id) setOpenPlaylistId(null); }}
+                onScrollRef={handleScrollRef}
                 initialSearch={playlistsGlobalSearch}
               />
             );
@@ -437,9 +535,10 @@ export default function App() {
               <SongDetailsView
                 currentTrack={currentTrack}
                 themeColor={themeColor}
-                onBack={() => setView(activeTab)}
+                onBack={handleGoBack}
                 onNavigate={(type, name) => {
-                  const tabName = `${type}s` as any;
+                  pushNav();
+                  const tabName = `${type}s` as Exclude<Page, 'details' | 'queue'>;
                   setActiveTab(tabName);
                   setView(tabName);
                   setSearchQuery("");
