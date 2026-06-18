@@ -9,7 +9,10 @@ const PLAYLISTS_DIR = path.join(app.getPath("userData"), "playlists");
 interface Playlist {
     id: string;
     name: string;
+    description?: string;
     songs: string[];
+    sortBy?: 'custom' | 'title' | 'artist' | 'duration';
+    sortDescending?: boolean;
     createdAt: string;
     updatedAt: string;
 }
@@ -68,7 +71,7 @@ export function setupPlaylistHandlers() {
         return playlist;
     });
 
-    ipcMain.handle("update-playlist", (_event, id: string, data: Partial<Pick<Playlist, 'name' | 'songs'>>) => {
+    ipcMain.handle("update-playlist", (_event, id: string, data: Partial<Pick<Playlist, 'name' | 'songs' | 'description' | 'sortBy' | 'sortDescending'>>) => {
         const filePath = path.join(PLAYLISTS_DIR, `${id}.json`);
         try {
             if (!fs.existsSync(filePath)) return null;

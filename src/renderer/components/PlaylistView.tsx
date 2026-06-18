@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { FileItem, Playlist } from "../types";
 import { formatArtists } from "../../utils/metadata";
-import { IoArrowBack, IoAdd, IoTrash, IoSearch, IoMusicalNote, IoSwapVertical } from "react-icons/io5";
+import { IoArrowBack, IoAdd, IoTrash, IoSearch, IoMusicalNote, IoSwapVertical, IoPencil, IoCheckmark, IoClose } from "react-icons/io5";
 
 interface PlaylistViewProps {
   allTracks: FileItem[];
@@ -22,6 +22,8 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
   const [addSearchQuery, setAddSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<'custom' | 'title' | 'artist' | 'duration'>('custom');
   const [sortDescending, setSortDescending] = useState(false);
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editDescription, setEditDescription] = useState("");
 
   // Drag and drop state for reordering
   const dragItem = useRef<number | null>(null);
@@ -30,6 +32,15 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
   useEffect(() => {
     loadPlaylists();
   }, []);
+
+  useEffect(() => {
+    if (selectedPlaylist) {
+      setSortBy(selectedPlaylist.sortBy ?? 'custom');
+      setSortDescending(selectedPlaylist.sortDescending ?? false);
+      setEditDescription(selectedPlaylist.description ?? "");
+      setIsEditingDescription(false);
+    }
+  }, [selectedPlaylist?.id]);
 
   const loadPlaylists = async () => {
     try {
@@ -114,6 +125,43 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
     }
   };
 
+  const handleSortByChange = async (newSortBy: 'custom' | 'title' | 'artist' | 'duration') => {
+    setSortBy(newSortBy);
+    if (!selectedPlaylist) return;
+    const updated = await window.api.updatePlaylist(selectedPlaylist.id, { sortBy: newSortBy });
+    if (updated) {
+      setSelectedPlaylist(updated);
+      setPlaylists(playlists.map(p => p.id === updated.id ? updated : p));
+    }
+  };
+
+  const handleSortDirectionToggle = async () => {
+    const newDesc = !sortDescending;
+    setSortDescending(newDesc);
+    if (!selectedPlaylist) return;
+    const updated = await window.api.updatePlaylist(selectedPlaylist.id, { sortDescending: newDesc });
+    if (updated) {
+      setSelectedPlaylist(updated);
+      setPlaylists(playlists.map(p => p.id === updated.id ? updated : p));
+    }
+  };
+
+  const handleSaveDescription = async () => {
+    if (!selectedPlaylist) return;
+    setIsEditingDescription(false);
+    if (editDescription === (selectedPlaylist.description ?? "")) return;
+    const updated = await window.api.updatePlaylist(selectedPlaylist.id, { description: editDescription });
+    if (updated) {
+      setSelectedPlaylist(updated);
+      setPlaylists(playlists.map(p => p.id === updated.id ? updated : p));
+    }
+  };
+
+  const handleCancelDescription = () => {
+    setEditDescription(selectedPlaylist?.description ?? "");
+    setIsEditingDescription(false);
+  };
+
   // Helper to render 2x2 grid of covers
   const renderGridCover = (playlist: Playlist) => {
     const tracks = playlist.songs.map(path => allTracks.find(t => t.path === path)).filter(Boolean) as FileItem[];
@@ -181,7 +229,35 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
             <button onClick={() => { setSelectedPlaylist(null); setSearchQuery(""); }} style={{ alignSelf: "flex-start", background: "none", border: "1px solid #444", color: "#fff", padding: "6px 16px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", marginBottom: "auto" }}>
               <IoArrowBack /> Back to Playlists
             </button>
-            <h1 style={{ margin: "0 0 10px 0", fontSize: "36px" }}>{selectedPlaylist.name}</h1>
+            <h1 style={{ margin: "0 0 6px 0", fontSize: "36px" }}>{selectedPlaylist.name}</h1>
+
+            {/* Description */}
+            {isEditingDescription ? (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "8px" }}>
+                <textarea
+                  autoFocus
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveDescription(); } if (e.key === 'Escape') handleCancelDescription(); }}
+                  rows={2}
+                  placeholder="Add a description..."
+                  style={{ flex: 1, backgroundColor: "#111", border: "1px solid #555", borderRadius: "6px", padding: "6px 10px", color: "#ccc", fontSize: "14px", resize: "none", outline: "none", fontFamily: "inherit" }}
+                />
+                <button onClick={handleSaveDescription} style={{ background: "none", border: "none", color: themeColor, cursor: "pointer", padding: "4px", display: "flex" }}><IoCheckmark size={18} /></button>
+                <button onClick={handleCancelDescription} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", padding: "4px", display: "flex" }}><IoClose size={18} /></button>
+              </div>
+            ) : (
+              <div
+                onClick={() => { setEditDescription(selectedPlaylist.description ?? ""); setIsEditingDescription(true); }}
+                style={{ color: selectedPlaylist.description ? "#aaa" : "#555", fontSize: "14px", marginBottom: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", minHeight: "20px" }}
+              >
+                <span style={{ fontStyle: selectedPlaylist.description ? "normal" : "italic" }}>
+                  {selectedPlaylist.description || "Add a description..."}
+                </span>
+                <IoPencil size={12} style={{ color: "#555", flexShrink: 0 }} />
+              </div>
+            )}
+
             <div style={{ color: "#888", fontSize: "14px" }}>
               {tracks.length} songs • {Math.floor(totalDuration / 60)} mins
             </div>
@@ -201,14 +277,14 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#222", padding: "4px 12px", borderRadius: "20px", border: "1px solid #333" }}>
             <span style={{ fontSize: "12px", color: "#888" }}>Sort by:</span>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} style={{ backgroundColor: "transparent", color: "#fff", border: "none", fontSize: "13px", cursor: "pointer", outline: "none" }}>
+            <select value={sortBy} onChange={(e) => handleSortByChange(e.target.value as any)} style={{ backgroundColor: "transparent", color: "#fff", border: "none", fontSize: "13px", cursor: "pointer", outline: "none" }}>
               <option value="custom" style={{ backgroundColor: "#222" }}>Custom Order</option>
               <option value="title" style={{ backgroundColor: "#222" }}>Title</option>
               <option value="artist" style={{ backgroundColor: "#222" }}>Artist</option>
               <option value="duration" style={{ backgroundColor: "#222" }}>Duration</option>
             </select>
             {sortBy !== 'custom' && (
-              <button onClick={() => setSortDescending(!sortDescending)} style={{ background: "none", border: "none", color: sortDescending ? themeColor : "#888", display: "flex", alignItems: "center", cursor: "pointer", fontSize: "16px" }}>
+              <button onClick={handleSortDirectionToggle} style={{ background: "none", border: "none", color: sortDescending ? themeColor : "#888", display: "flex", alignItems: "center", cursor: "pointer", fontSize: "16px" }}>
                 <IoSwapVertical />
               </button>
             )}

@@ -39,7 +39,10 @@ export interface FileItem {
 export interface Playlist {
   id: string;
   name: string;
+  description?: string;
   songs: string[];
+  sortBy?: 'custom' | 'title' | 'artist' | 'duration';
+  sortDescending?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -72,7 +75,7 @@ declare global {
       getPlaylists: () => Promise<Playlist[]>;
       getPlaylist: (id: string) => Promise<Playlist | null>;
       createPlaylist: (name: string) => Promise<Playlist>;
-      updatePlaylist: (id: string, data: Partial<Pick<Playlist, 'name' | 'songs'>>) => Promise<Playlist>;
+      updatePlaylist: (id: string, data: Partial<Pick<Playlist, 'name' | 'songs' | 'description' | 'sortBy' | 'sortDescending'>>) => Promise<Playlist>;
       deletePlaylist: (id: string) => Promise<void>;
       writeMetadata: (filePath: string, tags: any) => Promise<boolean>;
       getArtistInfo: (name: string) => Promise<ArtistInfo | null>;
