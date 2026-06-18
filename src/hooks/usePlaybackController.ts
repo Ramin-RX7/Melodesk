@@ -7,6 +7,7 @@ import { useQueue } from "./useQueue";
 
 
 type Props = {
+    config: any;
     queueState: ReturnType<typeof useQueue>;
     audioState: ReturnType<typeof useAudioPlayer>;
 
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export function usePlaybackController({
+    config,
     queueState,
     audioState,
     currentTrack,
@@ -32,6 +34,7 @@ export function usePlaybackController({
         setShuffledQueue,
         activeQueue,
         setIsShuffle,
+        removeFromQueue,
         repeatMode,
     } = queueState;
     const {
@@ -41,7 +44,7 @@ export function usePlaybackController({
         currentTime,
     } = audioState;
 
-    const playTrack = (track: FileItem, newQueue?: FileItem[]) => {
+    const playTrack = (track: FileItem, newQueue?: FileItem[], explicitIndex?: number) => {
         setCurrentTrack(track);
 
         if (newQueue) {
@@ -53,6 +56,8 @@ export function usePlaybackController({
             } else {
                 setCurrentIndex(newQueue.findIndex(t => t.path === track.path));
             }
+        } else if (explicitIndex !== undefined) {
+            setCurrentIndex(explicitIndex);
         } else {
             // Just update index in current active queue
             setCurrentIndex(activeQueue.findIndex(t => t.path === track.path));
@@ -210,7 +215,7 @@ export function usePlaybackController({
             playTrack(track);
             return;
         }
-        
+
         const newQueue = [...queue];
         if (isShuffle) {
             const newShuffled = [...shuffledQueue];
@@ -224,6 +229,36 @@ export function usePlaybackController({
         setQueue(newQueue);
     };
 
+
+    const handleRemoveFromQueue = (index: number) => {
+        if (index !== currentIndex) {
+            removeFromQueue(index);
+            return;
+        }
+
+        const behavior = config?.removeCurrentSongBehavior ?? "prevent";
+        if (behavior === "prevent") return;
+
+        // "play-next": remove current song and play what comes next
+        const newActiveQueue = activeQueue.filter((_, i) => i !== index);
+        const nextIndex = Math.min(index, newActiveQueue.length - 1);
+        const nextTrack = nextIndex >= 0 ? newActiveQueue[nextIndex] : null;
+
+        removeFromQueue(index);
+
+        if (nextTrack) {
+            playTrack(nextTrack, undefined, nextIndex);
+        } else {
+            setCurrentTrack(null);
+            setCurrentIndex(-1);
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.src = "";
+            }
+            setIsPlaying(false);
+        }
+    };
+
     return {
         playTrack,
         handleShufflePlay,
@@ -232,5 +267,6 @@ export function usePlaybackController({
         handleEnded,
         handleDrop,
         playNext,
+        handleRemoveFromQueue,
     }
 }

@@ -1,7 +1,8 @@
-import { IoMusicalNote } from "react-icons/io5";
+import { useState } from "react";
+import { IoMusicalNote, IoTrash } from "react-icons/io5";
 import { formatArtists } from "../../../utils/metadata";
 
-import { FileItem, UserConfig } from "../../types";
+import { FileItem } from "../../types";
 
 
 type QueueItemProps = {
@@ -10,6 +11,8 @@ type QueueItemProps = {
     isActive: boolean;
     themeColor: string;
     onClick: () => void;
+    onRemove?: () => void;
+    isRemovable?: boolean;
     onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 };
 
@@ -19,13 +22,19 @@ export function QueueItem({
     isActive,
     themeColor,
     onClick,
+    onRemove,
+    isRemovable = true,
     onContextMenu,
 }: QueueItemProps) {
+    const [isHovered, setIsHovered] = useState(false);
+
     return (
         <div
             data-active={isActive}
             onClick={onClick}
             onContextMenu={(e) => onContextMenu?.(e, track)}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
             style={{
                 display: "flex",
                 alignItems: "center",
@@ -113,6 +122,30 @@ export function QueueItem({
                         .padStart(2, "0")}`
                     : "-:--"}
             </div>
+
+            {isRemovable && (
+                <div
+                    onClick={(e) => { e.stopPropagation(); onRemove?.(); }}
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "28px",
+                        height: "28px",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        color: "#888",
+                        opacity: isHovered ? 1 : 0,
+                        transition: "opacity 0.15s, color 0.15s",
+                        flexShrink: 0,
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#e55"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#888"; }}
+                    title="Remove from queue"
+                >
+                    <IoTrash size={16} />
+                </div>
+            )}
         </div>
     );
 }

@@ -77,6 +77,7 @@ export default function App() {
     shuffledQueue, setShuffledQueue,
 
     activeQueue,
+    removeFromQueue,
     handleShuffleToggle,
     handleRepeatToggle,
   } = queueState;
@@ -93,7 +94,9 @@ export default function App() {
     handleEnded,
     handleDrop,
     playNext,
+    handleRemoveFromQueue,
   } = usePlaybackController({
+    config,
     queueState,
     audioState: audioPlayerState,
     currentTrack,
@@ -316,6 +319,8 @@ export default function App() {
                 themeColor={themeColor}
                 onPlayTrack={playTrack}
                 onClearQueue={() => setQueue([])}
+                onRemoveFromQueue={handleRemoveFromQueue}
+                activeItemRemovable={config?.removeCurrentSongBehavior === "play-next"}
                 onContextMenu={showContextMenu}
               />
             );

@@ -13,6 +13,7 @@ const DEFAULT_CONFIG: UserConfig = {
   minSongsForAlbum: 3,
   themeColor: "#1db954",
   volume: 0.5,
+  removeCurrentSongBehavior: "play-next",
 };
 
 export const getConfig = (): UserConfig => {

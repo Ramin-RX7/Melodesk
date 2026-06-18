@@ -11,6 +11,8 @@ type QueueViewProps = {
     themeColor: string;
     onPlayTrack: (track: FileItem) => void;
     onClearQueue: () => void;
+    onRemoveFromQueue: (index: number) => void;
+    activeItemRemovable: boolean;
     onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 };
 
@@ -20,6 +22,8 @@ export function QueueView({
     themeColor,
     onPlayTrack,
     onClearQueue,
+    onRemoveFromQueue,
+    activeItemRemovable,
     onContextMenu,
 }: QueueViewProps) {
     const totalDuration = useMemo(() => {
@@ -89,6 +93,8 @@ export function QueueView({
                             isActive={index === currentIndex}
                             themeColor={themeColor}
                             onClick={() => onPlayTrack(track)}
+                            onRemove={() => onRemoveFromQueue(index)}
+                            isRemovable={index !== currentIndex || activeItemRemovable}
                             onContextMenu={onContextMenu}
                         />
                     ))

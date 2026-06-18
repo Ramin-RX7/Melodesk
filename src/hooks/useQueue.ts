@@ -50,6 +50,31 @@ export function useQueue(currentTrack: FileItem | null) {
     };
 
 
+    const removeFromQueue = (indexToRemove: number) => {
+        const trackToRemove = activeQueue[indexToRemove];
+        if (!trackToRemove) return;
+
+        if (isShuffle) {
+            const newShuffled = shuffledQueue.filter((_, i) => i !== indexToRemove);
+            const queueIdx = queue.findIndex((t) => t.path === trackToRemove.path);
+            const newQueue = queueIdx >= 0 ? queue.filter((_, i) => i !== queueIdx) : queue;
+            setShuffledQueue(newShuffled);
+            setQueue(newQueue);
+        } else {
+            const newQueue = queue.filter((_, i) => i !== indexToRemove);
+            const shuffledIdx = shuffledQueue.findIndex((t) => t.path === trackToRemove.path);
+            const newShuffled = shuffledIdx >= 0 ? shuffledQueue.filter((_, i) => i !== shuffledIdx) : shuffledQueue;
+            setQueue(newQueue);
+            setShuffledQueue(newShuffled);
+        }
+
+        if (indexToRemove < currentIndex) {
+            setCurrentIndex(currentIndex - 1);
+        } else if (indexToRemove === currentIndex && currentIndex >= activeQueue.length - 1) {
+            setCurrentIndex(activeQueue.length - 2);
+        }
+    };
+
     const handleRepeatToggle = () => {
         const currentIndex =
         REPEAT_MODES.indexOf(repeatMode);
@@ -79,6 +104,7 @@ export function useQueue(currentTrack: FileItem | null) {
 
         activeQueue,
 
+        removeFromQueue,
         handleShuffleToggle,
         handleRepeatToggle,
     };

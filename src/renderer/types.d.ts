@@ -4,6 +4,7 @@ export interface UserConfig {
   minSongsForAlbum: number;
   themeColor: string;
   volume: number;
+  removeCurrentSongBehavior: "prevent" | "play-next";
 }
 export interface ArtistInfo {
   name: string;
