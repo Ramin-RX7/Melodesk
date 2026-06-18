@@ -10,14 +10,18 @@ interface PlaylistViewProps {
   currentTrack: FileItem | null;
   configDoubleClickToPlay: boolean;
   onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
+  playlistToOpen?: string | null;
+  onPlaylistOpened?: () => void;
+  initialSearch?: string;
 }
 
-export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack, configDoubleClickToPlay, onContextMenu }: PlaylistViewProps) {
+export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack, configDoubleClickToPlay, onContextMenu, playlistToOpen, onPlaylistOpened, initialSearch }: PlaylistViewProps) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [listSearchQuery, setListSearchQuery] = useState(initialSearch ?? "");
   const [isAddingSongs, setIsAddingSongs] = useState(false);
   const [addSearchQuery, setAddSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<'custom' | 'title' | 'artist' | 'duration'>('custom');
@@ -41,6 +45,20 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
       setIsEditingDescription(false);
     }
   }, [selectedPlaylist?.id]);
+
+  useEffect(() => {
+    if (initialSearch !== undefined) setListSearchQuery(initialSearch);
+  }, [initialSearch]);
+
+  useEffect(() => {
+    if (playlistToOpen && playlists.length > 0) {
+      const target = playlists.find(p => p.id === playlistToOpen);
+      if (target) {
+        setSelectedPlaylist(target);
+        onPlaylistOpened?.();
+      }
+    }
+  }, [playlistToOpen, playlists]);
 
   const loadPlaylists = async () => {
     try {
@@ -362,18 +380,34 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
     );
   }
 
+  const filteredPlaylists = listSearchQuery
+    ? playlists.filter(p => p.name.toLowerCase().includes(listSearchQuery.toLowerCase()))
+    : playlists;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <div style={{ padding: "20px 30px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #222", backgroundColor: "#181818" }}>
         <h2 style={{ margin: 0 }}>Playlists</h2>
-        <button onClick={() => setIsCreating(true)} style={{ backgroundColor: themeColor, color: "#fff", border: "none", padding: "8px 20px", borderRadius: "20px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
-          <IoAdd /> New Playlist
-        </button>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          <div style={{ position: "relative" }}>
+            <IoSearch style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#888", fontSize: "14px" }} />
+            <input
+              type="text"
+              placeholder="Search playlists..."
+              value={listSearchQuery}
+              onChange={e => setListSearchQuery(e.target.value)}
+              style={{ backgroundColor: "#222", border: "1px solid #333", borderRadius: "20px", padding: "7px 14px 7px 32px", color: "#fff", outline: "none", fontSize: "13px", width: "200px" }}
+            />
+          </div>
+          <button onClick={() => setIsCreating(true)} style={{ backgroundColor: themeColor, color: "#fff", border: "none", padding: "8px 20px", borderRadius: "20px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+            <IoAdd /> New Playlist
+          </button>
+        </div>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "30px", paddingBottom: "120px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "25px" }}>
-          {playlists.map(playlist => (
+          {filteredPlaylists.map(playlist => (
             <div
               key={playlist.id}
               onClick={() => setSelectedPlaylist(playlist)}
@@ -400,9 +434,9 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
               </button>
             </div>
           ))}
-          {playlists.length === 0 && (
+          {filteredPlaylists.length === 0 && (
             <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "50px", color: "#666" }}>
-              No playlists found. Create one to get started!
+              {listSearchQuery ? `No playlists matching "${listSearchQuery}"` : "No playlists found. Create one to get started!"}
             </div>
           )}
         </div>

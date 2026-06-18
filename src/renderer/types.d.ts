@@ -6,6 +6,7 @@ export interface UserConfig {
   volume: number;
   removeCurrentSongBehavior: "prevent" | "play-next";
   restoreSession: boolean;
+  searchResultsPerCategory: number;
 }
 
 export interface SessionData {

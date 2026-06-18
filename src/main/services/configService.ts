@@ -15,6 +15,7 @@ const DEFAULT_CONFIG: UserConfig = {
   volume: 0.5,
   removeCurrentSongBehavior: "play-next",
   restoreSession: true,
+  searchResultsPerCategory: 4,
 };
 
 export const getConfig = (): UserConfig => {

@@ -1,19 +1,29 @@
+import { FileItem, UserConfig } from "../../types";
 import styles from "./Navbar.module.css";
 import { navItems } from "./navConfig";
 import { Page, NavTab } from "./types";
+import { GlobalSearch, GlobalSearchNavTarget } from "../GlobalSearch/GlobalSearch";
 
 type Props = {
   activeTab: Page;
   themeColor: string;
   onTabChange: (tab: NavTab) => void;
   onQueueClick: () => void;
+  allTracks: FileItem[];
+  config: UserConfig | null;
+  onPlaySong: (song: FileItem, queue: FileItem[]) => void;
+  onGlobalSearchNavigate: (target: GlobalSearchNavTarget) => void;
 };
 
 export function Navbar({
   activeTab,
   themeColor,
   onTabChange,
-  onQueueClick
+  onQueueClick,
+  allTracks,
+  config,
+  onPlaySong,
+  onGlobalSearchNavigate,
 }: Props) {
   return (
     <nav className={styles.nav}>
@@ -35,6 +45,14 @@ export function Navbar({
           </div>
         );
       })}
+
+      <GlobalSearch
+        allTracks={allTracks}
+        config={config}
+        themeColor={themeColor}
+        onPlaySong={onPlaySong}
+        onNavigate={onGlobalSearchNavigate}
+      />
 
       <div
         className={`${styles.navItem} ${styles.queueItem}`}

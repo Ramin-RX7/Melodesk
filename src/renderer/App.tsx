@@ -5,6 +5,7 @@ import { SongDetailsView } from "./components/SongDetailsView";
 import { PlaybackBar } from "./components/PlaybackBar";
 import { QueueView } from "./components/Queue/QueueView";
 import { FileItem, SessionData, UserConfig } from "./types";
+import { GlobalSearchNavTarget } from "./components/GlobalSearch/GlobalSearch";
 import { normalizeGenre } from "../utils/metadata";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { useLibrary } from "../hooks/useLibrary";
@@ -43,6 +44,10 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<GroupSortBy>('alphabet');
   const [sortDescending, setSortDescending] = useState(false);
+
+  // Global search → playlist navigation
+  const [playlistToOpen, setPlaylistToOpen] = useState<string | null>(null);
+  const [playlistsGlobalSearch, setPlaylistsGlobalSearch] = useState("");
 
   // Audio Player
   const audioPlayerState = useAudioPlayer(config, setConfig);
@@ -211,6 +216,25 @@ export default function App() {
     window.api.saveSession(data);
   }, [currentTrack, queue, shuffledQueue, currentIndex, isShuffle, repeatMode, config?.restoreSession]);
 
+  const handleGlobalSearchNavigate = (target: GlobalSearchNavTarget) => {
+    const tabName = target.tab as Exclude<Page, 'details' | 'queue'>;
+    setActiveTab(tabName);
+    setView(tabName);
+    setSelectedGroup(null);
+
+    if (target.tab === 'playlists') {
+      if (target.playlistId) setPlaylistToOpen(target.playlistId);
+      if (target.query !== undefined) setPlaylistsGlobalSearch(target.query);
+    } else {
+      if (target.query !== undefined) setSearchQuery(target.query);
+      if (target.groupName) {
+        const type = target.tab === 'albums' ? 'album' : 'artist';
+        setSelectedGroup({ type: type as 'album' | 'artist', name: target.groupName });
+        setSearchQuery('');
+      }
+    }
+  };
+
   const showGroupContextMenu = async (e: React.MouseEvent, _name: string, songs: FileItem[]) => {
     e.preventDefault();
     if (songs.length === 0) return;
@@ -303,6 +327,10 @@ export default function App() {
           themeColor={themeColor}
           onTabChange={handleTabChange}
           onQueueClick={() => setView("queue")}
+          allTracks={allTracks}
+          config={config}
+          onPlaySong={(song, queue) => playTrack(song, queue)}
+          onGlobalSearchNavigate={handleGlobalSearchNavigate}
         />
       )}
 
@@ -375,10 +403,11 @@ export default function App() {
                 themeColor={themeColor}
                 onPlayTrack={playTrack}
                 currentTrack={currentTrack}
-                configDoubleClickToPlay={
-                  config?.doubleClickToPlay ?? true
-                }
+                configDoubleClickToPlay={config?.doubleClickToPlay ?? true}
                 onContextMenu={showContextMenu}
+                playlistToOpen={playlistToOpen}
+                onPlaylistOpened={() => setPlaylistToOpen(null)}
+                initialSearch={playlistsGlobalSearch}
               />
             );
           }
@@ -390,7 +419,12 @@ export default function App() {
                 currentIndex={currentIndex}
                 themeColor={themeColor}
                 onPlayTrack={playTrack}
-                onClearQueue={() => setQueue([])}
+                onClearQueue={() => {
+                    const kept = currentTrack ? [currentTrack] : [];
+                    setQueue(kept);
+                    setShuffledQueue(kept);
+                    setCurrentIndex(0);
+                }}
                 onRemoveFromQueue={handleRemoveFromQueue}
                 activeItemRemovable={config?.removeCurrentSongBehavior === "play-next"}
                 onContextMenu={showContextMenu}
