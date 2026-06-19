@@ -5,6 +5,7 @@ export type Page =
   | "genres"
   | "playlists"
   | "queue"
-  | "details";
+  | "details"
+  | "settings";
 
-export type NavTab = Exclude<Page, "queue" | "details">;
+export type NavTab = Exclude<Page, "queue" | "details" | "settings">;

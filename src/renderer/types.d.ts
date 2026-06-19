@@ -10,6 +10,14 @@ export interface UserConfig {
   navigationHistorySize: number;
 }
 
+export interface WindowBounds {
+  width: number;
+  height: number;
+  x?: number;
+  y?: number;
+  isMaximized?: boolean;
+}
+
 export interface SessionData {
   currentTrackPath: string | null;
   queue: string[];
@@ -17,6 +25,7 @@ export interface SessionData {
   currentIndex: number;
   isShuffle: boolean;
   repeatMode: 'none' | 'one' | 'all';
+  windowBounds?: WindowBounds;
 }
 export interface ArtistInfo {
   name: string;

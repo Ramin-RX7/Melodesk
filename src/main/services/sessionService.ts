@@ -2,7 +2,7 @@ import { app } from "electron";
 import fs from "fs";
 import path from "path";
 
-import { SessionData } from "../../renderer/types";
+import { SessionData, WindowBounds } from "../../renderer/types";
 
 
 const SESSION_PATH = path.join(app.getPath("userData"), "session.json");
@@ -18,7 +18,7 @@ export const getSession = (): SessionData | null => {
     return null;
 };
 
-export const saveSession = (data: SessionData): void => {
+const writeSession = (data: Partial<SessionData>): void => {
     try {
         fs.writeFileSync(SESSION_PATH, JSON.stringify(data, null, 2));
     } catch (error) {
@@ -26,12 +26,30 @@ export const saveSession = (data: SessionData): void => {
     }
 };
 
+export const saveSession = (data: Partial<SessionData>): void => {
+    // Merge so playback state and window bounds (written separately) don't clobber each other.
+    const existing = getSession();
+    writeSession({ ...existing, ...data });
+};
+
 export const clearSession = (): void => {
-    try {
-        if (fs.existsSync(SESSION_PATH)) {
+    // Only clear playback state; window bounds persist independently of the restore-session setting.
+    const existing = getSession();
+    if (existing?.windowBounds) {
+        writeSession({ windowBounds: existing.windowBounds });
+    } else if (fs.existsSync(SESSION_PATH)) {
+        try {
             fs.unlinkSync(SESSION_PATH);
+        } catch (error) {
+            console.error("Failed to clear session:", error);
         }
-    } catch (error) {
-        console.error("Failed to clear session:", error);
     }
+};
+
+export const getWindowBounds = (): WindowBounds | null => {
+    return getSession()?.windowBounds ?? null;
+};
+
+export const saveWindowBounds = (bounds: WindowBounds): void => {
+    saveSession({ windowBounds: bounds });
 };

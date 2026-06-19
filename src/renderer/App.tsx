@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 
 import { PlaylistView } from "./components/PlaylistView";
+import { SettingsView } from "./components/SettingsView";
 import { SongDetailsView } from "./components/SongDetailsView";
 import { PlaybackBar } from "./components/PlaybackBar";
 import { QueueView } from "./components/Queue/QueueView";
@@ -17,12 +18,12 @@ import { useQueue } from "../hooks/useQueue";
 import { usePlaybackController } from "../hooks/usePlaybackController";
 
 
-type Page = 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue';
+type Page = 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue' | 'settings';
 type GroupSortBy = 'alphabet' | 'count';
 
 type NavSnapshot = {
   view: Page;
-  activeTab: Exclude<Page, 'details' | 'queue'>;
+  activeTab: Exclude<Page, 'details' | 'queue' | 'settings'>;
   selectedGroup: { type: 'artist' | 'album' | 'genre', name: string } | null;
   searchQuery: string;
   sortBy: GroupSortBy;
@@ -36,7 +37,7 @@ type NavSnapshot = {
 const DEFAULT_THEME_COLOR = "#1db954";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Exclude<Page, 'details' | 'queue'>>('library');
+  const [activeTab, setActiveTab] = useState<Exclude<Page, 'details' | 'queue' | 'settings'>>('library');
   const [view, setView] = useState<Page>('library');
   const [config, setConfig] = useState<UserConfig | null>(null);
   const [tree, setTree] = useState<FileItem[]>([]);
@@ -183,7 +184,7 @@ export default function App() {
 
         if (userConfig.restoreSession) {
           const session = await window.api.getSession();
-          if (session && session.queue.length > 0) {
+          if (session && session.queue && session.queue.length > 0) {
             const trackMap = new Map(tracks.map(t => [t.path, t]));
             const restoredQueue = session.queue.map(p => trackMap.get(p)).filter(Boolean) as FileItem[];
             const restoredShuffled = session.shuffledQueue.map(p => trackMap.get(p)).filter(Boolean) as FileItem[];
@@ -306,7 +307,7 @@ export default function App() {
 
   const handleGlobalSearchNavigate = (target: GlobalSearchNavTarget) => {
     pushNav();
-    const tabName = target.tab as Exclude<Page, 'details' | 'queue'>;
+    const tabName = target.tab as Exclude<Page, 'details' | 'queue' | 'settings'>;
     setActiveTab(tabName);
     setView(tabName);
     setSelectedGroup(null);
@@ -378,7 +379,7 @@ export default function App() {
     }
   };
 
-  const handleTabChange = (tab: Exclude<Page, 'details' | 'queue'>) => {
+  const handleTabChange = (tab: Exclude<Page, 'details' | 'queue' | 'settings'>) => {
     pushNav();
     setActiveTab(tab);
     setView(tab);
@@ -418,6 +419,7 @@ export default function App() {
           themeColor={themeColor}
           onTabChange={handleTabChange}
           onQueueClick={() => { pushNav(); setView("queue"); }}
+          onSettingsClick={() => { pushNav(); setView("settings"); }}
           allTracks={allTracks}
           config={config}
           onPlaySong={(song, queue) => playTrack(song, queue)}
@@ -530,6 +532,16 @@ export default function App() {
             );
           }
 
+          if (view === "settings") {
+            return (
+              <SettingsView
+                config={config}
+                setConfig={setConfig}
+                themeColor={themeColor}
+              />
+            );
+          }
+
           if (view === "details") {
             return view === "details" && currentTrack ? (
               <SongDetailsView
@@ -538,7 +550,7 @@ export default function App() {
                 onBack={handleGoBack}
                 onNavigate={(type, name) => {
                   pushNav();
-                  const tabName = `${type}s` as Exclude<Page, 'details' | 'queue'>;
+                  const tabName = `${type}s` as Exclude<Page, 'details' | 'queue' | 'settings'>;
                   setActiveTab(tabName);
                   setView(tabName);
                   setSearchQuery("");

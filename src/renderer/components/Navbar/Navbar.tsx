@@ -1,3 +1,5 @@
+import { IoSettingsSharp } from "react-icons/io5";
+
 import { FileItem, UserConfig } from "../../types";
 import styles from "./Navbar.module.css";
 import { navItems } from "./navConfig";
@@ -9,6 +11,7 @@ type Props = {
   themeColor: string;
   onTabChange: (tab: NavTab) => void;
   onQueueClick: () => void;
+  onSettingsClick: () => void;
   allTracks: FileItem[];
   config: UserConfig | null;
   onPlaySong: (song: FileItem, queue: FileItem[]) => void;
@@ -22,6 +25,7 @@ export function Navbar({
   themeColor,
   onTabChange,
   onQueueClick,
+  onSettingsClick,
   allTracks,
   config,
   onPlaySong,
@@ -77,6 +81,20 @@ export function Navbar({
         }}
       >
         Queue
+      </div>
+
+      <div
+        className={styles.navItem}
+        onClick={onSettingsClick}
+        title="Settings"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          color: activeTab === "settings" ? "#fff" : "#888",
+          borderBottomColor: activeTab === "settings" ? themeColor : "transparent",
+        }}
+      >
+        <IoSettingsSharp size={18} />
       </div>
     </nav>
   );
