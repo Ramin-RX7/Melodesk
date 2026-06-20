@@ -1,6 +1,6 @@
 import { ipcMain, dialog } from "electron";
 
-import { getCache } from "../services/cacheService";
+import { getCacheList } from "../services/cacheService";
 import { getConfig } from "../services/configService";
 import { getDirectoryTree } from "../services/library/libraryScanner";
 import { updateLibrary } from "../services/library/libraryUpdater";
@@ -8,7 +8,7 @@ import { updateLibrary } from "../services/library/libraryUpdater";
 
 export function registerLibraryHandlers() {
     ipcMain.handle("get-library-files", async () => {
-        const cachedFiles = getCache();
+        const cachedFiles = getCacheList();
 
         // Always check if cache is consistent with library paths on startup/request
         const config = getConfig();

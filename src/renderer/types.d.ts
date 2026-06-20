@@ -8,6 +8,7 @@ export interface UserConfig {
   restoreSession: boolean;
   searchResultsPerCategory: number;
   navigationHistorySize: number;
+  playCountThresholdPercent: number;
 }
 
 export interface WindowBounds {
@@ -38,6 +39,7 @@ export interface FileItem {
   path: string;
   isDirectory: boolean;
   isMedia: boolean;
+  hash?: string;
   children?: FileItem[];
   metadata?: {
     title?: string;
@@ -66,6 +68,12 @@ export interface Playlist {
   sortDescending?: boolean;
   createdAt: string;
   updatedAt: string;
+  isFixed?: boolean;
+}
+
+export interface PlayRecord {
+  hash: string;
+  timestamp: number;
 }
 
 export type ContextMenuAction =
@@ -107,6 +115,9 @@ declare global {
       getSession: () => Promise<SessionData | null>;
       saveSession: (data: SessionData) => Promise<void>;
       clearSession: () => Promise<void>;
+      recordPlay: (hash: string, timestamp?: number) => Promise<void>;
+      getPlayCounts: () => Promise<Record<string, number>>;
+      getRecentPlays: (limit?: number) => Promise<PlayRecord[]>;
     };
   }
 }

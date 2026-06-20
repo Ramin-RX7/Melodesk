@@ -100,6 +100,15 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
             onChange={(v) => save({ removeCurrentSongBehavior: v as UserConfig["removeCurrentSongBehavior"] })}
           />
         </Row>
+        <NumberRow
+          label="Count as played after"
+          description="Percent of a song you must listen to before it counts as a play"
+          value={config.playCountThresholdPercent}
+          min={1}
+          max={100}
+          themeColor={themeColor}
+          onCommit={(v) => save({ playCountThresholdPercent: v })}
+        />
       </Section>
 
       <Section title="Startup">
@@ -319,6 +328,7 @@ function NumberRow({
   description,
   value,
   min,
+  max,
   themeColor,
   onCommit,
 }: {
@@ -326,6 +336,7 @@ function NumberRow({
   description?: string;
   value: number;
   min: number;
+  max?: number;
   themeColor: string;
   onCommit: (v: number) => void;
 }) {
@@ -337,7 +348,7 @@ function NumberRow({
 
   const commit = () => {
     const parsed = parseInt(draft, 10);
-    if (isNaN(parsed) || parsed < min) {
+    if (isNaN(parsed) || parsed < min || (max !== undefined && parsed > max)) {
       setDraft(String(value));
       return;
     }
@@ -349,6 +360,7 @@ function NumberRow({
       <input
         type="number"
         min={min}
+        max={max}
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}

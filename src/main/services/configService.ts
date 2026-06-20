@@ -17,6 +17,7 @@ const DEFAULT_CONFIG: UserConfig = {
   restoreSession: true,
   searchResultsPerCategory: 4,
   navigationHistorySize: 20,
+  playCountThresholdPercent: 50,
 };
 
 export const getConfig = (): UserConfig => {

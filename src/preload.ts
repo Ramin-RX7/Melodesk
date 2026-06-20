@@ -29,4 +29,7 @@ contextBridge.exposeInMainWorld("api", {
   getSession: () => ipcRenderer.invoke("get-session"),
   saveSession: (data: any) => ipcRenderer.invoke("save-session", data),
   clearSession: () => ipcRenderer.invoke("clear-session"),
+  recordPlay: (hash: string, timestamp?: number) => ipcRenderer.invoke("record-play", hash, timestamp),
+  getPlayCounts: () => ipcRenderer.invoke("get-play-counts"),
+  getRecentPlays: (limit?: number) => ipcRenderer.invoke("get-recent-plays", limit),
 });

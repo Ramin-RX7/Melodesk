@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { FileItem, Playlist } from "../types";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { FileItem, Playlist, PlayRecord } from "../types";
 import { formatArtists } from "../../utils/metadata";
-import { IoArrowBack, IoAdd, IoTrash, IoSearch, IoMusicalNote, IoSwapVertical, IoPencil, IoCheckmark, IoClose } from "react-icons/io5";
+import { IoArrowBack, IoAdd, IoTrash, IoSearch, IoMusicalNote, IoSwapVertical, IoPencil, IoCheckmark, IoClose, IoTime, IoFlame } from "react-icons/io5";
+
+const RECENTLY_PLAYED_ID = "__recently_played__";
+const MOST_PLAYED_ID = "__most_played__";
+const FIXED_PLAYLIST_LIMIT = 100;
 
 interface PlaylistViewProps {
   allTracks: FileItem[];
@@ -20,7 +24,48 @@ interface PlaylistViewProps {
 
 export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack, configDoubleClickToPlay, onContextMenu, selectedPlaylistId, onPlaylistSelect, onPlaylistClose, onPlaylistDeleted, onScrollRef, initialSearch }: PlaylistViewProps) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const selectedPlaylist = playlists.find(p => p.id === selectedPlaylistId) ?? null;
+  const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
+  const [recentPlays, setRecentPlays] = useState<PlayRecord[]>([]);
+
+  const hashToTrack = useMemo(() => {
+    const map = new Map<string, FileItem>();
+    for (const t of allTracks) {
+      if (t.hash) map.set(t.hash, t);
+    }
+    return map;
+  }, [allTracks]);
+
+  // "Recently Played" and "Most Played" are derived, read-only playlists backed
+  // by the play tracker. They are shown alongside real playlists but not editable.
+  const fixedPlaylists = useMemo<Playlist[]>(() => {
+    const now = new Date().toISOString();
+
+    const recentPaths: string[] = [];
+    const seen = new Set<string>();
+    for (const rec of recentPlays) {
+      if (seen.has(rec.hash)) continue;
+      const track = hashToTrack.get(rec.hash);
+      if (!track) continue;
+      seen.add(rec.hash);
+      recentPaths.push(track.path);
+      if (recentPaths.length >= FIXED_PLAYLIST_LIMIT) break;
+    }
+
+    const mostPaths = Object.entries(playCounts)
+      .filter(([hash]) => hashToTrack.has(hash))
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, FIXED_PLAYLIST_LIMIT)
+      .map(([hash]) => hashToTrack.get(hash)!.path);
+
+    return [
+      { id: RECENTLY_PLAYED_ID, name: "Recently Played", songs: recentPaths, isFixed: true, createdAt: now, updatedAt: now },
+      { id: MOST_PLAYED_ID, name: "Most Played", songs: mostPaths, isFixed: true, createdAt: now, updatedAt: now },
+    ];
+  }, [recentPlays, playCounts, hashToTrack]);
+
+  const allPlaylists = useMemo(() => [...fixedPlaylists, ...playlists], [fixedPlaylists, playlists]);
+  const selectedPlaylist = allPlaylists.find(p => p.id === selectedPlaylistId) ?? null;
+  const isFixed = selectedPlaylist?.isFixed ?? false;
   const [isCreating, setIsCreating] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,6 +87,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
 
   useEffect(() => {
     loadPlaylists();
+    loadTrackerData();
   }, []);
 
   useEffect(() => {
@@ -63,6 +109,19 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
       setPlaylists(data);
     } catch (error) {
       console.error("Failed to load playlists:", error);
+    }
+  };
+
+  const loadTrackerData = async () => {
+    try {
+      const [counts, recent] = await Promise.all([
+        window.api.getPlayCounts(),
+        window.api.getRecentPlays(FIXED_PLAYLIST_LIMIT * 2),
+      ]);
+      setPlayCounts(counts);
+      setRecentPlays(recent);
+    } catch (error) {
+      console.error("Failed to load tracker data:", error);
     }
   };
 
@@ -94,7 +153,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
   };
 
   const handleAddSong = async (track: FileItem) => {
-    if (!selectedPlaylist) return;
+    if (!selectedPlaylist || selectedPlaylist.isFixed) return;
     const newSongs = [...selectedPlaylist.songs, track.path];
     try {
       const updated = await window.api.updatePlaylist(selectedPlaylist.id, { songs: newSongs });
@@ -105,7 +164,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
   };
 
   const handleRemoveSong = async (indexToRemove: number) => {
-    if (!selectedPlaylist) return;
+    if (!selectedPlaylist || selectedPlaylist.isFixed) return;
     const newSongs = selectedPlaylist.songs.filter((_, i) => i !== indexToRemove);
     try {
       const updated = await window.api.updatePlaylist(selectedPlaylist.id, { songs: newSongs });
@@ -116,7 +175,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
   };
 
   const handleSortEnd = async () => {
-    if (!selectedPlaylist || dragItem.current === null || dragOverItem.current === null || dragItem.current === dragOverItem.current) {
+    if (!selectedPlaylist || selectedPlaylist.isFixed || dragItem.current === null || dragOverItem.current === null || dragItem.current === dragOverItem.current) {
       dragItem.current = null;
       dragOverItem.current = null;
       return;
@@ -171,6 +230,12 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
     setIsEditingDescription(false);
   };
 
+  const fixedIcon = (playlist: Playlist): React.ReactNode => {
+    if (playlist.id === RECENTLY_PLAYED_ID) return <IoTime style={{ fontSize: "50px", color: themeColor }} />;
+    if (playlist.id === MOST_PLAYED_ID) return <IoFlame style={{ fontSize: "50px", color: themeColor }} />;
+    return <IoMusicalNote style={{ fontSize: "50px", color: "#555" }} />;
+  };
+
   // Helper to render 2x2 grid of covers
   const renderGridCover = (playlist: Playlist) => {
     const tracks = playlist.songs.map(path => allTracks.find(t => t.path === path)).filter(Boolean) as FileItem[];
@@ -180,7 +245,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
     if (uniqueCovers.length === 0) {
       return (
         <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "#333" }}>
-          <IoMusicalNote style={{ fontSize: "50px", color: "#555" }} />
+          {fixedIcon(playlist)}
         </div>
       );
     }
@@ -241,7 +306,11 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
             <h1 style={{ margin: "0 0 6px 0", fontSize: "36px" }}>{selectedPlaylist.name}</h1>
 
             {/* Description */}
-            {isEditingDescription ? (
+            {isFixed ? (
+              <div style={{ color: "#888", fontSize: "14px", marginBottom: "8px", fontStyle: "italic" }}>
+                {selectedPlaylist.id === RECENTLY_PLAYED_ID ? "Your most recently played songs" : "The songs you play the most"} • updates automatically
+              </div>
+            ) : isEditingDescription ? (
               <div style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "8px" }}>
                 <textarea
                   autoFocus
@@ -271,10 +340,12 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
               {tracks.length} songs • {Math.floor(totalDuration / 60)} mins
             </div>
             <div style={{ display: "flex", gap: "10px", marginTop: "15px" }}>
-              <button onClick={() => onPlayTrack(tracks[0], tracks)} style={{ backgroundColor: themeColor, color: "#fff", border: "none", padding: "8px 24px", borderRadius: "20px", fontWeight: "bold", cursor: "pointer" }}>Play</button>
-              <button onClick={() => setIsAddingSongs(true)} style={{ backgroundColor: "transparent", color: "#fff", border: "1px solid #fff", padding: "8px 24px", borderRadius: "20px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
-                <IoAdd /> Add Songs
-              </button>
+              <button disabled={tracks.length === 0} onClick={() => tracks.length > 0 && onPlayTrack(tracks[0], tracks)} style={{ backgroundColor: themeColor, color: "#fff", border: "none", padding: "8px 24px", borderRadius: "20px", fontWeight: "bold", cursor: tracks.length === 0 ? "not-allowed" : "pointer", opacity: tracks.length === 0 ? 0.5 : 1 }}>Play</button>
+              {!isFixed && (
+                <button onClick={() => setIsAddingSongs(true)} style={{ backgroundColor: "transparent", color: "#fff", border: "1px solid #fff", padding: "8px 24px", borderRadius: "20px", fontWeight: "bold", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                  <IoAdd /> Add Songs
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -284,6 +355,7 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
             <IoSearch style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", color: "#888" }} />
             <input type="text" placeholder="Search in playlist..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: "100%", backgroundColor: "#222", border: "1px solid #333", borderRadius: "20px", padding: "8px 15px 8px 35px", color: "#fff", outline: "none" }} />
           </div>
+          {!isFixed && (
           <div style={{ display: "flex", alignItems: "center", gap: "10px", backgroundColor: "#222", padding: "4px 12px", borderRadius: "20px", border: "1px solid #333" }}>
             <span style={{ fontSize: "12px", color: "#888" }}>Sort by:</span>
             <select value={sortBy} onChange={(e) => handleSortByChange(e.target.value as any)} style={{ backgroundColor: "transparent", color: "#fff", border: "none", fontSize: "13px", cursor: "pointer", outline: "none" }}>
@@ -298,13 +370,14 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
               </button>
             )}
           </div>
+          )}
         </div>
 
         <div style={{ flex: 1, overflowY: "auto", padding: "10px 0" }} key="detail" ref={scrollAreaRef}>
           {filteredTracks.map(({ track, originalIndex }, i) => (
             <div
               key={`${track.path}-${originalIndex}`}
-              draggable={sortBy === 'custom' && !searchQuery}
+              draggable={!isFixed && sortBy === 'custom' && !searchQuery}
               onDragStart={(e) => (dragItem.current = originalIndex)}
               onDragEnter={(e) => (dragOverItem.current = originalIndex)}
               onDragEnd={handleSortEnd}
@@ -331,9 +404,11 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
               <div style={{ color: "#666", fontSize: "13px", padding: "0 20px" }}>
                 {track.metadata?.duration ? `${Math.floor(track.metadata.duration / 60)}:${Math.floor(track.metadata.duration % 60).toString().padStart(2, '0')}` : "-:--"}
               </div>
-              <button onClick={(e) => { e.stopPropagation(); handleRemoveSong(originalIndex); }} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", padding: "5px" }}>
-                <IoTrash />
-              </button>
+              {!isFixed && (
+                <button onClick={(e) => { e.stopPropagation(); handleRemoveSong(originalIndex); }} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", padding: "5px" }}>
+                  <IoTrash />
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -372,8 +447,8 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
   }
 
   const filteredPlaylists = listSearchQuery
-    ? playlists.filter(p => p.name.toLowerCase().includes(listSearchQuery.toLowerCase()))
-    : playlists;
+    ? allPlaylists.filter(p => p.name.toLowerCase().includes(listSearchQuery.toLowerCase()))
+    : allPlaylists;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -415,14 +490,16 @@ export function PlaylistView({ allTracks, themeColor, onPlayTrack, currentTrack,
               <div style={{ fontSize: "12px", color: "#888" }}>
                 {playlist.songs.length} songs
               </div>
-              <button
-                onClick={(e) => handleDeletePlaylist(playlist.id, e)}
-                style={{ position: "absolute", top: "10px", right: "10px", background: "rgba(0,0,0,0.5)", border: "none", color: "#ff4444", borderRadius: "50%", width: "30px", height: "30px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", opacity: 0.8 }}
-                onMouseOver={(e) => e.currentTarget.style.opacity = "1"}
-                onMouseOut={(e) => e.currentTarget.style.opacity = "0.8"}
-              >
-                <IoTrash />
-              </button>
+              {!playlist.isFixed && (
+                <button
+                  onClick={(e) => handleDeletePlaylist(playlist.id, e)}
+                  style={{ position: "absolute", top: "10px", right: "10px", background: "rgba(0,0,0,0.5)", border: "none", color: "#ff4444", borderRadius: "50%", width: "30px", height: "30px", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", opacity: 0.8 }}
+                  onMouseOver={(e) => e.currentTarget.style.opacity = "1"}
+                  onMouseOut={(e) => e.currentTarget.style.opacity = "0.8"}
+                >
+                  <IoTrash />
+                </button>
+              )}
             </div>
           ))}
           {filteredPlaylists.length === 0 && (

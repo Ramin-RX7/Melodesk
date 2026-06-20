@@ -3,6 +3,7 @@ import path from "path";
 
 import { isMediaFile } from "../services/library/mediaUtils";
 import { extractMetadata, saveArt } from "../services/metadataService";
+import { hashPath } from "../services/hashUtil";
 
 
 export function registerMetadataHandlers() {
@@ -30,6 +31,7 @@ export function registerMetadataHandlers() {
                 path: filePath,
                 isDirectory: false,
                 isMedia: true,
+                hash: hashPath(filePath),
                 metadata: extractMetadata(metadata, filePath, artPath),
             };
         } catch (err) {
@@ -39,6 +41,7 @@ export function registerMetadataHandlers() {
                 path: filePath,
                 isDirectory: false,
                 isMedia: true,
+                hash: hashPath(filePath),
             };
         }
     });

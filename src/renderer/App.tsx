@@ -16,6 +16,7 @@ import { Navbar } from "./components/Navbar/Navbar";
 import { GroupedView } from "./components/GroupedView/GroupedView";
 import { useQueue } from "../hooks/useQueue";
 import { usePlaybackController } from "../hooks/usePlaybackController";
+import { usePlayTracker } from "../hooks/usePlayTracker";
 
 
 type Page = 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue' | 'settings';
@@ -131,6 +132,9 @@ export default function App() {
     currentTrack,
     setCurrentTrack,
   });
+
+  // Record plays once enough of a song has actually been listened to
+  usePlayTracker(audioRef, currentTrack, config?.playCountThresholdPercent ?? 50);
 
   // Keyboard Controls
   useKeyboardControls({
