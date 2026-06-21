@@ -18,6 +18,7 @@ const DEFAULT_CONFIG: UserConfig = {
   searchResultsPerCategory: 4,
   navigationHistorySize: 20,
   playCountThresholdPercent: 50,
+  homeItemLimit: 10,
 };
 
 export const getConfig = (): UserConfig => {

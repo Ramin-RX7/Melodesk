@@ -9,6 +9,7 @@ export interface UserConfig {
   searchResultsPerCategory: number;
   navigationHistorySize: number;
   playCountThresholdPercent: number;
+  homeItemLimit: number;
 }
 
 export interface WindowBounds {

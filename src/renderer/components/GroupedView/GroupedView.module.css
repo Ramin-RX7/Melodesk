@@ -166,6 +166,12 @@
     color: #888;
 }
 
+.songArtist {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .emptyState {
     text-align: center;
     padding: 50px;

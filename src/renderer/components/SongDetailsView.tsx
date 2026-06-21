@@ -8,9 +8,11 @@ interface SongDetailsViewProps {
   onBack: () => void;
   onNavigate: (type: 'artist' | 'album' | 'genre', name: string) => void;
   onTrackUpdated: (track: FileItem) => void;
+  openLyrics?: boolean;
+  onLyricsConsumed?: () => void;
 }
 
-export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, onTrackUpdated }: SongDetailsViewProps) {
+export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, onTrackUpdated, openLyrics, onLyricsConsumed }: SongDetailsViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -39,6 +41,13 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
       });
     }
   }, [isEditing, currentTrack]);
+
+  useEffect(() => {
+    if (openLyrics) {
+      setShowLyricsModal(true);
+      onLyricsConsumed?.();
+    }
+  }, [openLyrics]);
 
   useEffect(() => {
     if (showPlaylistModal) {

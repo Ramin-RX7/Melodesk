@@ -121,6 +121,18 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
         />
       </Section>
 
+      <Section title="Home">
+        <NumberRow
+          label="Items per row"
+          description="How many items each Home section shows before the 'Show all' button"
+          value={config.homeItemLimit}
+          min={1}
+          max={50}
+          themeColor={themeColor}
+          onCommit={(v) => save({ homeItemLimit: v })}
+        />
+      </Section>
+
       <Section title="Library &amp; Browsing">
         <NumberRow
           label="Minimum songs for an album"

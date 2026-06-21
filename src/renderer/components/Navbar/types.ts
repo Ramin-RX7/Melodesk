@@ -1,4 +1,5 @@
 export type Page =
+  | "home"
   | "library"
   | "artists"
   | "albums"

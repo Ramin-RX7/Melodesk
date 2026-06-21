@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 
+import { HomeView } from "./components/HomeView/HomeView";
 import { PlaylistView } from "./components/PlaylistView";
 import { SettingsView } from "./components/SettingsView";
 import { SongDetailsView } from "./components/SongDetailsView";
@@ -19,7 +20,7 @@ import { usePlaybackController } from "../hooks/usePlaybackController";
 import { usePlayTracker } from "../hooks/usePlayTracker";
 
 
-type Page = 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue' | 'settings';
+type Page = 'home' | 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue' | 'settings';
 type GroupSortBy = 'alphabet' | 'count';
 
 type NavSnapshot = {
@@ -38,14 +39,15 @@ type NavSnapshot = {
 const DEFAULT_THEME_COLOR = "#1db954";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Exclude<Page, 'details' | 'queue' | 'settings'>>('library');
-  const [view, setView] = useState<Page>('library');
+  const [activeTab, setActiveTab] = useState<Exclude<Page, 'details' | 'queue' | 'settings'>>('home');
+  const [view, setView] = useState<Page>('home');
   const [config, setConfig] = useState<UserConfig | null>(null);
   const [tree, setTree] = useState<FileItem[]>([]);
   const [allTracks, setAllTracks] = useState<FileItem[]>([]);
   const [selectedLibraryPath, setSelectedLibraryPath] = useState<string | null>(null);
   const [selectedGroup, setSelectedGroup] = useState<{ type: 'artist' | 'album' | 'genre', name: string } | null>(null);
   const [currentTrack, setCurrentTrack] = useState<FileItem | null>(null);
+  const [openLyricsOnDetails, setOpenLyricsOnDetails] = useState(false);
 
   const handleTrackUpdated = (updatedTrack: FileItem) => {
     setCurrentTrack(updatedTrack);
@@ -163,6 +165,7 @@ export default function App() {
       }
       ::-webkit-scrollbar {
         width: 8px;
+        height: 8px;
       }
       ::-webkit-scrollbar-track {
         background: #1e1e1e;
@@ -296,6 +299,15 @@ export default function App() {
 
   handleGoBackRef.current = handleGoBack;
 
+  const toggleQueue = () => {
+    if (view === 'queue') {
+      handleGoBack();
+    } else {
+      pushNav();
+      setView('queue');
+    }
+  };
+
   const handleGroupSelect = (group: { type: 'artist' | 'album' | 'genre', name: string }) => {
     pushNav();
     setSelectedGroup(group);
@@ -422,7 +434,7 @@ export default function App() {
           activeTab={activeTab}
           themeColor={themeColor}
           onTabChange={handleTabChange}
-          onQueueClick={() => { pushNav(); setView("queue"); }}
+          onQueueClick={toggleQueue}
           onSettingsClick={() => { pushNav(); setView("settings"); }}
           allTracks={allTracks}
           config={config}
@@ -444,6 +456,29 @@ export default function App() {
         }}
       >
         {(() => {
+          if (view === "home") {
+            return (
+              <HomeView
+                allTracks={allTracks}
+                currentTrack={currentTrack}
+                themeColor={themeColor}
+                config={config}
+                handleFileSelect={handleFileSelect}
+                handleShufflePlay={handleShufflePlay}
+                onContextMenu={showContextMenu}
+                onScrollRef={handleScrollRef}
+                onSelectArtist={(name) => {
+                  pushNav();
+                  setActiveTab('artists');
+                  setView('artists');
+                  setSearchQuery('');
+                  setSelectedGroup({ type: 'artist', name });
+                }}
+                onNavigateTab={handleTabChange}
+              />
+            );
+          }
+
           if (view === "library") {
             return (
               <LibraryView
@@ -561,6 +596,8 @@ export default function App() {
                   setSelectedGroup({ type, name });
                 }}
                 onTrackUpdated={handleTrackUpdated}
+                openLyrics={openLyricsOnDetails}
+                onLyricsConsumed={() => setOpenLyricsOnDetails(false)}
               />
             ) : null;
           }
@@ -577,13 +614,19 @@ export default function App() {
         duration={duration}
         onSeek={handleSeek}
         onShowDetails={() => setView('details')}
+        onShowLyrics={() => {
+          if (!currentTrack) return;
+          if (view !== 'details') pushNav();
+          setOpenLyricsOnDetails(true);
+          setView('details');
+        }}
         onNext={handleNext}
         onPrevious={handlePrevious}
         isShuffle={isShuffle}
         onToggleShuffle={handleShuffleToggle}
         repeatMode={repeatMode}
         onToggleRepeat={handleRepeatToggle}
-        onShowQueue={() => setView('queue')}
+        onShowQueue={toggleQueue}
         volume={config?.volume ?? 0.5}
         onVolumeChange={handleVolumeChange}
         themeColor={themeColor}

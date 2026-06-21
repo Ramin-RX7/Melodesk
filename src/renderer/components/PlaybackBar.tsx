@@ -24,6 +24,7 @@ interface PlaybackBarProps {
   duration: number;
   onSeek: (time: number) => void;
   onShowDetails: () => void;
+  onShowLyrics: () => void;
   onNext: () => void;
   onPrevious: () => void;
   isShuffle: boolean;
@@ -45,6 +46,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
   duration,
   onSeek,
   onShowDetails,
+  onShowLyrics,
   onNext,
   onPrevious,
   isShuffle,
@@ -276,7 +278,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
             />
           </div>
           <button style={buttonStyle} onClick={onShowQueue} title="Queue"><IoList /></button>
-          <button style={buttonStyle} title="Lyrics"><IoDocumentTextOutline /></button>
+          <button style={buttonStyle} onClick={onShowLyrics} title="Lyrics"><IoDocumentTextOutline /></button>
         </div>
       </div>
     </div>

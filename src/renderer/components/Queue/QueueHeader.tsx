@@ -13,11 +13,6 @@ export function QueueHeader({
     onClear,
     scrollToCurrent
 }: QueueHeaderProps) {
-    const minutes = Math.floor(totalDuration / 60);
-    const seconds = Math.floor(totalDuration % 60)
-        .toString()
-        .padStart(2, "0");
-
     return (
         <div
             style={{

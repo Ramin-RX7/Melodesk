@@ -4,6 +4,7 @@ export const navItems: {
   label: string;
   tab: NavTab;
 }[] = [
+  { label: "Home", tab: "home" },
   { label: "Library", tab: "library" },
   { label: "Artists", tab: "artists" },
   { label: "Albums", tab: "albums" },

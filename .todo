@@ -1,20 +1,9 @@
 # Issues
-playback bar show lyrics does not work
-when clicking the queue botton in navbar or playback, if the queue is open, it must be closed
 
 
 # Features
 - song detail:
     - cover art fix (just the option, currently this does not work, only shown in UI)
     - show lyrics (synchronized)
-- Home page to show:
-    - favorites
-    - recently added
-    - most played
-    - most popular artists
-    - recently played
-    - shuffle play
-    - never played
-    - statistics
 - equalizer
 - Picture in picture
