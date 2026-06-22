@@ -20,7 +20,9 @@ import { GroupedView } from "./components/GroupedView/GroupedView";
 import { useQueue } from "../hooks/useQueue";
 import { usePlaybackController } from "../hooks/usePlaybackController";
 import { usePlayTracker } from "../hooks/usePlayTracker";
-import { colors, colorCssVariables, DEFAULT_THEME_COLOR } from "./theme/colors";
+import { colors, buildRootCss, DEFAULT_PALETTE, DEFAULT_THEME_COLOR } from "./theme/colors";
+import { applyPalette } from "./theme/applyTheme";
+import { getTheme, DEFAULT_THEME_ID } from "./theme/themes";
 
 
 type Page = 'home' | 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue' | 'settings';
@@ -159,7 +161,7 @@ export default function App() {
     const style = document.createElement('style');
     style.innerHTML = `
       :root {
-        ${colorCssVariables}
+        ${buildRootCss(DEFAULT_PALETTE, DEFAULT_THEME_COLOR)}
       }
       body, html {
         margin: 0;
@@ -234,6 +236,16 @@ export default function App() {
       document.head.removeChild(style);
     };
   }, []);
+
+  // Apply the selected theme + per-role overrides to :root whenever they change.
+  useEffect(() => {
+    if (!config) return;
+    const base = getTheme(config.appearance?.themeId ?? DEFAULT_THEME_ID)?.palette ?? DEFAULT_PALETTE;
+    applyPalette(
+      { ...base, ...(config.appearance?.colors ?? {}) },
+      config.themeColor || DEFAULT_THEME_COLOR,
+    );
+  }, [config?.appearance, config?.themeColor]);
 
   useEffect(() => {
     if (!config) return;

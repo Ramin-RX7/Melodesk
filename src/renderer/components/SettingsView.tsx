@@ -2,7 +2,19 @@ import React, { useState } from "react";
 import { IoFolder, IoClose } from "react-icons/io5";
 
 import { UserConfig } from "../types";
-import { colors, PRESET_THEME_COLORS } from "../theme/colors";
+import {
+  colors,
+  PRESET_THEME_COLORS,
+  DEFAULT_PALETTE,
+  CORE_KEYS,
+  colorGroups,
+  ColorKey,
+} from "../theme/colors";
+import { THEMES, getTheme, DEFAULT_THEME_ID, Theme } from "../theme/themes";
+
+const roleMeta = Object.fromEntries(
+  colorGroups.flatMap((g) => g.roles.map((r) => [r.key, r])),
+) as Record<ColorKey, { key: ColorKey; label: string; rgba?: boolean }>;
 
 type Props = {
   config: UserConfig | null;
@@ -11,12 +23,46 @@ type Props = {
 };
 
 export function SettingsView({ config, setConfig, themeColor }: Props) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
   if (!config) return null;
 
   const save = async (partial: Partial<UserConfig>) => {
     const newConfig = await window.api.updateConfig(partial);
     setConfig(newConfig);
   };
+
+  // Resolved palette = the selected theme's base, overlaid with the user's
+  // per-role deviations. Used to seed the color pickers with their live hex.
+  const appearance = config.appearance ?? { themeId: DEFAULT_THEME_ID, colors: {} };
+  const overrides = appearance.colors ?? {};
+  const base = getTheme(appearance.themeId)?.palette ?? DEFAULT_PALETTE;
+  const resolved = { ...base, ...overrides } as Record<ColorKey, string>;
+
+  const applyThemePreset = (t: Theme) => {
+    const willChange =
+      appearance.themeId !== t.id ||
+      config.themeColor !== t.accent ||
+      Object.keys(overrides).length > 0;
+    if (
+      willChange &&
+      !window.confirm(`Apply the ${t.name} theme? This overwrites your current colors.`)
+    ) {
+      return;
+    }
+    save({ themeColor: t.accent, appearance: { themeId: t.id, colors: {} } });
+  };
+
+  const setColor = (key: ColorKey, value: string) =>
+    save({ appearance: { themeId: appearance.themeId, colors: { ...overrides, [key]: value } } });
+
+  const resetColor = (key: ColorKey) => {
+    const next = { ...overrides };
+    delete next[key];
+    save({ appearance: { themeId: appearance.themeId, colors: next } });
+  };
+
+  const resetAllColors = () =>
+    save({ appearance: { themeId: appearance.themeId, colors: {} } });
 
   const handleAddFolder = async () => {
     const path = await window.api.selectDirectory();
@@ -34,7 +80,50 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
       <h2 style={{ margin: "0 0 30px 0" }}>Settings</h2>
 
       <Section title="Appearance">
-        <Row label="Theme color" description="Accent color used across the app">
+        <div style={{ marginBottom: "8px", color: colors.textMuted, fontSize: "13px" }}>Theme</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "4px" }}>
+          {THEMES.map((t) => {
+            const active = appearance.themeId === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => applyThemePreset(t)}
+                title={t.name}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "8px",
+                  padding: "10px",
+                  borderRadius: "10px",
+                  cursor: "pointer",
+                  backgroundColor: colors.bgElevated,
+                  minWidth: "116px",
+                  border: active ? `2px solid ${themeColor}` : `2px solid ${colors.borderSubtle}`,
+                }}
+              >
+                <div style={{ display: "flex", gap: "4px" }}>
+                  {[t.palette.bgBase, t.palette.bgSurface, t.palette.textPrimary, t.accent].map((c, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        width: "20px",
+                        height: "20px",
+                        borderRadius: "4px",
+                        backgroundColor: c,
+                        border: `1px solid ${colors.borderFaint}`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <span style={{ color: colors.textSecondary, fontSize: "13px", fontWeight: 500, textAlign: "left" }}>
+                  {t.name}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <Row label="Accent color" description="Highlight color used across the app">
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             {PRESET_THEME_COLORS.map((c) => (
               <button
@@ -68,6 +157,82 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
             />
           </div>
         </Row>
+
+        {CORE_KEYS.map((key) => (
+          <ColorPickerRow
+            key={key}
+            label={roleMeta[key]?.label ?? key}
+            value={resolved[key]}
+            isOverridden={key in overrides}
+            rgba={roleMeta[key]?.rgba}
+            onChange={(v) => setColor(key, v)}
+            onReset={() => resetColor(key)}
+          />
+        ))}
+
+        <Row label="More colors" description="Fine-tune every part of the interface">
+          <button
+            onClick={() => setShowAdvanced((s) => !s)}
+            style={{
+              backgroundColor: colors.bgControl,
+              color: colors.textTertiary,
+              border: `1px solid ${colors.border}`,
+              padding: "8px 14px",
+              borderRadius: "8px",
+              cursor: "pointer",
+              fontSize: "13px",
+            }}
+          >
+            {showAdvanced ? "Hide advanced" : "Show advanced"}
+          </button>
+        </Row>
+
+        {showAdvanced && (
+          <>
+            {colorGroups.map((group) => (
+              <div key={group.title} style={{ marginTop: "8px" }}>
+                <div
+                  style={{
+                    color: colors.textMuted,
+                    fontSize: "12px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    margin: "10px 2px 6px",
+                  }}
+                >
+                  {group.title}
+                </div>
+                {group.roles.map((r) => (
+                  <ColorPickerRow
+                    key={r.key}
+                    label={r.label}
+                    value={resolved[r.key]}
+                    isOverridden={r.key in overrides}
+                    rgba={r.rgba}
+                    onChange={(v) => setColor(r.key, v)}
+                    onReset={() => resetColor(r.key)}
+                  />
+                ))}
+              </div>
+            ))}
+            <button
+              onClick={resetAllColors}
+              disabled={Object.keys(overrides).length === 0}
+              style={{
+                marginTop: "12px",
+                backgroundColor: "transparent",
+                color: Object.keys(overrides).length === 0 ? colors.textIcon : colors.textTertiary,
+                border: `1px solid ${colors.border}`,
+                padding: "8px 14px",
+                borderRadius: "8px",
+                cursor: Object.keys(overrides).length === 0 ? "default" : "pointer",
+                fontSize: "13px",
+              }}
+            >
+              Reset all colors to {getTheme(appearance.themeId)?.name ?? "theme"}
+            </button>
+          </>
+        )}
       </Section>
 
       <Section title="Playback">
@@ -431,4 +596,91 @@ function Segmented({
       })}
     </div>
   );
+}
+
+function ColorPickerRow({
+  label,
+  value,
+  isOverridden,
+  rgba,
+  onChange,
+  onReset,
+}: {
+  label: string;
+  value: string;
+  isOverridden: boolean;
+  rgba?: boolean;
+  onChange: (v: string) => void;
+  onReset: () => void;
+}) {
+  return (
+    <Row label={label}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {rgba ? (
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            spellCheck={false}
+            style={{
+              width: "150px",
+              backgroundColor: colors.bgInput,
+              color: colors.textPrimary,
+              border: `1px solid ${colors.borderSubtle}`,
+              borderRadius: "8px",
+              padding: "6px 8px",
+              fontSize: "12px",
+              fontFamily: "monospace",
+              outline: "none",
+            }}
+          />
+        ) : (
+          <>
+            <input
+              type="color"
+              value={toColorInputValue(value)}
+              onChange={(e) => onChange(e.target.value)}
+              style={{
+                width: "32px",
+                height: "32px",
+                padding: 0,
+                border: `1px solid ${colors.borderSubtle}`,
+                borderRadius: "6px",
+                background: "none",
+                cursor: "pointer",
+              }}
+            />
+            <span style={{ color: colors.textMuted, fontSize: "12px", fontFamily: "monospace", minWidth: "62px" }}>
+              {value}
+            </span>
+          </>
+        )}
+        <button
+          onClick={onReset}
+          disabled={!isOverridden}
+          title="Reset to theme"
+          style={{
+            background: "none",
+            border: "none",
+            color: isOverridden ? colors.textDim : colors.borderSubtle,
+            cursor: isOverridden ? "pointer" : "default",
+            fontSize: "12px",
+            padding: "4px 6px",
+          }}
+        >
+          Reset
+        </button>
+      </div>
+    </Row>
+  );
+}
+
+// <input type="color"> needs a 6-digit hex; expand 3-digit shorthand and fall
+// back to black for anything non-hex (e.g. rgba, which uses the text input).
+function toColorInputValue(v: string): string {
+  if (/^#[0-9a-fA-F]{3}$/.test(v)) {
+    return "#" + v.slice(1).split("").map((c) => c + c).join("");
+  }
+  if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
+  return "#000000";
 }

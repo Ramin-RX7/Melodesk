@@ -19,13 +19,21 @@ const DEFAULT_CONFIG: UserConfig = {
   navigationHistorySize: 20,
   playCountThresholdPercent: 50,
   homeItemLimit: 10,
+  appearance: { themeId: "dark", colors: {} },
 };
 
 export const getConfig = (): UserConfig => {
   try {
     if (fs.existsSync(CONFIG_PATH)) {
       const data = fs.readFileSync(CONFIG_PATH, "utf-8");
-      return { ...DEFAULT_CONFIG, ...JSON.parse(data) };
+      const parsed = JSON.parse(data);
+      // Deep-merge `appearance` so a saved config that predates it (or lacks a
+      // sub-field) still fills in from defaults.
+      return {
+        ...DEFAULT_CONFIG,
+        ...parsed,
+        appearance: { ...DEFAULT_CONFIG.appearance, ...(parsed.appearance ?? {}) },
+      };
     }
   } catch (error) {
     console.error("Failed to read config:", error);

@@ -1,3 +1,10 @@
+export interface Appearance {
+  /** Id of the selected built-in theme (the base palette). */
+  themeId: string;
+  /** Per-role color deviations, merged over the selected theme's palette. */
+  colors: Record<string, string>;
+}
+
 export interface UserConfig {
   doubleClickToPlay: boolean;
   libraryPaths: string[];
@@ -10,6 +17,7 @@ export interface UserConfig {
   navigationHistorySize: number;
   playCountThresholdPercent: number;
   homeItemLimit: number;
+  appearance: Appearance;
 }
 
 export interface WindowBounds {
