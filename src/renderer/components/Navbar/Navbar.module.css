@@ -1,9 +1,9 @@
 .nav {
   display: flex;
-  background-color: #000;
+  background-color: var(--bgBlack);
   padding: 0 20px;
   gap: 10px;
-  border-bottom: 1px solid #222;
+  border-bottom: 1px solid var(--borderFaint);
   flex-shrink: 0;
 }
 
@@ -11,7 +11,7 @@
   padding: 10px 20px;
   cursor: pointer;
   border-bottom: 3px solid transparent;
-  color: #888;
+  color: var(--textDim);
   transition: all 0.2s;
 }
 

@@ -3,6 +3,7 @@ import { IoMusicalNote, IoTrash } from "react-icons/io5";
 import { formatArtists } from "../../../utils/metadata";
 
 import { FileItem } from "../../types";
+import { colors } from "../../theme/colors";
 
 
 type QueueItemProps = {
@@ -52,7 +53,7 @@ export function QueueItem({
                 style={{
                     width: "30px",
                     textAlign: "center",
-                    color: isActive ? themeColor : "#666",
+                    color: isActive ? themeColor : colors.textFaint,
                     fontSize: "14px",
                 }}
             >
@@ -63,7 +64,7 @@ export function QueueItem({
                 style={{
                     width: "40px",
                     height: "40px",
-                    backgroundColor: "#333",
+                    backgroundColor: colors.borderSubtle,
                     borderRadius: "4px",
                     overflow: "hidden",
                     display: "flex",
@@ -82,7 +83,7 @@ export function QueueItem({
                         }}
                     />
                 ) : (
-                    <IoMusicalNote style={{ color: "#555" }} />
+                    <IoMusicalNote style={{ color: colors.textIcon }} />
                 )}
             </div>
 
@@ -90,7 +91,7 @@ export function QueueItem({
                 <div
                     style={{
                         fontWeight: "bold",
-                        color: isActive ? themeColor : "#fff",
+                        color: isActive ? themeColor : colors.textPrimary,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -103,7 +104,7 @@ export function QueueItem({
                     title={formatArtists(track.metadata?.artists).full}
                     style={{
                         fontSize: "12px",
-                        color: "#888",
+                        color: colors.textDim,
                         overflow: "hidden",
                         textOverflow: "ellipsis",
                         whiteSpace: "nowrap",
@@ -113,7 +114,7 @@ export function QueueItem({
                 </div>
             </div>
 
-            <div style={{ color: "#666", fontSize: "13px" }}>
+            <div style={{ color: colors.textFaint, fontSize: "13px" }}>
                 {track.metadata?.duration
                     ? `${Math.floor(track.metadata.duration / 60)}:${Math.floor(
                         track.metadata.duration % 60
@@ -134,13 +135,13 @@ export function QueueItem({
                         height: "28px",
                         borderRadius: "4px",
                         cursor: "pointer",
-                        color: "#888",
+                        color: colors.textDim,
                         opacity: isHovered ? 1 : 0,
                         transition: "opacity 0.15s, color 0.15s",
                         flexShrink: 0,
                     }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "#e55"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#888"; }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = colors.dangerHover; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = colors.textDim; }}
                     title="Remove from queue"
                 >
                     <IoTrash size={16} />

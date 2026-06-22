@@ -10,8 +10,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #222;
-    background-color: #181818;
+    border-bottom: 1px solid var(--borderFaint);
+    background-color: var(--bgSurface);
     flex-shrink: 0;
 }
 
@@ -35,20 +35,20 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    background-color: #222;
+    background-color: var(--bgControl);
     padding: 4px 12px;
     border-radius: 20px;
-    border: 1px solid #333;
+    border: 1px solid var(--borderSubtle);
 }
 
 .sortLabel {
     font-size: 12px;
-    color: #888;
+    color: var(--textDim);
 }
 
 .sortSelect {
     background-color: transparent;
-    color: #fff;
+    color: var(--textPrimary);
     border: none;
     outline: none;
     cursor: pointer;
@@ -73,16 +73,16 @@
     left: 10px;
     top: 50%;
     transform: translateY(-50%);
-    color: #888;
+    color: var(--textDim);
 }
 
 .searchInput {
     width: 100%;
-    background-color: #222;
-    border: 1px solid #333;
+    background-color: var(--bgControl);
+    border: 1px solid var(--borderSubtle);
     border-radius: 20px;
     padding: 8px 15px 8px 35px;
-    color: #fff;
+    color: var(--textPrimary);
     font-size: 14px;
     outline: none;
 }
@@ -105,8 +105,8 @@
 .songCard,
 
 .groupCard {
-    background-color: #1e1e1e;
-    border: 1px solid #333;
+    background-color: var(--bgElevated);
+    border: 1px solid var(--borderSubtle);
     border-radius: 10px;
     padding: 15px;
     cursor: pointer;
@@ -117,7 +117,7 @@
 .songCard:hover,
 
 .groupCard:hover {
-    background-color: #282828;
+    background-color: var(--bgHover);
 }
 
 .groupCard:hover {
@@ -129,7 +129,7 @@
 .groupImage {
     width: 100%;
     aspect-ratio: 1/1;
-    background-color: #333;
+    background-color: var(--borderSubtle);
     border-radius: 8px;
     margin-bottom: 10px;
     display: flex;
@@ -163,7 +163,7 @@
 
 .groupCount {
     font-size: 12px;
-    color: #888;
+    color: var(--textDim);
 }
 
 .songArtist {
@@ -175,13 +175,13 @@
 .emptyState {
     text-align: center;
     padding: 50px;
-    color: #666;
+    color: var(--textFaint);
 }
 
 .backButton {
     background: none;
-    border: 1px solid #444;
-    color: white;
+    border: 1px solid var(--border);
+    color: var(--textPrimary);
     padding: 6px 16px;
     border-radius: 4px;
     cursor: pointer;

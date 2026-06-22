@@ -10,6 +10,8 @@ import {
 
 import { FileItem, UserConfig, ArtistInfo } from "../../types";
 
+import { colors } from "../../theme/colors";
+
 import styles from "./GroupedView.module.css";
 
 import { GroupList } from "./GroupList";
@@ -172,14 +174,14 @@ export function GroupedView({
                                 {selectedGroup.name}
                             </h2>
                             {handleShufflePlay && (
-                                <button onClick={() => handleShufflePlay(songs)} style={{ display: "flex", alignItems: "center", gap: "5px", backgroundColor: themeColor, color: "#fff", border: "none", padding: "6px 12px", borderRadius: "20px", cursor: "pointer", fontWeight: "bold" }}>
+                                <button onClick={() => handleShufflePlay(songs)} style={{ display: "flex", alignItems: "center", gap: "5px", backgroundColor: themeColor, color: colors.textPrimary, border: "none", padding: "6px 12px", borderRadius: "20px", cursor: "pointer", fontWeight: "bold" }}>
                                     <IoShuffle /> Shuffle Play
                                 </button>
                             )}
                             {onGroupContextMenu && (
                                 <button
                                     onClick={(e) => onGroupContextMenu(e, selectedGroup.name, songs)}
-                                    style={{ background: "none", border: "1px solid #444", color: "#aaa", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}
+                                    style={{ background: "none", border: `1px solid ${colors.border}`, color: colors.textMuted, borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px", flexShrink: 0 }}
                                     title="More options"
                                 >
                                     ···
@@ -209,35 +211,35 @@ export function GroupedView({
 
                     {/* ARTIST PROFILE */}
                     {type === 'artist' && artistInfo && (
-                        <div style={{ display: "flex", gap: "30px", padding: "20px", backgroundColor: "#1e1e1e", borderRadius: "12px", marginBottom: "20px", border: "1px solid #333" }}>
-                            <div style={{ width: "200px", height: "200px", borderRadius: "10px", backgroundColor: "#111", overflow: "hidden", position: "relative", flexShrink: 0 }}>
+                        <div style={{ display: "flex", gap: "30px", padding: "20px", backgroundColor: colors.bgElevated, borderRadius: "12px", marginBottom: "20px", border: `1px solid ${colors.borderSubtle}` }}>
+                            <div style={{ width: "200px", height: "200px", borderRadius: "10px", backgroundColor: colors.bgInput, overflow: "hidden", position: "relative", flexShrink: 0 }}>
                                 {artistInfo.picture ? (
                                     <img src={`media://${encodeURIComponent(artistInfo.picture.replace(/\\/g, "/"))}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                 ) : (
-                                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#555", fontSize: "60px" }}><IoImage /></div>
+                                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: colors.textIcon, fontSize: "60px" }}><IoImage /></div>
                                 )}
-                                <button onClick={handleSelectImage} style={{ position: "absolute", bottom: "10px", right: "10px", backgroundColor: "rgba(0,0,0,0.7)", color: "#fff", border: "1px solid #555", borderRadius: "5px", padding: "5px 10px", cursor: "pointer", fontSize: "12px" }}>Change Photo</button>
+                                <button onClick={handleSelectImage} style={{ position: "absolute", bottom: "10px", right: "10px", backgroundColor: colors.overlay70, color: colors.textPrimary, border: `1px solid ${colors.borderStrong}`, borderRadius: "5px", padding: "5px 10px", cursor: "pointer", fontSize: "12px" }}>Change Photo</button>
                             </div>
                             <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
                                     <h3 style={{ margin: 0, fontSize: "24px" }}>About</h3>
                                     {!isEditingArtist ? (
-                                        <button onClick={() => setIsEditingArtist(true)} style={{ background: "none", border: "1px solid #555", color: "#ccc", borderRadius: "15px", padding: "4px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                                        <button onClick={() => setIsEditingArtist(true)} style={{ background: "none", border: `1px solid ${colors.borderStrong}`, color: colors.textTertiary, borderRadius: "15px", padding: "4px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
                                             <IoCreate /> Edit Bio
                                         </button>
                                     ) : (
                                         <div style={{ display: "flex", gap: "10px" }}>
-                                            <button onClick={() => setIsEditingArtist(false)} style={{ background: "none", border: "1px solid #555", color: "#ccc", borderRadius: "15px", padding: "4px 12px", cursor: "pointer" }}>Cancel</button>
-                                            <button onClick={handleSaveArtist} style={{ backgroundColor: themeColor, border: "none", color: "#fff", borderRadius: "15px", padding: "4px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                                            <button onClick={() => setIsEditingArtist(false)} style={{ background: "none", border: `1px solid ${colors.borderStrong}`, color: colors.textTertiary, borderRadius: "15px", padding: "4px 12px", cursor: "pointer" }}>Cancel</button>
+                                            <button onClick={handleSaveArtist} style={{ backgroundColor: themeColor, border: "none", color: colors.textPrimary, borderRadius: "15px", padding: "4px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
                                                 <IoSave /> Save
                                             </button>
                                         </div>
                                     )}
                                 </div>
                                 {isEditingArtist ? (
-                                    <textarea value={editBio} onChange={e => setEditBio(e.target.value)} style={{ flex: 1, width: "100%", backgroundColor: "#111", color: "#ddd", border: "1px solid #444", borderRadius: "8px", padding: "10px", resize: "none", fontFamily: "inherit" }} placeholder="Write a biography for this artist..." />
+                                    <textarea value={editBio} onChange={e => setEditBio(e.target.value)} style={{ flex: 1, width: "100%", backgroundColor: colors.bgInput, color: colors.textSecondary, border: `1px solid ${colors.border}`, borderRadius: "8px", padding: "10px", resize: "none", fontFamily: "inherit" }} placeholder="Write a biography for this artist..." />
                                 ) : (
-                                    <div style={{ flex: 1, color: "#aaa", lineHeight: "1.5", overflowY: "auto", whiteSpace: "pre-wrap" }}>
+                                    <div style={{ flex: 1, color: colors.textMuted, lineHeight: "1.5", overflowY: "auto", whiteSpace: "pre-wrap" }}>
                                         {artistInfo.bio || "No biography available. Click 'Edit Bio' to add one."}
                                     </div>
                                 )}
@@ -321,7 +323,7 @@ export function GroupedView({
                                 color:
                                     sortDescending
                                         ? themeColor
-                                        : "#888"
+                                        : colors.textDim
                             }}
                         >
                             <IoSwapVertical />

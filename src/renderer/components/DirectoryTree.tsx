@@ -10,6 +10,7 @@ import {
   IoCaretDown
 } from "react-icons/io5";
 import { formatArtists } from "../../utils/metadata";
+import { colors } from "../theme/colors";
 
 interface DirectoryTreeProps {
   items: FileItem[];
@@ -55,7 +56,7 @@ const TreeItem: React.FC<{
   };
 
   return (
-    <div style={{ marginLeft: isRoot ? 0 : 20, cursor: "pointer", color: "#e0e0e0" }}>
+    <div style={{ marginLeft: isRoot ? 0 : 20, cursor: "pointer", color: colors.textBright }}>
       <div
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
@@ -74,13 +75,13 @@ const TreeItem: React.FC<{
           gap: "12px",
           opacity: item.isDirectory || item.isMedia ? 1 : 0.5,
           userSelect: "none",
-          borderBottom: "1px solid #222"
+          borderBottom: `1px solid ${colors.borderFaint}`
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#2a2a2a")}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.bgHover3)}
         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
       >
         <div style={{ display: "flex", alignItems: "center", width: "300px", minWidth: "300px", gap: "8px" }}>
-          <span style={{ display: "flex", alignItems: "center", color: item.isDirectory ? themeColor : "#888", width: "20px" }}>
+          <span style={{ display: "flex", alignItems: "center", color: item.isDirectory ? themeColor : colors.textDim, width: "20px" }}>
             {item.isDirectory ? (isOpen ? <IoFolderOpen /> : <IoFolder />) : <IoMusicalNote />}
           </span>
           <span style={{ fontWeight: item.isMedia ? "bold" : "normal", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -90,23 +91,23 @@ const TreeItem: React.FC<{
 
         {!item.isDirectory && (
           <>
-            <div style={{ flex: 1, fontSize: "13px", color: "#bbb", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ flex: 1, fontSize: "13px", color: colors.textMutedHi, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {item.metadata?.title || "-"}
             </div>
-            <div title={formatArtists(item.metadata?.artists).full} style={{ flex: 1, fontSize: "13px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div title={formatArtists(item.metadata?.artists).full} style={{ flex: 1, fontSize: "13px", color: colors.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {formatArtists(item.metadata?.artists).display}
             </div>
-            <div style={{ flex: 1, fontSize: "13px", color: "#888", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ flex: 1, fontSize: "13px", color: colors.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {item.metadata?.album || "-"}
             </div>
-            <div style={{ width: "60px", fontSize: "13px", color: "#666", textAlign: "right" }}>
+            <div style={{ width: "60px", fontSize: "13px", color: colors.textFaint, textAlign: "right" }}>
               {formatDuration(item.metadata?.duration)}
             </div>
           </>
         )}
       </div>
       {item.isDirectory && isOpen && item.children && (
-        <div style={{ borderLeft: "1px solid #333", marginLeft: 10 }}>
+        <div style={{ borderLeft: `1px solid ${colors.borderSubtle}`, marginLeft: 10 }}>
           {item.children.map((child) => (
             <TreeItem
               key={child.path}
@@ -199,7 +200,7 @@ export const DirectoryTree: React.FC<DirectoryTreeProps> = ({
         alignItems: "center",
         gap: "4px",
         cursor: "pointer",
-        color: sortCol === col ? themeColor : "#888",
+        color: sortCol === col ? themeColor : colors.textDim,
         fontSize: "12px",
         fontWeight: "bold",
         textTransform: "uppercase",
@@ -217,8 +218,8 @@ export const DirectoryTree: React.FC<DirectoryTreeProps> = ({
       <div style={{
         display: "flex",
         padding: "10px 18px",
-        borderBottom: "1px solid #333",
-        backgroundColor: "#181818",
+        borderBottom: `1px solid ${colors.borderSubtle}`,
+        backgroundColor: colors.bgSurface,
         position: "sticky",
         top: 0,
         zIndex: 10,

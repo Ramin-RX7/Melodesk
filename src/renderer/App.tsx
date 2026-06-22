@@ -18,6 +18,7 @@ import { GroupedView } from "./components/GroupedView/GroupedView";
 import { useQueue } from "../hooks/useQueue";
 import { usePlaybackController } from "../hooks/usePlaybackController";
 import { usePlayTracker } from "../hooks/usePlayTracker";
+import { colors, colorCssVariables, DEFAULT_THEME_COLOR } from "./theme/colors";
 
 
 type Page = 'home' | 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue' | 'settings';
@@ -35,8 +36,6 @@ type NavSnapshot = {
   playlistsSearch: string;
   scrollTop: number;
 };
-
-const DEFAULT_THEME_COLOR = "#1db954";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Exclude<Page, 'details' | 'queue' | 'settings'>>('home');
@@ -153,12 +152,15 @@ export default function App() {
     // Add global styles to remove margins
     const style = document.createElement('style');
     style.innerHTML = `
+      :root {
+        ${colorCssVariables}
+      }
       body, html {
         margin: 0;
         padding: 0;
         overflow: hidden;
         height: 100%;
-        background-color: #121212;
+        background-color: var(--bgBase);
       }
       * {
         box-sizing: border-box;
@@ -168,14 +170,14 @@ export default function App() {
         height: 8px;
       }
       ::-webkit-scrollbar-track {
-        background: #1e1e1e;
+        background: var(--bgElevated);
       }
       ::-webkit-scrollbar-thumb {
-        background: #333;
+        background: var(--borderSubtle);
         border-radius: 4px;
       }
       ::-webkit-scrollbar-thumb:hover {
-        background: #444;
+        background: var(--border);
       }
     `;
     document.head.appendChild(style);
@@ -421,8 +423,8 @@ export default function App() {
       onDragOver={(e) => e.preventDefault()}
       onDrop={handleDrop}
       style={{
-        backgroundColor: "#121212",
-        color: "#fff",
+        backgroundColor: colors.bgBase,
+        color: colors.textPrimary,
         height: "100vh",
         display: "flex",
         flexDirection: "column",

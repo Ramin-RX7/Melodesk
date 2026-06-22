@@ -1,6 +1,7 @@
 import { IoSettingsSharp } from "react-icons/io5";
 
 import { FileItem, UserConfig } from "../../types";
+import { colors } from "../../theme/colors";
 import styles from "./Navbar.module.css";
 import { navItems } from "./navConfig";
 import { Page, NavTab } from "./types";
@@ -40,7 +41,7 @@ export function Navbar({
         onClick={onGoBack}
         disabled={!canGoBack}
         title="Go back"
-        style={{ color: canGoBack ? themeColor : "#444" }}
+        style={{ color: canGoBack ? themeColor : colors.border }}
       >
         ‹
       </button>
@@ -55,7 +56,7 @@ export function Navbar({
             onClick={() => onTabChange(tab)}
             style={{
               borderBottomColor: isActive ? themeColor : "transparent",
-              color: isActive ? "#fff" : "#888",
+              color: isActive ? colors.textPrimary : colors.textDim,
               fontWeight: isActive ? "bold" : "normal"
             }}
           >
@@ -90,7 +91,7 @@ export function Navbar({
         style={{
           display: "flex",
           alignItems: "center",
-          color: activeTab === "settings" ? "#fff" : "#888",
+          color: activeTab === "settings" ? colors.textPrimary : colors.textDim,
           borderBottomColor: activeTab === "settings" ? themeColor : "transparent",
         }}
       >

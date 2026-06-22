@@ -2,14 +2,13 @@ import React, { useState } from "react";
 import { IoFolder, IoClose } from "react-icons/io5";
 
 import { UserConfig } from "../types";
+import { colors, PRESET_THEME_COLORS } from "../theme/colors";
 
 type Props = {
   config: UserConfig | null;
   setConfig: (config: UserConfig) => void;
   themeColor: string;
 };
-
-const PRESET_COLORS = ["#1db954", "#e91e63", "#2196f3", "#ff9800", "#9c27b0", "#f44336", "#00bcd4"];
 
 export function SettingsView({ config, setConfig, themeColor }: Props) {
   if (!config) return null;
@@ -37,7 +36,7 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
       <Section title="Appearance">
         <Row label="Theme color" description="Accent color used across the app">
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            {PRESET_COLORS.map((c) => (
+            {PRESET_THEME_COLORS.map((c) => (
               <button
                 key={c}
                 onClick={() => save({ themeColor: c })}
@@ -48,7 +47,7 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
                   borderRadius: "50%",
                   backgroundColor: c,
                   cursor: "pointer",
-                  border: config.themeColor === c ? "2px solid #fff" : "2px solid transparent",
+                  border: config.themeColor === c ? `2px solid ${colors.textPrimary}` : "2px solid transparent",
                   outline: config.themeColor === c ? `2px solid ${c}` : "none",
                 }}
               />
@@ -61,7 +60,7 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
                 width: "32px",
                 height: "32px",
                 padding: 0,
-                border: "1px solid #333",
+                border: `1px solid ${colors.borderSubtle}`,
                 borderRadius: "6px",
                 background: "none",
                 cursor: "pointer",
@@ -169,10 +168,10 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                backgroundColor: "#1e1e1e",
+                backgroundColor: colors.bgElevated,
                 padding: "12px 16px",
                 borderRadius: "10px",
-                border: "1px solid #333",
+                border: `1px solid ${colors.borderSubtle}`,
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "12px", minWidth: 0 }}>
@@ -183,7 +182,7 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
                   <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {path.split(/[\\/]/).pop()}
                   </div>
-                  <div style={{ fontSize: "12px", color: "#666", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: "12px", color: colors.textFaint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {path}
                   </div>
                 </div>
@@ -191,7 +190,7 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
               <button
                 onClick={() => handleRemoveFolder(path)}
                 title="Remove folder"
-                style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: "18px", flexShrink: 0, marginLeft: "12px" }}
+                style={{ background: "none", border: "none", color: colors.textFaint, cursor: "pointer", fontSize: "18px", flexShrink: 0, marginLeft: "12px" }}
               >
                 <IoClose />
               </button>
@@ -199,7 +198,7 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
           ))}
 
           {config.libraryPaths.length === 0 && (
-            <div style={{ color: "#666", fontSize: "13px" }}>No folders added to library yet.</div>
+            <div style={{ color: colors.textFaint, fontSize: "13px" }}>No folders added to library yet.</div>
           )}
 
           <button
@@ -207,7 +206,7 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
             style={{
               alignSelf: "flex-start",
               backgroundColor: themeColor,
-              color: "#fff",
+              color: colors.textPrimary,
               border: "none",
               padding: "10px 20px",
               borderRadius: "20px",
@@ -227,7 +226,7 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: "36px", maxWidth: "640px" }}>
-      <h3 style={{ margin: "0 0 16px 0", color: "#aaa", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+      <h3 style={{ margin: "0 0 16px 0", color: colors.textMuted, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
         {title}
       </h3>
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>{children}</div>
@@ -242,16 +241,16 @@ function Row({ label, description, children }: { label: string; description?: st
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        backgroundColor: "#1e1e1e",
+        backgroundColor: colors.bgElevated,
         padding: "14px 18px",
         borderRadius: "10px",
-        border: "1px solid #333",
+        border: `1px solid ${colors.borderSubtle}`,
         gap: "16px",
       }}
     >
       <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 500, marginBottom: description ? "3px" : 0 }}>{label}</div>
-        {description && <div style={{ fontSize: "12px", color: "#666" }}>{description}</div>}
+        {description && <div style={{ fontSize: "12px", color: colors.textFaint }}>{description}</div>}
       </div>
       <div style={{ flexShrink: 0 }}>{children}</div>
     </div>
@@ -279,7 +278,7 @@ function ToggleRow({
           width: "38px",
           height: "22px",
           borderRadius: "11px",
-          backgroundColor: value ? themeColor : "#444",
+          backgroundColor: value ? themeColor : colors.border,
           position: "relative",
           cursor: "pointer",
           transition: "background-color 0.2s",
@@ -293,7 +292,7 @@ function ToggleRow({
             width: "16px",
             height: "16px",
             borderRadius: "50%",
-            backgroundColor: "#fff",
+            backgroundColor: colors.textPrimary,
             transition: "left 0.2s",
           }}
         />
@@ -327,7 +326,7 @@ function SliderRow({
           onChange={(e) => onChange(parseFloat(e.target.value))}
           style={{ width: "140px", accentColor: themeColor, cursor: "pointer" }}
         />
-        <span style={{ width: "36px", textAlign: "right", color: "#aaa", fontSize: "13px" }}>
+        <span style={{ width: "36px", textAlign: "right", color: colors.textMuted, fontSize: "13px" }}>
           {Math.round(value * 100)}%
         </span>
       </div>
@@ -381,9 +380,9 @@ function NumberRow({
         }}
         style={{
           width: "72px",
-          backgroundColor: "#121212",
-          color: "#fff",
-          border: "1px solid #333",
+          backgroundColor: colors.bgBase,
+          color: colors.textPrimary,
+          border: `1px solid ${colors.borderSubtle}`,
           borderRadius: "8px",
           padding: "8px 10px",
           fontSize: "14px",
@@ -407,7 +406,7 @@ function Segmented({
   onChange: (v: string) => void;
 }) {
   return (
-    <div style={{ display: "flex", backgroundColor: "#121212", borderRadius: "8px", padding: "3px", border: "1px solid #333" }}>
+    <div style={{ display: "flex", backgroundColor: colors.bgBase, borderRadius: "8px", padding: "3px", border: `1px solid ${colors.borderSubtle}` }}>
       {options.map((opt) => {
         const active = opt.value === value;
         return (
@@ -416,7 +415,7 @@ function Segmented({
             onClick={() => onChange(opt.value)}
             style={{
               backgroundColor: active ? themeColor : "transparent",
-              color: active ? "#fff" : "#888",
+              color: active ? colors.textPrimary : colors.textDim,
               border: "none",
               padding: "6px 14px",
               borderRadius: "6px",

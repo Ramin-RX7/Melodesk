@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FileItem, Playlist } from "../types";
 import { IoArrowBack, IoAdd, IoCreate, IoImage, IoMusicalNotes, IoSearch, IoSave, IoClose } from "react-icons/io5";
+import { colors } from "../theme/colors";
 
 interface SongDetailsViewProps {
   currentTrack: FileItem;
@@ -114,8 +115,8 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
       {/* Header */}
-      <div style={{ padding: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #333", backgroundColor: "#181818", flexShrink: 0 }}>
-        <button onClick={onBack} style={{ background: "none", border: "1px solid #444", color: "#fff", padding: "8px 16px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
+      <div style={{ padding: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${colors.borderSubtle}`, backgroundColor: colors.bgSurface, flexShrink: 0 }}>
+        <button onClick={onBack} style={{ background: "none", border: `1px solid ${colors.border}`, color: colors.textPrimary, padding: "8px 16px", borderRadius: "4px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
           <IoArrowBack /> Back
         </button>
         <div style={{ display: "flex", gap: "10px" }}>
@@ -123,7 +124,7 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
             <IoAdd /> Add to Playlist
           </button>
           {!isEditing && (
-            <button onClick={() => isMp3 ? setIsEditing(true) : alert("Editing is only supported for MP3 files.")} style={{ background: "none", border: "1px solid #666", color: "#ccc", padding: "8px 16px", borderRadius: "20px", cursor: isMp3 ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: "5px", opacity: isMp3 ? 1 : 0.5 }} title={isMp3 ? "" : "Only MP3 files can be edited"}>
+            <button onClick={() => isMp3 ? setIsEditing(true) : alert("Editing is only supported for MP3 files.")} style={{ background: "none", border: `1px solid ${colors.textFaint}`, color: colors.textTertiary, padding: "8px 16px", borderRadius: "20px", cursor: isMp3 ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: "5px", opacity: isMp3 ? 1 : 0.5 }} title={isMp3 ? "" : "Only MP3 files can be edited"}>
               <IoCreate /> Edit Tags
             </button>
           )}
@@ -133,11 +134,11 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
       <div style={{ flex: 1, overflowY: "auto", padding: "40px 20px", display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "40px", alignItems: "flex-start", paddingBottom: "120px" }}>
         {/* Cover Art */}
         <div style={{ flexShrink: 0, display: "flex", justifyContent: "center", height: "-webkit-fill-available" }}>
-          <div style={{ width: "inherit", aspectRatio: "1/1", backgroundColor: "#333", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", boxShadow: "0 10px 40px rgba(0,0,0,0.6)", overflow: "hidden", position: "relative" }}>
+          <div style={{ width: "inherit", aspectRatio: "1/1", backgroundColor: colors.borderSubtle, borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", boxShadow: `0 10px 40px ${colors.overlay60}`, overflow: "hidden", position: "relative" }}>
             {meta.picture ? (
               <img src={`media://${encodeURIComponent(meta.picture)}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
-              <IoMusicalNotes style={{ color: "#555" }} />
+              <IoMusicalNotes style={{ color: colors.textIcon }} />
             )}
           </div>
         </div>
@@ -145,33 +146,33 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
         {/* Edit Form OR Display */}
         <div style={{ flex: "1 1 400px", maxWidth: "800px" }}>
           {isEditing ? (
-            <div style={{ backgroundColor: "#1e1e1e", padding: "20px", borderRadius: "12px", border: "1px solid #333" }}>
+            <div style={{ backgroundColor: colors.bgElevated, padding: "20px", borderRadius: "12px", border: `1px solid ${colors.borderSubtle}` }}>
               <h3 style={{ margin: "0 0 20px 0" }}>Edit Metadata</h3>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
                 <div>
-                  <label style={{ display: "block", color: "#888", fontSize: "12px", marginBottom: "5px" }}>Title</label>
-                  <input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: "#111", border: "1px solid #444", borderRadius: "6px", color: "#fff", outline: "none" }} />
+                  <label style={{ display: "block", color: colors.textDim, fontSize: "12px", marginBottom: "5px" }}>Title</label>
+                  <input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: colors.bgInput, border: `1px solid ${colors.border}`, borderRadius: "6px", color: colors.textPrimary, outline: "none" }} />
                 </div>
                 <div>
-                  <label style={{ display: "block", color: "#888", fontSize: "12px", marginBottom: "5px" }}>Artists (comma separated)</label>
-                  <input type="text" value={formData.artist} onChange={e => setFormData({ ...formData, artist: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: "#111", border: "1px solid #444", borderRadius: "6px", color: "#fff", outline: "none" }} />
+                  <label style={{ display: "block", color: colors.textDim, fontSize: "12px", marginBottom: "5px" }}>Artists (comma separated)</label>
+                  <input type="text" value={formData.artist} onChange={e => setFormData({ ...formData, artist: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: colors.bgInput, border: `1px solid ${colors.border}`, borderRadius: "6px", color: colors.textPrimary, outline: "none" }} />
                 </div>
                 <div>
-                  <label style={{ display: "block", color: "#888", fontSize: "12px", marginBottom: "5px" }}>Album</label>
-                  <input type="text" value={formData.album} onChange={e => setFormData({ ...formData, album: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: "#111", border: "1px solid #444", borderRadius: "6px", color: "#fff", outline: "none" }} />
+                  <label style={{ display: "block", color: colors.textDim, fontSize: "12px", marginBottom: "5px" }}>Album</label>
+                  <input type="text" value={formData.album} onChange={e => setFormData({ ...formData, album: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: colors.bgInput, border: `1px solid ${colors.border}`, borderRadius: "6px", color: colors.textPrimary, outline: "none" }} />
                 </div>
                 <div>
-                  <label style={{ display: "block", color: "#888", fontSize: "12px", marginBottom: "5px" }}>Genre (comma separated)</label>
-                  <input type="text" value={formData.genre} onChange={e => setFormData({ ...formData, genre: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: "#111", border: "1px solid #444", borderRadius: "6px", color: "#fff", outline: "none" }} />
+                  <label style={{ display: "block", color: colors.textDim, fontSize: "12px", marginBottom: "5px" }}>Genre (comma separated)</label>
+                  <input type="text" value={formData.genre} onChange={e => setFormData({ ...formData, genre: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: colors.bgInput, border: `1px solid ${colors.border}`, borderRadius: "6px", color: colors.textPrimary, outline: "none" }} />
                 </div>
                 <div>
-                  <label style={{ display: "block", color: "#888", fontSize: "12px", marginBottom: "5px" }}>Year</label>
-                  <input type="number" value={formData.year} onChange={e => setFormData({ ...formData, year: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: "#111", border: "1px solid #444", borderRadius: "6px", color: "#fff", outline: "none" }} />
+                  <label style={{ display: "block", color: colors.textDim, fontSize: "12px", marginBottom: "5px" }}>Year</label>
+                  <input type="number" value={formData.year} onChange={e => setFormData({ ...formData, year: e.target.value })} style={{ width: "100%", padding: "10px", backgroundColor: colors.bgInput, border: `1px solid ${colors.border}`, borderRadius: "6px", color: colors.textPrimary, outline: "none" }} />
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }}>
-                <button onClick={() => setIsEditing(false)} disabled={isSaving} style={{ background: "none", border: "1px solid #666", color: "#fff", padding: "8px 20px", borderRadius: "20px", cursor: "pointer" }}>Cancel</button>
-                <button onClick={handleSave} disabled={isSaving} style={{ backgroundColor: themeColor, color: "#fff", border: "none", padding: "8px 20px", borderRadius: "20px", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                <button onClick={() => setIsEditing(false)} disabled={isSaving} style={{ background: "none", border: `1px solid ${colors.textFaint}`, color: colors.textPrimary, padding: "8px 20px", borderRadius: "20px", cursor: "pointer" }}>Cancel</button>
+                <button onClick={handleSave} disabled={isSaving} style={{ backgroundColor: themeColor, color: colors.textPrimary, border: "none", padding: "8px 20px", borderRadius: "20px", cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
                   <IoSave /> {isSaving ? "Saving..." : "Save"}
                 </button>
               </div>
@@ -195,16 +196,16 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
                         >
                           {artist}
                         </span>
-                        {idx < meta.artists!.length - 1 && <span style={{ fontSize: "clamp(35px, 3vw, 90px)", color: "#888" }}>,</span>}
+                        {idx < meta.artists!.length - 1 && <span style={{ fontSize: "clamp(35px, 3vw, 90px)", color: colors.textDim }}>,</span>}
                       </React.Fragment>
                     ))
-                  ) : <span style={{ color: "#888", fontSize: "clamp(35px, 3vw, 90px)" }}>Unknown Artist</span>}
+                  ) : <span style={{ color: colors.textDim, fontSize: "clamp(35px, 3vw, 90px)" }}>Unknown Artist</span>}
                 </div>
 
                 {meta.album && (
                   <span
                     onClick={() => onNavigate('album', meta.album!)}
-                    style={{ fontSize: "clamp(20px, 2vw, 70px)", color: "#ccc", cursor: "pointer", fontStyle: "italic"}}
+                    style={{ fontSize: "clamp(20px, 2vw, 70px)", color: colors.textTertiary, cursor: "pointer", fontStyle: "italic"}}
                     // onMouseOver={e => e.currentTarget.style.textDecoration = "underline"}
                     // onMouseOut={e => e.currentTarget.style.textDecoration = "none"}
                   >
@@ -215,7 +216,7 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
                 {meta.genre && meta.genre.length > 0 && (
                   <div style={{ display: "flex", gap: "10px", justifyContent: "center", flexWrap: "wrap", marginTop: "5px" }}>
                     {meta.genre.map(g => (
-                      <span key={g} onClick={() => onNavigate('genre', g)} style={{ backgroundColor: "#222", padding: "4px 12px", borderRadius: "12px", fontSize: "12px", color: "#aaa", cursor: "pointer", border: "1px solid #333" }} onMouseOver={e => e.currentTarget.style.backgroundColor = "#333"} onMouseOut={e => e.currentTarget.style.backgroundColor = "#222"}>
+                      <span key={g} onClick={() => onNavigate('genre', g)} style={{ backgroundColor: colors.bgControl, padding: "4px 12px", borderRadius: "12px", fontSize: "12px", color: colors.textMuted, cursor: "pointer", border: `1px solid ${colors.borderSubtle}` }} onMouseOver={e => e.currentTarget.style.backgroundColor = colors.borderSubtle} onMouseOut={e => e.currentTarget.style.backgroundColor = colors.bgControl}>
                         {g}
                       </span>
                     ))}
@@ -224,29 +225,29 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
               </div>
 
               {/* Extended Metadata Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "15px", backgroundColor: "#181818", padding: "20px", borderRadius: "12px", marginTop: "30px", border: "1px solid #222", textAlign: "left" }}>
-                <div><div style={{ color: "#666", fontSize: "11px", textTransform: "uppercase" }}>Year</div><div style={{ color: "#ddd" }}>{meta.year || "--"}</div></div>
-                <div><div style={{ color: "#666", fontSize: "11px", textTransform: "uppercase" }}>Track Number</div><div style={{ color: "#ddd" }}>{meta.trackNumber || "--"}</div></div>
-                <div><div style={{ color: "#666", fontSize: "11px", textTransform: "uppercase" }}>Format</div><div style={{ color: "#ddd" }}>{meta.format?.toUpperCase() || "--"}</div></div>
-                <div><div style={{ color: "#666", fontSize: "11px", textTransform: "uppercase" }}>Bitrate</div><div style={{ color: "#ddd" }}>{meta.bitrate ? Math.round(meta.bitrate / 1000) + " kbps" : "--"}</div></div>
-                <div><div style={{ color: "#666", fontSize: "11px", textTransform: "uppercase" }}>BPM</div><div style={{ color: "#ddd" }}>{meta.bpm || "--"}</div></div>
-                <div><div style={{ color: "#666", fontSize: "11px", textTransform: "uppercase" }}>File Size</div><div style={{ color: "#ddd" }}>{formatFileSize(meta.fileSize)}</div></div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "15px", backgroundColor: colors.bgSurface, padding: "20px", borderRadius: "12px", marginTop: "30px", border: `1px solid ${colors.borderFaint}`, textAlign: "left" }}>
+                <div><div style={{ color: colors.textFaint, fontSize: "11px", textTransform: "uppercase" }}>Year</div><div style={{ color: colors.textSecondary }}>{meta.year || "--"}</div></div>
+                <div><div style={{ color: colors.textFaint, fontSize: "11px", textTransform: "uppercase" }}>Track Number</div><div style={{ color: colors.textSecondary }}>{meta.trackNumber || "--"}</div></div>
+                <div><div style={{ color: colors.textFaint, fontSize: "11px", textTransform: "uppercase" }}>Format</div><div style={{ color: colors.textSecondary }}>{meta.format?.toUpperCase() || "--"}</div></div>
+                <div><div style={{ color: colors.textFaint, fontSize: "11px", textTransform: "uppercase" }}>Bitrate</div><div style={{ color: colors.textSecondary }}>{meta.bitrate ? Math.round(meta.bitrate / 1000) + " kbps" : "--"}</div></div>
+                <div><div style={{ color: colors.textFaint, fontSize: "11px", textTransform: "uppercase" }}>BPM</div><div style={{ color: colors.textSecondary }}>{meta.bpm || "--"}</div></div>
+                <div><div style={{ color: colors.textFaint, fontSize: "11px", textTransform: "uppercase" }}>File Size</div><div style={{ color: colors.textSecondary }}>{formatFileSize(meta.fileSize)}</div></div>
               </div>
 
               {/* Action Buttons (Placeholders & Features) */}
               <div style={{ display: "flex", gap: "15px", justifyContent: "center", marginTop: "30px", flexWrap: "wrap" }}>
-                <button 
-                  onClick={() => alert("Cover Art Fix: This feature is a UI placeholder as requested.")} 
-                  style={{ 
-                    backgroundColor: "#222", 
-                    border: "1px solid #444", 
-                    color: "#ccc", 
-                    padding: "10px 20px", 
-                    borderRadius: "8px", 
-                    cursor: "pointer", 
-                    display: "flex", 
-                    alignItems: "center", 
-                    gap: "8px" 
+                <button
+                  onClick={() => alert("Cover Art Fix: This feature is a UI placeholder as requested.")}
+                  style={{
+                    backgroundColor: colors.bgControl,
+                    border: `1px solid ${colors.border}`,
+                    color: colors.textTertiary,
+                    padding: "10px 20px",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px"
                   }}
                 >
                   <IoImage /> Fix Cover Art
@@ -254,9 +255,9 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
                 <button
                   onClick={() => setShowLyricsModal(true)}
                   style={{
-                    backgroundColor: "#222",
-                    border: "1px solid #444",
-                    color: "#ccc",
+                    backgroundColor: colors.bgControl,
+                    border: `1px solid ${colors.border}`,
+                    color: colors.textTertiary,
                     padding: "10px 20px",
                     borderRadius: "8px",
                     cursor: "pointer",
@@ -305,7 +306,7 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
 
               <div>
                 <div 
-                  style={{ color: "#666", fontSize: "16px", paddingTop: "3%", cursor: "pointer", }} 
+                  style={{ color: colors.textFaint, fontSize: "16px", paddingTop: "3%", cursor: "pointer", }}
                   onClick={() => window.api.showFileInFolder(currentTrack.path)}
                 >
                   {currentTrack.path.replace(/\\/g, "/")}
@@ -319,22 +320,22 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
 
       {/* Playlist Selection Modal */}
       {showPlaylistModal && (
-        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ backgroundColor: "#222", borderRadius: "12px", width: "400px", maxHeight: "80vh", display: "flex", flexDirection: "column", border: "1px solid #444" }}>
-            <div style={{ padding: "20px", borderBottom: "1px solid #333", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay80, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+          <div style={{ backgroundColor: colors.bgControl, borderRadius: "12px", width: "400px", maxHeight: "80vh", display: "flex", flexDirection: "column", border: `1px solid ${colors.border}` }}>
+            <div style={{ padding: "20px", borderBottom: `1px solid ${colors.borderSubtle}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <h3 style={{ margin: 0 }}>Add to Playlist</h3>
-              <button onClick={() => setShowPlaylistModal(false)} style={{ background: "none", border: "none", color: "#888", cursor: "pointer", fontSize: "20px" }}>
+              <button onClick={() => setShowPlaylistModal(false)} style={{ background: "none", border: "none", color: colors.textDim, cursor: "pointer", fontSize: "20px" }}>
                 <IoClose />
               </button>
             </div>
             <div style={{ padding: "10px", overflowY: "auto", flex: 1 }}>
               {playlists.length === 0 ? (
-                <div style={{ textAlign: "center", color: "#666", padding: "30px 10px" }}>No playlists found. Create one first!</div>
+                <div style={{ textAlign: "center", color: colors.textFaint, padding: "30px 10px" }}>No playlists found. Create one first!</div>
               ) : (
                 playlists.map(p => (
-                  <div key={p.id} onClick={() => handleAddToPlaylist(p)} style={{ padding: "15px", borderBottom: "1px solid #333", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }} onMouseOver={e => e.currentTarget.style.backgroundColor = "#333"} onMouseOut={e => e.currentTarget.style.backgroundColor = "transparent"}>
+                  <div key={p.id} onClick={() => handleAddToPlaylist(p)} style={{ padding: "15px", borderBottom: `1px solid ${colors.borderSubtle}`, cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }} onMouseOver={e => e.currentTarget.style.backgroundColor = colors.borderSubtle} onMouseOut={e => e.currentTarget.style.backgroundColor = "transparent"}>
                     <span>{p.name}</span>
-                    <span style={{ fontSize: "12px", color: "#888" }}>{p.songs.length} songs</span>
+                    <span style={{ fontSize: "12px", color: colors.textDim }}>{p.songs.length} songs</span>
                   </div>
                 ))
               )}
@@ -349,7 +350,7 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
           style={{
             position: "fixed",
             inset: 0,
-            backgroundColor: "rgba(0,0,0,0.7)",
+            backgroundColor: colors.overlay70,
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
@@ -363,12 +364,12 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
               width: "min(700px, 90vw)",
               maxHeight: "80vh",
               overflowY: "auto",
-              backgroundColor: "#181818",
-              border: "1px solid #333",
+              backgroundColor: colors.bgSurface,
+              border: `1px solid ${colors.borderSubtle}`,
               borderRadius: "16px",
               padding: "24px",
-              color: "#fff",
-              boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+              color: colors.textPrimary,
+              boxShadow: `0 10px 40px ${colors.overlay50}`,
             }}
           >
             <div
@@ -389,7 +390,7 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
                   const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
                   window.api.openExternalUrl(url);
                 }}
-                style={{ backgroundColor: "#222", border: "1px solid #444", color: "#ccc", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
+                style={{ backgroundColor: colors.bgControl, border: `1px solid ${colors.border}`, color: colors.textTertiary, padding: "10px 20px", borderRadius: "8px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}
               >
                 <IoSearch /> Find Lyrics
               </button>
@@ -399,7 +400,7 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
                 style={{
                   background: "none",
                   border: "none",
-                  color: "#aaa",
+                  color: colors.textMuted,
                   cursor: "pointer",
                   fontSize: "24px",
                 }}
@@ -412,7 +413,7 @@ export function SongDetailsView({ currentTrack, themeColor, onBack, onNavigate, 
               style={{
                 whiteSpace: "pre-wrap",
                 lineHeight: 1.8,
-                color: "#ddd",
+                color: colors.textSecondary,
                 userSelect: "text",
                 cursor: "text",
               }}

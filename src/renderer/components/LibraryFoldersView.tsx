@@ -1,6 +1,7 @@
 // LibraryFoldersView.tsx
 
 import { IoFolder, IoClose } from "react-icons/io5";
+import { colors } from "../theme/colors";
 
 export function LibraryFoldersView({
     config,
@@ -30,8 +31,8 @@ export function LibraryFoldersView({
                     <button
                         onClick={handleRefreshLibrary}
                         style={{
-                            backgroundColor: "#333",
-                            color: "#fff",
+                            backgroundColor: colors.borderSubtle,
+                            color: colors.textPrimary,
                             border: "none",
                             padding: "10px 20px",
                             borderRadius: "20px",
@@ -46,7 +47,7 @@ export function LibraryFoldersView({
                         onClick={handleAddFolder}
                         style={{
                             backgroundColor: themeColor,
-                            color: "#fff",
+                            color: colors.textPrimary,
                             border: "none",
                             padding: "10px 20px",
                             borderRadius: "20px",
@@ -69,12 +70,12 @@ export function LibraryFoldersView({
                         key={path}
                         onClick={() => setSelectedLibraryPath(path)}
                         style={{
-                            backgroundColor: "#1e1e1e",
+                            backgroundColor: colors.bgElevated,
                             padding: "20px",
                             borderRadius: "10px",
                             cursor: "pointer",
                             position: "relative",
-                            border: "1px solid #333"
+                            border: `1px solid ${colors.borderSubtle}`
                         }}
                     >
                         <div style={{ fontSize: "40px", marginBottom: "10px", color: themeColor }}>
@@ -93,7 +94,7 @@ export function LibraryFoldersView({
 
                         <div style={{
                             fontSize: "12px",
-                            color: "#888",
+                            color: colors.textDim,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap"
@@ -109,7 +110,7 @@ export function LibraryFoldersView({
                                 right: "10px",
                                 background: "none",
                                 border: "none",
-                                color: "#666",
+                                color: colors.textFaint,
                                 cursor: "pointer"
                             }}
                         >
@@ -123,7 +124,7 @@ export function LibraryFoldersView({
                         gridColumn: "1 / -1",
                         textAlign: "center",
                         padding: "50px",
-                        color: "#666"
+                        color: colors.textFaint
                     }}>
                         No folders added to library. Click "Add Folder" to start.
                     </div>

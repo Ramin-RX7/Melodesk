@@ -3,6 +3,7 @@ import { useMemo, useRef } from "react";
 import { QueueHeader } from "./QueueHeader";
 import { QueueItem } from "./QueueItem";
 import { FileItem } from "../../types";
+import { colors } from "../../theme/colors";
 
 
 type QueueViewProps = {
@@ -79,7 +80,7 @@ export function QueueView({
                         style={{
                             textAlign: "center",
                             padding: "50px",
-                            color: "#666",
+                            color: colors.textFaint,
                         }}
                     >
                         Queue is empty

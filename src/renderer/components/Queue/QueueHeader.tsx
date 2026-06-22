@@ -1,4 +1,5 @@
 import { formatDuration } from "../../../utils/time";
+import { colors } from "../../theme/colors";
 
 type QueueHeaderProps = {
     totalSongs: number;
@@ -17,11 +18,11 @@ export function QueueHeader({
         <div
             style={{
                 padding: "20px 30px",
-                borderBottom: "1px solid #222",
+                borderBottom: `1px solid ${colors.borderFaint}`,
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
-                backgroundColor: "#181818",
+                backgroundColor: colors.bgSurface,
             }}
         >
             <h2 style={{ margin: 0 }}>
@@ -32,9 +33,9 @@ export function QueueHeader({
                     onClick={scrollToCurrent}
                     style={{
                         marginRight: "10px",
-                        background: "#222",
-                        border: "1px solid #333",
-                        color: "#fff",
+                        background: colors.bgControl,
+                        border: `1px solid ${colors.borderSubtle}`,
+                        color: colors.textPrimary,
                         padding: "6px 12px",
                         borderRadius: "6px",
                         cursor: "pointer",
@@ -47,8 +48,8 @@ export function QueueHeader({
                     onClick={onClear}
                     style={{
                         background: "none",
-                        border: "1px solid #444",
-                        color: "#888",
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textDim,
                         padding: "6px 12px",
                         borderRadius: "4px",
                         cursor: "pointer",

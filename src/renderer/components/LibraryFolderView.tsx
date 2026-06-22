@@ -2,6 +2,7 @@
 
 import { IoArrowBack } from "react-icons/io5";
 import { DirectoryTree } from "./DirectoryTree";
+import { colors } from "../theme/colors";
 
 export function LibraryFolderView({
     selectedLibraryPath,
@@ -20,16 +21,16 @@ export function LibraryFolderView({
                 display: "flex",
                 alignItems: "center",
                 gap: "15px",
-                borderBottom: "1px solid #333",
-                backgroundColor: "#181818",
+                borderBottom: `1px solid ${colors.borderSubtle}`,
+                backgroundColor: colors.bgSurface,
                 flexShrink: 0
             }}>
                 <button
                     onClick={() => setSelectedLibraryPath(null)}
                     style={{
                         background: "none",
-                        border: "1px solid #444",
-                        color: "#fff",
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textPrimary,
                         padding: "4px 12px",
                         borderRadius: "4px",
                         cursor: "pointer",
@@ -44,7 +45,7 @@ export function LibraryFolderView({
 
                 <span style={{
                     fontSize: "13px",
-                    color: "#aaa",
+                    color: colors.textMuted,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap"

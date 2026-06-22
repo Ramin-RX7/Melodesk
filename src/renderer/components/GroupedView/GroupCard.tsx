@@ -5,6 +5,7 @@ import {
 } from "react-icons/io5";
 import React, { useEffect, useState } from "react";
 
+import { colors } from "../../theme/colors";
 import styles from "./GroupedView.module.css";
 import { GroupType } from "./types";
 
@@ -62,15 +63,15 @@ export function GroupCard({
                 ) : (
                     <>
                         {type === "artist" && (
-                            <IoPerson style={{ color: "#555" }} />
+                            <IoPerson style={{ color: colors.textIcon }} />
                         )}
 
                         {type === "album" && (
-                            <IoDisc style={{ color: "#555" }} />
+                            <IoDisc style={{ color: colors.textIcon }} />
                         )}
 
                         {type === "genre" && (
-                            <IoMusicalNotes style={{ color: "#555" }} />
+                            <IoMusicalNotes style={{ color: colors.textIcon }} />
                         )}
                     </>
                 )}

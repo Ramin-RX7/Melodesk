@@ -1,6 +1,7 @@
 import { IoMusicalNote } from "react-icons/io5";
 import { FileItem } from "../../../renderer/types";
 import { formatArtists } from "../../../utils/metadata";
+import { colors } from "../../theme/colors";
 import styles from "./GroupedView.module.css";
 
 type Props = {
@@ -30,7 +31,7 @@ export function SongCard({
                 border:
                     currentTrack?.path === song.path
                         ? `1px solid ${themeColor}`
-                        : "1px solid #333"
+                        : `1px solid ${colors.borderSubtle}`
             }}
         >
             <div className={styles.songImage}>
@@ -40,7 +41,7 @@ export function SongCard({
                         className={styles.coverImage}
                     />
                 ) : (
-                    <IoMusicalNote style={{ color: "#555" }} />
+                    <IoMusicalNote style={{ color: colors.textIcon }} />
                 )}
             </div>
 
@@ -50,7 +51,7 @@ export function SongCard({
                     color:
                         currentTrack?.path === song.path
                             ? themeColor
-                            : "#fff"
+                            : colors.textPrimary
                 }}
             >
                 {song.metadata?.title || song.name}
