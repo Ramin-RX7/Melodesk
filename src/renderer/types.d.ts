@@ -28,6 +28,7 @@ export interface SessionData {
   isShuffle: boolean;
   repeatMode: 'none' | 'one' | 'all';
   windowBounds?: WindowBounds;
+  miniWindowBounds?: WindowBounds;
 }
 export interface ArtistInfo {
   name: string;
@@ -119,6 +120,15 @@ declare global {
       recordPlay: (hash: string, timestamp?: number) => Promise<void>;
       getPlayCounts: () => Promise<Record<string, number>>;
       getRecentPlays: (limit?: number) => Promise<PlayRecord[]>;
+      minimizeWindow: () => Promise<void>;
+      maximizeWindow: () => Promise<void>;
+      closeWindow: () => Promise<void>;
+      isMaximized: () => Promise<boolean>;
+      onMaximizedChanged: (callback: (isMaximized: boolean) => void) => () => void;
+      enterMiniMode: () => Promise<void>;
+      exitMiniMode: () => Promise<void>;
+      getWindowPosition: () => Promise<[number, number]>;
+      setWindowPosition: (x: number, y: number) => void;
     };
   }
 }

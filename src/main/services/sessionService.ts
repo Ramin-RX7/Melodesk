@@ -35,8 +35,11 @@ export const saveSession = (data: Partial<SessionData>): void => {
 export const clearSession = (): void => {
     // Only clear playback state; window bounds persist independently of the restore-session setting.
     const existing = getSession();
-    if (existing?.windowBounds) {
-        writeSession({ windowBounds: existing.windowBounds });
+    if (existing?.windowBounds || existing?.miniWindowBounds) {
+        writeSession({
+            windowBounds: existing.windowBounds,
+            miniWindowBounds: existing.miniWindowBounds,
+        });
     } else if (fs.existsSync(SESSION_PATH)) {
         try {
             fs.unlinkSync(SESSION_PATH);
@@ -52,4 +55,12 @@ export const getWindowBounds = (): WindowBounds | null => {
 
 export const saveWindowBounds = (bounds: WindowBounds): void => {
     saveSession({ windowBounds: bounds });
+};
+
+export const getMiniWindowBounds = (): WindowBounds | null => {
+    return getSession()?.miniWindowBounds ?? null;
+};
+
+export const saveMiniWindowBounds = (bounds: WindowBounds): void => {
+    saveSession({ miniWindowBounds: bounds });
 };

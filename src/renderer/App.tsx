@@ -5,6 +5,8 @@ import { PlaylistView } from "./components/PlaylistView";
 import { SettingsView } from "./components/SettingsView";
 import { SongDetailsView } from "./components/SongDetailsView";
 import { PlaybackBar } from "./components/PlaybackBar";
+import { TitleBar } from "./components/TitleBar/TitleBar";
+import { MiniPlayer } from "./components/MiniPlayer/MiniPlayer";
 import { QueueView } from "./components/Queue/QueueView";
 import { FileItem, SessionData, UserConfig } from "./types";
 import { GlobalSearchNavTarget } from "./components/GlobalSearch/GlobalSearch";
@@ -47,6 +49,10 @@ export default function App() {
   const [selectedGroup, setSelectedGroup] = useState<{ type: 'artist' | 'album' | 'genre', name: string } | null>(null);
   const [currentTrack, setCurrentTrack] = useState<FileItem | null>(null);
   const [openLyricsOnDetails, setOpenLyricsOnDetails] = useState(false);
+  const [isMini, setIsMini] = useState(false);
+
+  const enterMini = () => { setIsMini(true); window.api.enterMiniMode(); };
+  const exitMini = () => { setIsMini(false); window.api.exitMiniMode(); };
 
   const handleTrackUpdated = (updatedTrack: FileItem) => {
     setCurrentTrack(updatedTrack);
@@ -431,6 +437,19 @@ export default function App() {
         fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
         overflow: "hidden"
       }}>
+      {isMini ? (
+        <MiniPlayer
+          currentTrack={currentTrack || undefined}
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
+          onNext={handleNext}
+          onPrevious={handlePrevious}
+          onExitMini={exitMini}
+          themeColor={themeColor}
+        />
+      ) : (
+        <>
+      <TitleBar onEnterMini={enterMini} themeColor={themeColor} />
       {view !== "details" && (
         <Navbar
           activeTab={activeTab}
@@ -634,6 +653,8 @@ export default function App() {
         themeColor={themeColor}
         onContextMenu={showContextMenu}
       />
+        </>
+      )}
 
       <audio
         ref={audioRef}

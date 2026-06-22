@@ -32,4 +32,17 @@ contextBridge.exposeInMainWorld("api", {
   recordPlay: (hash: string, timestamp?: number) => ipcRenderer.invoke("record-play", hash, timestamp),
   getPlayCounts: () => ipcRenderer.invoke("get-play-counts"),
   getRecentPlays: (limit?: number) => ipcRenderer.invoke("get-recent-plays", limit),
+  minimizeWindow: () => ipcRenderer.invoke("window-minimize"),
+  maximizeWindow: () => ipcRenderer.invoke("window-maximize-toggle"),
+  closeWindow: () => ipcRenderer.invoke("window-close"),
+  isMaximized: () => ipcRenderer.invoke("window-is-maximized"),
+  onMaximizedChanged: (callback: (isMaximized: boolean) => void) => {
+    const listener = (_event: any, value: boolean) => callback(value);
+    ipcRenderer.on("window-maximized-changed", listener);
+    return () => ipcRenderer.removeListener("window-maximized-changed", listener);
+  },
+  enterMiniMode: () => ipcRenderer.invoke("enter-mini-mode"),
+  exitMiniMode: () => ipcRenderer.invoke("exit-mini-mode"),
+  getWindowPosition: () => ipcRenderer.invoke("get-window-position"),
+  setWindowPosition: (x: number, y: number) => ipcRenderer.send("set-window-position", x, y),
 });

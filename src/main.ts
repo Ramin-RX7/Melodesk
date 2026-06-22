@@ -1,4 +1,4 @@
-import { app, BrowserWindow, protocol, screen } from "electron";
+import { app, BrowserWindow, ipcMain, protocol, screen } from "electron";
 import path from "path";
 
 import { WindowBounds } from "./renderer/types";
@@ -7,7 +7,12 @@ import { registerMediaProtocol } from "./main/protocols/mediaProtocol";
 import { updateLibrary } from "./main/services/library/libraryUpdater";
 import { setupWatcher } from "./main/services/library/libraryWatcher";
 import { registerIpcHandlers } from "./main/ipc/index";
-import { getWindowBounds, saveWindowBounds } from "./main/services/sessionService";
+import {
+  getWindowBounds,
+  saveWindowBounds,
+  getMiniWindowBounds,
+  saveMiniWindowBounds,
+} from "./main/services/sessionService";
 
 
 // Register the custom protocol before the app is ready
@@ -20,11 +25,19 @@ const MIN_HEIGHT = 300;
 const DEFAULT_WIDTH = 800;
 const DEFAULT_HEIGHT = 600;
 
+// Mini-player ("floating widget") mode: a small always-on-top window.
+const MINI_MIN_WIDTH = 160;
+const MINI_MIN_HEIGHT = 160;
+const MINI_DEFAULT_WIDTH = 260;
+const MINI_DEFAULT_HEIGHT = 260;
+
 // Validate saved bounds against the currently connected displays so the window
 // is never restored off-screen (e.g. a second monitor was disconnected) or
 // larger than any available screen.
 function sanitizeBounds(
-  b: WindowBounds | null
+  b: WindowBounds | null,
+  minW: number = MIN_WIDTH,
+  minH: number = MIN_HEIGHT
 ): { width: number; height: number; x?: number; y?: number } {
   if (!b) return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
 
@@ -32,8 +45,8 @@ function sanitizeBounds(
   const maxWidth = Math.max(...displays.map((d) => d.workArea.width));
   const maxHeight = Math.max(...displays.map((d) => d.workArea.height));
 
-  const width = Math.min(Math.max(b.width, MIN_WIDTH), maxWidth);
-  const height = Math.min(Math.max(b.height, MIN_HEIGHT), maxHeight);
+  const width = Math.min(Math.max(b.width, minW), maxWidth);
+  const height = Math.min(Math.max(b.height, minH), maxHeight);
 
   if (b.x === undefined || b.y === undefined) {
     return { width, height };
@@ -66,6 +79,7 @@ function createWindow() {
     minHeight: MIN_HEIGHT,
     backgroundColor: "#121212",
     show: false,
+    frame: false,
     autoHideMenuBar: true,
     icon: path.join(__dirname, "assets/icon.png"),
     webPreferences: {
@@ -82,23 +96,34 @@ function createWindow() {
     win.show();
   });
 
+  // Tracks whether the window is currently in the small mini-player mode. Bounds
+  // are persisted to a separate slot per mode so each size is remembered.
+  let isMiniMode = false;
+
+  // Write the current bounds straight to the appropriate slot (no debounce).
+  const flushBounds = () => {
+    if (win.isDestroyed()) return;
+    if (isMiniMode) {
+      const b = win.getBounds();
+      saveMiniWindowBounds({ width: b.width, height: b.height, x: b.x, y: b.y });
+    } else {
+      // getNormalBounds returns the un-maximized size so we can restore it later.
+      const b = win.getNormalBounds();
+      saveWindowBounds({
+        width: b.width,
+        height: b.height,
+        x: b.x,
+        y: b.y,
+        isMaximized: win.isMaximized(),
+      });
+    }
+  };
+
   // Persist window size/position (debounced) so it is restored on next launch.
   let saveTimer: NodeJS.Timeout | null = null;
   const persistBounds = () => {
     if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      if (win.isDestroyed()) return;
-      const isMaximized = win.isMaximized();
-      // getNormalBounds returns the un-maximized size so we can restore it later.
-      const bounds = win.getNormalBounds();
-      saveWindowBounds({
-        width: bounds.width,
-        height: bounds.height,
-        x: bounds.x,
-        y: bounds.y,
-        isMaximized,
-      });
-    }, 400);
+    saveTimer = setTimeout(flushBounds, 400);
   };
 
   win.on("resize", persistBounds);
@@ -106,16 +131,65 @@ function createWindow() {
   win.on("maximize", persistBounds);
   win.on("unmaximize", persistBounds);
 
+  // Keep the renderer's custom maximize/restore icon in sync.
+  win.on("maximize", () => win.webContents.send("window-maximized-changed", true));
+  win.on("unmaximize", () => win.webContents.send("window-maximized-changed", false));
+
   win.on("close", () => {
     if (saveTimer) clearTimeout(saveTimer);
-    const bounds = win.getNormalBounds();
-    saveWindowBounds({
-      width: bounds.width,
-      height: bounds.height,
-      x: bounds.x,
-      y: bounds.y,
-      isMaximized: win.isMaximized(),
-    });
+    flushBounds();
+  });
+
+  /* ---------------- WINDOW CONTROL + MINI-MODE IPC ---------------- */
+  // Registered here (once) because they operate on this window instance.
+  ipcMain.handle("window-minimize", () => win.minimize());
+  ipcMain.handle("window-maximize-toggle", () => {
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
+  });
+  ipcMain.handle("window-close", () => win.close());
+  ipcMain.handle("window-is-maximized", () => win.isMaximized());
+
+  // Used by the mini player to implement custom window dragging (a frameless
+  // -webkit-app-region drag area would suppress the hover events it needs).
+  ipcMain.handle("get-window-position", () => win.getPosition());
+  ipcMain.on("set-window-position", (_e, x: number, y: number) => {
+    if (!win.isDestroyed()) win.setPosition(Math.round(x), Math.round(y));
+  });
+
+  ipcMain.handle("enter-mini-mode", () => {
+    if (isMiniMode) return;
+    // Persist the current normal bounds before shrinking so we can restore them.
+    if (saveTimer) clearTimeout(saveTimer);
+    flushBounds();
+    if (win.isMaximized()) win.unmaximize();
+
+    isMiniMode = true;
+    // Lower the minimum size BEFORE shrinking, otherwise the resize is clamped.
+    win.setMinimumSize(MINI_MIN_WIDTH, MINI_MIN_HEIGHT);
+    const mini = sanitizeBounds(
+      getMiniWindowBounds() ?? { width: MINI_DEFAULT_WIDTH, height: MINI_DEFAULT_HEIGHT },
+      MINI_MIN_WIDTH,
+      MINI_MIN_HEIGHT
+    );
+    win.setBounds(mini);
+    // Highest level so nothing (even other always-on-top windows) covers it.
+    win.setAlwaysOnTop(true, "screen-saver");
+  });
+
+  ipcMain.handle("exit-mini-mode", () => {
+    if (!isMiniMode) return;
+    // Persist the mini bounds before restoring the normal window.
+    if (saveTimer) clearTimeout(saveTimer);
+    flushBounds();
+
+    isMiniMode = false;
+    win.setAlwaysOnTop(false);
+    win.setMinimumSize(MIN_WIDTH, MIN_HEIGHT);
+    const saved = getWindowBounds();
+    const normal = sanitizeBounds(saved);
+    win.setBounds(normal);
+    if (saved?.isMaximized) win.maximize();
   });
 
   win.loadFile(path.join(__dirname, "renderer/index.html"));
