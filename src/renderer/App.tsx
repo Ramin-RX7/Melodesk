@@ -81,6 +81,8 @@ export default function App() {
   const pendingScrollRestoreRef = useRef<number>(0);
   // Forward ref so useKeyboardControls can reference handleGoBack before it's declared
   const handleGoBackRef = useRef<() => void>(() => {});
+  // Ref to the global search input so a keyboard shortcut can focus it
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Audio Player
   const audioPlayerState = useAudioPlayer(config, setConfig);
@@ -153,6 +155,13 @@ export default function App() {
     seekForward,
     seekBackward,
     goBack: () => handleGoBackRef.current(),
+    focusSearch: () => {
+      const input = searchInputRef.current;
+      if (!input) return;
+      input.focus();
+      input.select();
+    },
+    keybindings: config?.keybindings,
   });
 
 
@@ -475,6 +484,7 @@ export default function App() {
           onGlobalSearchNavigate={handleGlobalSearchNavigate}
           canGoBack={navHistory.length > 0}
           onGoBack={handleGoBack}
+          searchInputRef={searchInputRef}
         />
       )}
 

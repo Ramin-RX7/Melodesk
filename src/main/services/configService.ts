@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 
 import { UserConfig } from "../../renderer/types";
+import { DEFAULT_KEYBINDINGS } from "../../utils/keybindings";
 
 
 const CONFIG_PATH = path.join(app.getPath("userData"), "config.json");
@@ -20,6 +21,7 @@ const DEFAULT_CONFIG: UserConfig = {
   playCountThresholdPercent: 50,
   homeItemLimit: 10,
   appearance: { themeId: "dark", colors: {} },
+  keybindings: DEFAULT_KEYBINDINGS,
 };
 
 export const getConfig = (): UserConfig => {
@@ -33,6 +35,9 @@ export const getConfig = (): UserConfig => {
         ...DEFAULT_CONFIG,
         ...parsed,
         appearance: { ...DEFAULT_CONFIG.appearance, ...(parsed.appearance ?? {}) },
+        // Per-action merge so a config predating an action (or the field
+        // entirely) still picks up the new default binding.
+        keybindings: { ...DEFAULT_CONFIG.keybindings, ...(parsed.keybindings ?? {}) },
       };
     }
   } catch (error) {

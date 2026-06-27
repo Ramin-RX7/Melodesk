@@ -11,6 +11,14 @@ import {
   ColorKey,
 } from "../theme/colors";
 import { THEMES, getTheme, DEFAULT_THEME_ID, Theme } from "../theme/themes";
+import {
+  DEFAULT_KEYBINDINGS,
+  KEYBOARD_ACTIONS,
+  Keybinding,
+  KeyboardActionId,
+  MODIFIER_CODES,
+  formatKeybinding,
+} from "../../utils/keybindings";
 
 const roleMeta = Object.fromEntries(
   colorGroups.flatMap((g) => g.roles.map((r) => [r.key, r])),
@@ -63,6 +71,14 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
 
   const resetAllColors = () =>
     save({ appearance: { themeId: appearance.themeId, colors: {} } });
+
+  const keybindings = config.keybindings ?? DEFAULT_KEYBINDINGS;
+
+  const setBinding = (action: KeyboardActionId, binding: Keybinding) =>
+    save({ keybindings: { ...keybindings, [action]: [binding] } });
+
+  const resetBinding = (action: KeyboardActionId) =>
+    save({ keybindings: { ...keybindings, [action]: DEFAULT_KEYBINDINGS[action] } });
 
   const handleAddFolder = async () => {
     const path = await window.api.selectDirectory();
@@ -322,6 +338,24 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
           themeColor={themeColor}
           onCommit={(v) => save({ navigationHistorySize: v })}
         />
+      </Section>
+
+      <Section title="Keyboard Shortcuts">
+        {KEYBOARD_ACTIONS.map((action) => (
+          <KeybindingRow
+            key={action.id}
+            label={action.label}
+            description={action.description}
+            bindings={keybindings[action.id] ?? []}
+            isDefault={
+              JSON.stringify(keybindings[action.id] ?? []) ===
+              JSON.stringify(DEFAULT_KEYBINDINGS[action.id])
+            }
+            themeColor={themeColor}
+            onRecord={(b) => setBinding(action.id, b)}
+            onReset={() => resetBinding(action.id)}
+          />
+        ))}
       </Section>
 
       <Section title="Library Folders">
@@ -595,6 +629,96 @@ function Segmented({
         );
       })}
     </div>
+  );
+}
+
+function KeybindingRow({
+  label,
+  description,
+  bindings,
+  isDefault,
+  themeColor,
+  onRecord,
+  onReset,
+}: {
+  label: string;
+  description?: string;
+  bindings: Keybinding[];
+  isDefault: boolean;
+  themeColor: string;
+  onRecord: (b: Keybinding) => void;
+  onReset: () => void;
+}) {
+  const [recording, setRecording] = useState(false);
+
+  React.useEffect(() => {
+    if (!recording) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Cancel on Escape, ignore lone modifier presses (wait for a real key).
+      if (e.code === "Escape") {
+        setRecording(false);
+        return;
+      }
+      if (MODIFIER_CODES.includes(e.code)) return;
+
+      const binding: Keybinding = { code: e.code };
+      if (e.ctrlKey || e.metaKey) binding.ctrl = true;
+      if (e.shiftKey) binding.shift = true;
+      if (e.altKey) binding.alt = true;
+
+      onRecord(binding);
+      setRecording(false);
+    };
+
+    // Capture phase so we intercept the key before the global handler acts on it.
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [recording, onRecord]);
+
+  return (
+    <Row label={label} description={description}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <button
+          onClick={() => setRecording((r) => !r)}
+          style={{
+            minWidth: "120px",
+            backgroundColor: recording ? "transparent" : colors.bgControl,
+            color: recording ? themeColor : colors.textPrimary,
+            border: `1px solid ${recording ? themeColor : colors.border}`,
+            borderRadius: "8px",
+            padding: "8px 14px",
+            cursor: "pointer",
+            fontSize: "13px",
+            fontFamily: "monospace",
+          }}
+        >
+          {recording
+            ? "Press a key…"
+            : bindings.length > 0
+              ? bindings.map(formatKeybinding).join(" / ")
+              : "Unbound"}
+        </button>
+        <button
+          onClick={onReset}
+          disabled={isDefault}
+          title="Reset to default"
+          style={{
+            background: "none",
+            border: "none",
+            color: isDefault ? colors.borderSubtle : colors.textDim,
+            cursor: isDefault ? "default" : "pointer",
+            fontSize: "12px",
+            padding: "4px 6px",
+          }}
+        >
+          Reset
+        </button>
+      </div>
+    </Row>
   );
 }
 

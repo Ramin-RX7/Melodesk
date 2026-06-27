@@ -1,3 +1,4 @@
+import React from "react";
 import { IoSettingsSharp } from "react-icons/io5";
 
 import { FileItem, UserConfig } from "../../types";
@@ -19,6 +20,7 @@ type Props = {
   onGlobalSearchNavigate: (target: GlobalSearchNavTarget) => void;
   canGoBack: boolean;
   onGoBack: () => void;
+  searchInputRef?: React.RefObject<HTMLInputElement | null>;
 };
 
 export function Navbar({
@@ -33,6 +35,7 @@ export function Navbar({
   onGlobalSearchNavigate,
   canGoBack,
   onGoBack,
+  searchInputRef,
 }: Props) {
   return (
     <nav className={styles.nav}>
@@ -71,6 +74,7 @@ export function Navbar({
         themeColor={themeColor}
         onPlaySong={onPlaySong}
         onNavigate={onGlobalSearchNavigate}
+        inputRef={searchInputRef}
       />
 
       <div

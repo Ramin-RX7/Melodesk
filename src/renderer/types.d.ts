@@ -1,3 +1,5 @@
+import { Keybindings } from "../utils/keybindings";
+
 export interface Appearance {
   /** Id of the selected built-in theme (the base palette). */
   themeId: string;
@@ -18,6 +20,7 @@ export interface UserConfig {
   playCountThresholdPercent: number;
   homeItemLimit: number;
   appearance: Appearance;
+  keybindings: Keybindings;
 }
 
 export interface WindowBounds {

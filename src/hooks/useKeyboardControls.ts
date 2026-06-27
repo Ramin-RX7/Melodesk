@@ -1,5 +1,14 @@
 import { useEffect, useRef } from "react";
 
+import {
+    BUILTIN_KEYBINDINGS,
+    DEFAULT_KEYBINDINGS,
+    Keybindings,
+    KeyboardActionId,
+    hasModifier,
+    matchesKeybinding,
+} from "../utils/keybindings";
+
 type Params = {
     togglePlay: () => void;
     handleNext: () => void;
@@ -7,81 +16,64 @@ type Params = {
     seekForward: () => void;
     seekBackward: () => void;
     goBack?: () => void;
+    focusSearch?: () => void;
+    keybindings?: Keybindings;
 };
 
-export function useKeyboardControls({
-    togglePlay,
-    handleNext,
-    handlePrevious,
-    seekForward,
-    seekBackward,
-    goBack,
-}: Params) {
-    // Stable ref so the event listeners never need to re-register when goBack changes
-    const goBackRef = useRef(goBack);
-    useEffect(() => { goBackRef.current = goBack; });
+export function useKeyboardControls(params: Params) {
+    // Stable ref so the listeners never need to re-register when the callbacks
+    // or the keybindings change.
+    const paramsRef = useRef(params);
+    paramsRef.current = params;
 
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
-            const target = event.target as HTMLElement;
+            const p = paramsRef.current;
+            const kb = p.keybindings ?? DEFAULT_KEYBINDINGS;
 
+            const target = event.target as HTMLElement;
             const isTyping =
                 target.tagName === "INPUT" ||
                 target.tagName === "TEXTAREA" ||
                 target.isContentEditable;
 
-            if (isTyping) return;
+            const actions: { id: KeyboardActionId; run: () => void }[] = [
+                { id: "focusSearch", run: () => p.focusSearch?.() },
+                { id: "togglePlay", run: () => p.togglePlay() },
+                { id: "nextTrack", run: () => p.handleNext() },
+                { id: "previousTrack", run: () => p.handlePrevious() },
+                { id: "seekForward", run: () => p.seekForward() },
+                { id: "seekBackward", run: () => p.seekBackward() },
+                { id: "goBack", run: () => p.goBack?.() },
+            ];
 
-            switch (event.code) {
-                case "Escape":
-                    goBackRef.current?.();
-                    break;
+            for (const action of actions) {
+                const bindings = [
+                    ...(kb[action.id] ?? []),
+                    ...(BUILTIN_KEYBINDINGS[action.id] ?? []),
+                ];
+                const hit = bindings.find((b) => matchesKeybinding(event, b));
+                if (!hit) continue;
 
-                case "Space":
-                    event.preventDefault();
-                    togglePlay();
-                    break;
+                // While typing, only fire shortcuts that need a modifier (e.g.
+                // Ctrl+F) so plain keys don't hijack text entry.
+                if (isTyping && !hasModifier(hit)) return;
 
-                case "PageDown":
-                case "MediaTrackNext":
-                    event.preventDefault();
-                    handleNext();
-                    break;
+                event.preventDefault();
+                action.run();
+                return;
+            }
 
-                case "PageUp":
-                case "MediaTrackPrevious":
-                    event.preventDefault();
-                    handlePrevious();
-                    break;
+            // Built-in arrow-key scrolling (only when the focused element is
+            // scrollable and no action is bound to the arrow key).
+            if (!isTyping && (event.code === "ArrowUp" || event.code === "ArrowDown")) {
+                const isScrollable = target.scrollHeight > target.clientHeight;
+                if (!isScrollable) return;
 
-                case "ArrowRight":
-                    event.preventDefault();
-                    seekForward();
-                    break;
-
-                case "ArrowLeft":
-                    event.preventDefault();
-                    seekBackward();
-                    break;
-
-                case "ArrowUp":
-                case "ArrowDown": {
-                    const isScrollable =
-                        target.scrollHeight > target.clientHeight;
-
-                    if (!isScrollable) return;
-
-                    event.preventDefault();
-
-                    const scrollAmount = 40;
-
-                    target.scrollTop +=
-                        event.code === "ArrowDown"
-                            ? scrollAmount
-                            : -scrollAmount;
-
-                    break;
-                }
+                event.preventDefault();
+                const scrollAmount = 40;
+                target.scrollTop +=
+                    event.code === "ArrowDown" ? scrollAmount : -scrollAmount;
             }
         };
 
@@ -89,7 +81,7 @@ export function useKeyboardControls({
             // Mouse button 3 = side "back" button on most mice
             if (event.button === 3) {
                 event.preventDefault();
-                goBackRef.current?.();
+                paramsRef.current.goBack?.();
             }
         };
 
@@ -100,11 +92,5 @@ export function useKeyboardControls({
             window.removeEventListener("keydown", handleKeyDown);
             window.removeEventListener("mouseup", handleMouseUp);
         };
-    }, [
-        togglePlay,
-        handleNext,
-        handlePrevious,
-        seekForward,
-        seekBackward,
-    ]);
+    }, []);
 }

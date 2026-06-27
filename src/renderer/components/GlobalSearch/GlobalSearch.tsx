@@ -19,15 +19,18 @@ type Props = {
   themeColor: string;
   onPlaySong: (song: FileItem, queue: FileItem[]) => void;
   onNavigate: (target: GlobalSearchNavTarget) => void;
+  /** Optional external ref so a keyboard shortcut can focus the input. */
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 };
 
-export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onNavigate }: Props) {
+export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onNavigate, inputRef: externalInputRef }: Props) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [showAllSongs, setShowAllSongs] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const internalInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = externalInputRef ?? internalInputRef;
 
   const limit = config?.searchResultsPerCategory ?? 4;
   const q = query.trim().toLowerCase();
