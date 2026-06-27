@@ -52,6 +52,9 @@ export function registerMediaProtocol() {
           "Accept-Ranges": "bytes",
           "Content-Length": chunksize.toString(),
           "Content-Type": mimeType,
+          // Required so the Web Audio equalizer can process media:// audio
+          // without the element being treated as cross-origin (which mutes it).
+          "Access-Control-Allow-Origin": "*",
         };
 
         return new Response(file as any, {
@@ -63,6 +66,7 @@ export function registerMediaProtocol() {
           "Content-Length": stats.size.toString(),
           "Content-Type": mimeType,
           "Accept-Ranges": "bytes",
+          "Access-Control-Allow-Origin": "*",
         };
 
         return new Response(fs.createReadStream(decodedPath) as any, {

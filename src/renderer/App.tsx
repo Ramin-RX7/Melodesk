@@ -12,6 +12,7 @@ import { FileItem, SessionData, UserConfig } from "./types";
 import { GlobalSearchNavTarget } from "./components/GlobalSearch/GlobalSearch";
 import { normalizeGenre } from "../utils/metadata";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
+import { useEqualizer } from "../hooks/useEqualizer";
 import { useLibrary } from "../hooks/useLibrary";
 import { useKeyboardControls } from "../hooks/useKeyboardControls";
 import { LibraryView } from "./components/LibraryView";
@@ -106,6 +107,9 @@ export default function App() {
     handleLoadedMetadata,
     handleVolumeChange,
   } = audioPlayerState;
+
+  // Insert the Web Audio equalizer between the <audio> element and the speakers.
+  useEqualizer(audioRef, config);
 
   // Queue and Playback States
   const queueState = useQueue(currentTrack);
@@ -683,6 +687,7 @@ export default function App() {
 
       <audio
         ref={audioRef}
+        crossOrigin="anonymous"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onPlay={() => setIsPlaying(true)}

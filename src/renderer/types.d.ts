@@ -21,6 +21,9 @@ export interface UserConfig {
   homeItemLimit: number;
   appearance: Appearance;
   keybindings: Keybindings;
+  equalizerEnabled: boolean;
+  equalizerPreset: string;
+  equalizerBands: number[];
 }
 
 export interface WindowBounds {

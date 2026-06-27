@@ -19,6 +19,16 @@ import {
   MODIFIER_CODES,
   formatKeybinding,
 } from "../../utils/keybindings";
+import {
+  EQ_FREQUENCIES,
+  EQ_PRESETS,
+  EQ_MIN_GAIN,
+  EQ_MAX_GAIN,
+  FLAT,
+  CUSTOM_PRESET_ID,
+  formatFrequency,
+  normalizeBands,
+} from "../../utils/equalizer";
 
 const roleMeta = Object.fromEntries(
   colorGroups.flatMap((g) => g.roles.map((r) => [r.key, r])),
@@ -291,6 +301,57 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
         />
       </Section>
 
+      <Section title="Equalizer">
+        <ToggleRow
+          label="Enable equalizer"
+          description="Apply a 10-band equalizer to everything you play"
+          value={config.equalizerEnabled}
+          themeColor={themeColor}
+          onChange={(v) => save({ equalizerEnabled: v })}
+        />
+        <Row
+          label="Preset"
+          description="Pick a genre preset, or fine-tune the bands below"
+        >
+          <select
+            value={config.equalizerPreset}
+            disabled={!config.equalizerEnabled}
+            onChange={(e) => {
+              const id = e.target.value;
+              const preset = EQ_PRESETS.find((p) => p.id === id);
+              if (preset) save({ equalizerPreset: id, equalizerBands: [...preset.gains] });
+              else save({ equalizerPreset: id });
+            }}
+            style={{
+              backgroundColor: colors.bgInput,
+              color: colors.textPrimary,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "8px",
+              padding: "8px 10px",
+              fontSize: "13px",
+              cursor: config.equalizerEnabled ? "pointer" : "default",
+              minWidth: "150px",
+            }}
+          >
+            {EQ_PRESETS.map((p) => (
+              <option key={p.id} value={p.id}>{p.label}</option>
+            ))}
+            <option value={CUSTOM_PRESET_ID}>Custom</option>
+          </select>
+        </Row>
+        <EqualizerBands
+          bands={normalizeBands(config.equalizerBands)}
+          enabled={config.equalizerEnabled}
+          themeColor={themeColor}
+          onChange={(i, v) => {
+            const next = normalizeBands(config.equalizerBands);
+            next[i] = v;
+            save({ equalizerBands: next, equalizerPreset: CUSTOM_PRESET_ID });
+          }}
+          onReset={() => save({ equalizerPreset: "flat", equalizerBands: [...FLAT] })}
+        />
+      </Section>
+
       <Section title="Startup">
         <ToggleRow
           label="Restore session on startup"
@@ -530,6 +591,84 @@ function SliderRow({
         </span>
       </div>
     </Row>
+  );
+}
+
+function EqualizerBands({
+  bands,
+  enabled,
+  themeColor,
+  onChange,
+  onReset,
+}: {
+  bands: number[];
+  enabled: boolean;
+  themeColor: string;
+  onChange: (index: number, value: number) => void;
+  onReset: () => void;
+}) {
+  return (
+    <div
+      style={{
+        backgroundColor: colors.bgElevated,
+        padding: "18px",
+        borderRadius: "10px",
+        border: `1px solid ${colors.borderSubtle}`,
+        opacity: enabled ? 1 : 0.45,
+        pointerEvents: enabled ? "auto" : "none",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "8px" }}>
+        {bands.map((gain, i) => (
+          <div
+            key={EQ_FREQUENCIES[i]}
+            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", flex: 1 }}
+          >
+            <span style={{ fontSize: "11px", color: colors.textMuted, minHeight: "14px" }}>
+              {gain > 0 ? `+${gain}` : gain}
+            </span>
+            <input
+              type="range"
+              min={EQ_MIN_GAIN}
+              max={EQ_MAX_GAIN}
+              step={1}
+              value={gain}
+              onChange={(e) => onChange(i, parseInt(e.target.value, 10))}
+              style={{
+                // Vertical range slider (Chromium / Electron).
+                WebkitAppearance: "slider-vertical",
+                appearance: "slider-vertical",
+                writingMode: "vertical-lr",
+                width: "8px",
+                height: "110px",
+                accentColor: themeColor,
+                cursor: "pointer",
+              } as unknown as React.CSSProperties}
+            />
+            <span style={{ fontSize: "10px", color: colors.textFaint }}>
+              {formatFrequency(EQ_FREQUENCIES[i])}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px" }}>
+        <span style={{ fontSize: "11px", color: colors.textFaint }}>Gain (dB) per frequency band</span>
+        <button
+          onClick={onReset}
+          style={{
+            backgroundColor: "transparent",
+            color: colors.textMuted,
+            border: `1px solid ${colors.border}`,
+            borderRadius: "8px",
+            padding: "6px 12px",
+            fontSize: "12px",
+            cursor: "pointer",
+          }}
+        >
+          Reset to flat
+        </button>
+      </div>
+    </div>
   );
 }
 

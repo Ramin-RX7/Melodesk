@@ -22,6 +22,9 @@ const DEFAULT_CONFIG: UserConfig = {
   homeItemLimit: 10,
   appearance: { themeId: "dark", colors: {} },
   keybindings: DEFAULT_KEYBINDINGS,
+  equalizerEnabled: false,
+  equalizerPreset: "flat",
+  equalizerBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 };
 
 export const getConfig = (): UserConfig => {

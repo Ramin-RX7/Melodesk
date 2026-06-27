@@ -17,7 +17,9 @@ import {
 
 // Register the custom protocol before the app is ready
 protocol.registerSchemesAsPrivileged([
-  { scheme: "media", privileges: { bypassCSP: true, stream: true } }
+  // corsEnabled lets Web Audio's createMediaElementSource read the stream
+  // without tainting it (a tainted source plays as silence through the graph).
+  { scheme: "media", privileges: { bypassCSP: true, stream: true, corsEnabled: true } }
 ]);
 
 const MIN_WIDTH = 600;
