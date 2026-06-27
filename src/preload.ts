@@ -43,6 +43,7 @@ contextBridge.exposeInMainWorld("api", {
   },
   enterMiniMode: () => ipcRenderer.invoke("enter-mini-mode"),
   exitMiniMode: () => ipcRenderer.invoke("exit-mini-mode"),
-  getWindowPosition: () => ipcRenderer.invoke("get-window-position"),
-  setWindowPosition: (x: number, y: number) => ipcRenderer.send("set-window-position", x, y),
+  getWindowBounds: () => ipcRenderer.invoke("get-window-bounds"),
+  setWindowPosition: (x: number, y: number, width: number, height: number) =>
+    ipcRenderer.send("set-window-position", x, y, width, height),
 });

@@ -228,6 +228,29 @@ export function usePlaybackController({
         setQueue(newQueue);
     };
 
+    // Insert a track right after the current one and immediately play it. Used
+    // by the global search where clicking a result should jump to it without
+    // discarding the existing queue.
+    const playNextAndPlay = (track: FileItem) => {
+        if (activeQueue.length === 0) {
+            playTrack(track, [track]);
+            return;
+        }
+
+        const insertAt = currentIndex + 1;
+        if (isShuffle) {
+            const newShuffled = [...shuffledQueue];
+            newShuffled.splice(insertAt, 0, track);
+            setShuffledQueue(newShuffled);
+            setQueue([...queue, track]);
+        } else {
+            const newQueue = [...queue];
+            newQueue.splice(insertAt, 0, track);
+            setQueue(newQueue);
+        }
+        playTrack(track, undefined, insertAt);
+    };
+
     const playNextMultiple = (tracks: FileItem[]) => {
         if (tracks.length === 0) return;
         if (activeQueue.length === 0) {
@@ -285,6 +308,7 @@ export function usePlaybackController({
         handleEnded,
         handleDrop,
         playNext,
+        playNextAndPlay,
         playNextMultiple,
         handleRemoveFromQueue,
     }

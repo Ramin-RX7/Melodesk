@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { IoSearch, IoClose, IoMusicalNote } from "react-icons/io5";
 
 import { FileItem, Playlist, UserConfig } from "../../types";
-import { getGroupEntries } from "../GroupedView/groupedView.utils";
+import { getGroupEntries, getFilteredSongs } from "../GroupedView/groupedView.utils";
 import { formatDuration } from "../../../utils/time";
 import styles from "./GlobalSearch.module.css";
 
@@ -18,12 +18,14 @@ type Props = {
   config: UserConfig | null;
   themeColor: string;
   onPlaySong: (song: FileItem, queue: FileItem[]) => void;
+  onSongContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
+  onGroupContextMenu?: (e: React.MouseEvent, name: string, songs: FileItem[]) => void;
   onNavigate: (target: GlobalSearchNavTarget) => void;
   /** Optional external ref so a keyboard shortcut can focus the input. */
   inputRef?: React.RefObject<HTMLInputElement | null>;
 };
 
-export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onNavigate, inputRef: externalInputRef }: Props) {
+export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSongContextMenu, onGroupContextMenu, onNavigate, inputRef: externalInputRef }: Props) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -149,6 +151,7 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onNavi
                       key={song.path}
                       className={styles.resultItem}
                       onClick={() => { onPlaySong(song, results!.songs); setIsOpen(false); setQuery(""); }}
+                      onContextMenu={onSongContextMenu ? (e) => onSongContextMenu(e, song) : undefined}
                     >
                       <div className={styles.songThumb}>
                         {song.metadata?.picture
@@ -183,6 +186,7 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onNavi
                       key={name}
                       className={styles.resultItem}
                       onClick={() => navigate({ tab: "albums", groupName: name })}
+                      onContextMenu={onGroupContextMenu ? (e) => onGroupContextMenu(e, name, getFilteredSongs(allTracks, name, "album", "", false)) : undefined}
                     >
                       <div className={styles.resultText}>
                         <div className={styles.resultPrimary}>{name}</div>
@@ -208,6 +212,7 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onNavi
                       key={name}
                       className={styles.resultItem}
                       onClick={() => navigate({ tab: "artists", groupName: name })}
+                      onContextMenu={onGroupContextMenu ? (e) => onGroupContextMenu(e, name, getFilteredSongs(allTracks, name, "artist", "", false)) : undefined}
                     >
                       <div className={styles.resultText}>
                         <div className={styles.resultPrimary}>{name}</div>

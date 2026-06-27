@@ -35,13 +35,16 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
   themeColor,
 }) => {
   const [hovered, setHovered] = React.useState(false);
-  const dragRef = React.useRef<{ mx: number; my: number; wx: number; wy: number } | null>(null);
+  // ww/wh = the window size captured when the drag started. We pass it on every
+  // move so the window is repositioned with a constant size; otherwise the
+  // size drifts (grows) on high-DPI displays due to setBounds DIP rounding.
+  const dragRef = React.useRef<{ mx: number; my: number; wx: number; wy: number; ww: number; wh: number } | null>(null);
 
   React.useEffect(() => {
     const onMove = (e: MouseEvent) => {
       const d = dragRef.current;
       if (!d) return;
-      window.api.setWindowPosition(d.wx + (e.screenX - d.mx), d.wy + (e.screenY - d.my));
+      window.api.setWindowPosition(d.wx + (e.screenX - d.mx), d.wy + (e.screenY - d.my), d.ww, d.wh);
     };
     const onUp = () => { dragRef.current = null; };
     window.addEventListener("mousemove", onMove);
@@ -56,8 +59,8 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
     if (e.button !== 0) return;
     // Clicking a control should not start a window drag.
     if ((e.target as HTMLElement).closest("button")) return;
-    const [wx, wy] = await window.api.getWindowPosition();
-    dragRef.current = { mx: e.screenX, my: e.screenY, wx, wy };
+    const b = await window.api.getWindowBounds();
+    dragRef.current = { mx: e.screenX, my: e.screenY, wx: b.x, wy: b.y, ww: b.width, wh: b.height };
   };
 
   const picture = currentTrack?.metadata?.picture;

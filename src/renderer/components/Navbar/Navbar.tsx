@@ -17,6 +17,8 @@ type Props = {
   allTracks: FileItem[];
   config: UserConfig | null;
   onPlaySong: (song: FileItem, queue: FileItem[]) => void;
+  onSongContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
+  onGroupContextMenu?: (e: React.MouseEvent, name: string, songs: FileItem[]) => void;
   onGlobalSearchNavigate: (target: GlobalSearchNavTarget) => void;
   canGoBack: boolean;
   onGoBack: () => void;
@@ -32,6 +34,8 @@ export function Navbar({
   allTracks,
   config,
   onPlaySong,
+  onSongContextMenu,
+  onGroupContextMenu,
   onGlobalSearchNavigate,
   canGoBack,
   onGoBack,
@@ -73,6 +77,8 @@ export function Navbar({
         config={config}
         themeColor={themeColor}
         onPlaySong={onPlaySong}
+        onSongContextMenu={onSongContextMenu}
+        onGroupContextMenu={onGroupContextMenu}
         onNavigate={onGlobalSearchNavigate}
         inputRef={searchInputRef}
       />

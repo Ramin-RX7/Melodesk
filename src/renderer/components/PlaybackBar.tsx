@@ -106,7 +106,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
     const { title, artists } = currentTrack.metadata || {};
     return {
       title: title || currentTrack.name,
-      artists: artists || "Unknown Artist"
+      artists: (Array.isArray(artists) ? artists.join(", ") : artists) || "Unknown Artist"
     };
   };
 

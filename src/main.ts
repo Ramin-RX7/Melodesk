@@ -152,9 +152,23 @@ function createWindow() {
 
   // Used by the mini player to implement custom window dragging (a frameless
   // -webkit-app-region drag area would suppress the hover events it needs).
-  ipcMain.handle("get-window-position", () => win.getPosition());
-  ipcMain.on("set-window-position", (_e, x: number, y: number) => {
-    if (!win.isDestroyed()) win.setPosition(Math.round(x), Math.round(y));
+  ipcMain.handle("get-window-bounds", () => {
+    const b = win.getBounds();
+    return { x: b.x, y: b.y, width: b.width, height: b.height };
+  });
+  // Move via setBounds with an explicit, drag-time-constant size rather than
+  // setPosition. On high-DPI displays setPosition round-trips the size through
+  // DIP<->physical pixels and the rounding accumulates, so the window visibly
+  // grows in the drag direction. Passing the locked size every frame keeps it
+  // fixed. (Renderer sends the size captured when the drag started.)
+  ipcMain.on("set-window-position", (_e, x: number, y: number, width: number, height: number) => {
+    if (win.isDestroyed()) return;
+    win.setBounds({
+      x: Math.round(x),
+      y: Math.round(y),
+      width: Math.round(width),
+      height: Math.round(height),
+    });
   });
 
   ipcMain.handle("enter-mini-mode", () => {

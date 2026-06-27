@@ -138,8 +138,8 @@ declare global {
       onMaximizedChanged: (callback: (isMaximized: boolean) => void) => () => void;
       enterMiniMode: () => Promise<void>;
       exitMiniMode: () => Promise<void>;
-      getWindowPosition: () => Promise<[number, number]>;
-      setWindowPosition: (x: number, y: number) => void;
+      getWindowBounds: () => Promise<{ x: number; y: number; width: number; height: number }>;
+      setWindowPosition: (x: number, y: number, width: number, height: number) => void;
     };
   }
 }

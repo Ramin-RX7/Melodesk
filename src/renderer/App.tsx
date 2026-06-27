@@ -134,6 +134,7 @@ export default function App() {
     handleEnded,
     handleDrop,
     playNext,
+    playNextAndPlay,
     playNextMultiple,
     handleRemoveFromQueue,
   } = usePlaybackController({
@@ -480,7 +481,9 @@ export default function App() {
           onSettingsClick={() => { pushNav(); setView("settings"); }}
           allTracks={allTracks}
           config={config}
-          onPlaySong={(song, queue) => playTrack(song, queue)}
+          onPlaySong={(song) => playNextAndPlay(song)}
+          onSongContextMenu={showContextMenu}
+          onGroupContextMenu={showGroupContextMenu}
           onGlobalSearchNavigate={handleGlobalSearchNavigate}
           canGoBack={navHistory.length > 0}
           onGoBack={handleGoBack}
