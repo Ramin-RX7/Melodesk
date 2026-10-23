@@ -4,8 +4,15 @@ import { getConfig } from "../configService";
 import { updateLibrary } from "./libraryUpdater";
 import { isMediaFile } from "./mediaUtils";
 
-let watcher: any = null;
-let chokidarModule: any = null;
+// chokidar is ESM-only (loaded with import() at runtime); these are the parts used here.
+type Watcher = {
+  on: (event: string, listener: (arg: never) => void) => Watcher;
+  close: () => Promise<void>;
+};
+type Chokidar = { watch: (paths: string[], options: object) => Watcher };
+
+let watcher: Watcher | null = null;
+let chokidarModule: Chokidar | null = null;
 let updateTimeout: NodeJS.Timeout | null = null;
 
 export const setupWatcher = async () => {
@@ -31,8 +38,8 @@ export const setupWatcher = async () => {
 
   if (existingPaths.length === 0) return;
 
-  watcher = chokidarModule.watch(existingPaths, {
-    ignored: /(^|[\/\\])\../, // ignore dotfiles
+  watcher = chokidarModule!.watch(existingPaths, {
+    ignored: /(^|[/\\])\../, // ignore dotfiles
     persistent: true,
     ignoreInitial: true,
     depth: 99,

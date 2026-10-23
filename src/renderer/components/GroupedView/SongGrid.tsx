@@ -1,29 +1,22 @@
 import { FileItem, UserConfig } from "../../types";
 import { VirtualGrid } from "../VirtualGrid";
-import { GroupType } from "./types";
 import { SONG_CARD_HEIGHT, SongCard } from "./SongCard";
 import styles from "./GroupedView.module.css";
 
 type Props = {
   songs: FileItem[];
-  selectedGroup: string;
-  type: GroupType;
   currentTrack?: FileItem | null;
   config: UserConfig | null;
   themeColor: string;
-  onBack: () => void;
   onSongClick: (song: FileItem) => void;
   onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 };
 
 export function SongGrid({
   songs,
-  selectedGroup,
-  type,
   currentTrack,
   config,
   themeColor,
-  onBack,
   onSongClick,
   onContextMenu,
 }: Props) {

@@ -25,13 +25,18 @@ export function usePlayTracker(
   currentTrack: FileItem | null,
   thresholdPercent: number,
 ) {
+  // The latest song object (tags may be refreshed); the effect below restarts only for a new song.
+  const trackRef = useRef(currentTrack);
+  trackRef.current = currentTrack;
+  // Keyed on the song id, not the path: a moved song is still the same song.
+  const trackKey = currentTrack?.hash ?? currentTrack?.path;
   const listenedRef = useRef(0);
   const lastTimeRef = useRef(0);
   const countedRef = useRef(false);
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
+    if (!audio || !trackKey) return;
 
     // Reset accumulation for the newly active track.
     listenedRef.current = 0;
@@ -39,7 +44,8 @@ export function usePlayTracker(
     countedRef.current = false;
 
     const maybeCount = () => {
-      if (countedRef.current || !currentTrack.hash) return;
+      const currentTrack = trackRef.current;
+      if (countedRef.current || !currentTrack?.hash) return;
       const duration = currentTrack.metadata?.duration || audio.duration;
       if (!duration || !isFinite(duration)) return;
       const required = (duration * thresholdPercent) / 100;
@@ -91,6 +97,5 @@ export function usePlayTracker(
       audio.removeEventListener("seeked", onSeeked);
       audio.removeEventListener("loadstart", onLoadStart);
     };
-    // Keyed on the song id, not the path: a moved song is still the same song.
-  }, [audioRef, currentTrack?.hash ?? currentTrack?.path, thresholdPercent]);
+  }, [audioRef, trackKey, thresholdPercent]);
 }

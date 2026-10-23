@@ -3,6 +3,19 @@
 import { IoArrowBack } from "react-icons/io5";
 import { DirectoryTree } from "./DirectoryTree";
 import { colors } from "../theme/colors";
+import { LibraryViewProps } from "./LibraryView";
+
+type Props = Pick<
+  LibraryViewProps,
+  | "selectedLibraryPath"
+  | "onCloseFolder"
+  | "onScrollRef"
+  | "tree"
+  | "config"
+  | "themeColor"
+  | "handleFileSelect"
+  | "onContextMenu"
+>;
 
 export function LibraryFolderView({
   selectedLibraryPath,
@@ -13,7 +26,7 @@ export function LibraryFolderView({
   themeColor,
   handleFileSelect,
   onContextMenu,
-}: any) {
+}: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
       <div

@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 
+import { FileItem } from "../renderer/types";
+
 export function useLibrary(
-  setAllTracks: (t: any[]) => void,
-  setTree: (t: any) => void,
+  setAllTracks: (tracks: FileItem[]) => void,
+  setTree: (tree: FileItem[]) => void,
   selectedLibraryPath: string | null,
 ) {
   useEffect(() => {
@@ -13,18 +15,11 @@ export function useLibrary(
     return () => unsubscribe();
   }, [setAllTracks]);
 
-  const loadTree = async (selectedLibraryPath: string, setTree: any) => {
-    try {
-      const data = await window.api.getDirectoryTree(selectedLibraryPath);
-      setTree(data);
-    } catch (error) {
-      console.error("Failed to load directory tree:", error);
-    }
-  };
-
   useEffect(() => {
     if (!selectedLibraryPath) return;
-
-    loadTree(selectedLibraryPath, setTree);
-  }, [selectedLibraryPath]);
+    window.api
+      .getDirectoryTree(selectedLibraryPath)
+      .then(setTree)
+      .catch((error) => console.error("Failed to load directory tree:", error));
+  }, [selectedLibraryPath, setTree]);
 }

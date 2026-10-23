@@ -1,5 +1,6 @@
-import { BrowserWindow, ipcMain, Menu } from "electron";
+import { BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions } from "electron";
 
+import { ContextMenuAction, FileItem, GroupContextMenuAction } from "../../renderer/types";
 import { artistsOf } from "../../utils/metadata";
 import { getAllPlaylists } from "./playlistHandlers";
 
@@ -9,12 +10,12 @@ export function registerMenuHandlers() {
       let actionSelected = false;
       const playlists = getAllPlaylists();
 
-      const handleAction = (action: any) => {
+      const handleAction = (action: GroupContextMenuAction) => {
         actionSelected = true;
         resolve(action);
       };
 
-      const template: any[] = [
+      const template: MenuItemConstructorOptions[] = [
         { label: "Play", click: () => handleAction({ type: "group-play" }) },
         { label: "Play Next", click: () => handleAction({ type: "group-play-next" }) },
         { type: "separator" as const },
@@ -23,7 +24,7 @@ export function registerMenuHandlers() {
       if (playlists.length > 0) {
         template.push({
           label: "Add to Playlist",
-          submenu: playlists.map((p: any) => ({
+          submenu: playlists.map((p) => ({
             label: p.name,
             click: () => handleAction({ type: "group-add-to-playlist", playlistId: p.id }),
           })),
@@ -44,17 +45,17 @@ export function registerMenuHandlers() {
     });
   });
 
-  ipcMain.handle("show-song-context-menu", (event, song) => {
+  ipcMain.handle("show-song-context-menu", (event, song: FileItem | null) => {
     return new Promise((resolve) => {
       let actionSelected = false;
       const playlists = getAllPlaylists();
 
-      const handleAction = (action: any) => {
+      const handleAction = (action: ContextMenuAction) => {
         actionSelected = true;
         resolve(action);
       };
 
-      const template: any[] = [
+      const template: MenuItemConstructorOptions[] = [
         { label: "Play Next", click: () => handleAction({ type: "play-next" }) },
         { type: "separator" as const },
         {
@@ -65,7 +66,7 @@ export function registerMenuHandlers() {
       ];
 
       // Songs without an artist tag lead to the "Unknown Artist" page.
-      const artists = artistsOf(song ?? {});
+      const artists = song ? artistsOf(song) : [];
       if (artists.length === 1) {
         template.push({
           label: "Go to Artist",
@@ -87,7 +88,7 @@ export function registerMenuHandlers() {
       if (playlists.length > 0) {
         template.push({
           label: "Add to Playlist",
-          submenu: playlists.map((p: any) => ({
+          submenu: playlists.map((p) => ({
             label: p.name,
             click: () => handleAction({ type: "add-to-playlist", playlistId: p.id }),
           })),

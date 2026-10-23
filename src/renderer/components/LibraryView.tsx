@@ -1,10 +1,11 @@
+import { FileItem, UserConfig } from "../types";
 import { LibraryFoldersView } from "./LibraryFoldersView";
 import { LibraryFolderView } from "./LibraryFolderView";
 
-type Props = {
+export type LibraryViewProps = {
   selectedLibraryPath: string | null;
-  tree: any;
-  config: any;
+  tree: FileItem[];
+  config: UserConfig | null;
   themeColor: string;
 
   setSelectedLibraryPath: (v: string | null) => void;
@@ -13,15 +14,14 @@ type Props = {
   /** Leaves the folder tree (same as Back). */
   onCloseFolder: () => void;
   onScrollRef?: (el: HTMLElement | null) => void;
-  setConfig: (config: any) => void;
+  setConfig: (config: UserConfig) => void;
 
-  handleFileSelect: (file: any) => void;
-  onContextMenu?: (e: React.MouseEvent, song: any) => void;
+  handleFileSelect: (file: FileItem, contextQueue?: FileItem[]) => void;
+  onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 };
 
-export function LibraryView(props: Props) {
-  const { selectedLibraryPath, config, setConfig, setSelectedLibraryPath, handleFileSelect } =
-    props;
+export function LibraryView(props: LibraryViewProps) {
+  const { selectedLibraryPath, config, setConfig, setSelectedLibraryPath } = props;
 
   const handleAddFolder = async () => {
     const paths = await window.api.selectDirectories();
@@ -35,7 +35,7 @@ export function LibraryView(props: Props) {
 
     if (config) {
       const newConfig = await window.api.updateConfig({
-        libraryPaths: config.libraryPaths.filter((p: string) => p !== path),
+        libraryPaths: config.libraryPaths.filter((p) => p !== path),
       });
 
       setConfig(newConfig);
@@ -51,14 +51,7 @@ export function LibraryView(props: Props) {
   };
 
   if (selectedLibraryPath) {
-    return (
-      <LibraryFolderView
-        {...props}
-        handleRefreshLibrary={handleRefreshLibrary}
-        handleRemoveFolder={handleRemoveFolder}
-        handleAddFolder={handleAddFolder}
-      />
-    );
+    return <LibraryFolderView {...props} />;
   }
 
   return (

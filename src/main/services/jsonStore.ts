@@ -35,8 +35,9 @@ const replaceFile = (from: string, to: string) => {
     try {
       fs.renameSync(from, to);
       return;
-    } catch (error: any) {
-      if (attempt >= 4 || !["EPERM", "EBUSY", "EACCES"].includes(error?.code)) throw error;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException)?.code ?? "";
+      if (attempt >= 4 || !["EPERM", "EBUSY", "EACCES"].includes(code)) throw error;
       pause(50 * (attempt + 1));
     }
   }

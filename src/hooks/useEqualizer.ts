@@ -17,7 +17,9 @@ function buildGraph(el: HTMLMediaElement): EqGraph {
   const existing = graphs.get(el);
   if (existing) return existing;
 
-  const Ctor: typeof AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+  const Ctor: typeof AudioContext =
+    window.AudioContext ||
+    (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const ctx = new Ctor();
   const source = ctx.createMediaElementSource(el);
 

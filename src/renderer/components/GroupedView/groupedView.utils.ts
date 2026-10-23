@@ -1,4 +1,4 @@
-import { FileItem, UserConfig } from "../../types";
+import { FileItem } from "../../types";
 import { artistsOf, UNKNOWN_ARTIST } from "../../../utils/metadata";
 import { GroupSortBy, GroupType } from "./types";
 
@@ -68,7 +68,8 @@ export function getGroupEntries(
   sortBy: GroupSortBy,
   sortDescending: boolean,
   normalizeGenre: (genre: string) => string,
-  config: UserConfig | null,
+  /** Albums with fewer songs are left out (config.minSongsForAlbum). */
+  minSongsForAlbum?: number,
 ) {
   const groups: Record<string, number> = {};
 
@@ -97,8 +98,8 @@ export function getGroupEntries(
 
   let entries = Object.entries(groups);
 
-  if (type === "album" && config) {
-    entries = entries.filter(([_, count]) => count >= config.minSongsForAlbum);
+  if (type === "album" && minSongsForAlbum !== undefined) {
+    entries = entries.filter(([, count]) => count >= minSongsForAlbum);
   }
 
   if (searchQuery) {
@@ -108,21 +109,8 @@ export function getGroupEntries(
   }
 
   entries.sort((a, b) => {
-    let res = 0;
-
-    if (sortBy === "count") {
-      res = a[1] - b[1];
-
-      if (res === 0) {
-        res = a[0].localeCompare(b[0], undefined, {
-          sensitivity: "base",
-        });
-      }
-    } else {
-      res = a[0].localeCompare(b[0], undefined, {
-        sensitivity: "base",
-      });
-    }
+    const byName = () => a[0].localeCompare(b[0], undefined, { sensitivity: "base" });
+    const res = sortBy === "count" ? a[1] - b[1] || byName() : byName();
 
     return sortDescending ? -res : res;
   });

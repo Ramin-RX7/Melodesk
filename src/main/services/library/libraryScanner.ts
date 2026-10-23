@@ -4,10 +4,8 @@ import path from "path";
 import { FileItem, LibraryScanStatus } from "../../../renderer/types";
 import { CacheMap, getCache } from "../cacheService";
 import { hashPath } from "../hashUtil";
-import { extractMetadata, saveArt } from "../metadataService";
+import { readSongMetadata } from "../metadataService";
 import { isMediaFile } from "./mediaUtils";
-
-let musicMetadataModule: any = null;
 
 const PROGRESS_INTERVAL_MS = 150;
 
@@ -111,13 +109,7 @@ const readMediaFile = async (fullPath: string, stats: fs.Stats): Promise<FileIte
     mtime: stats.mtimeMs,
   };
   try {
-    const metadata = await musicMetadataModule.parseFile(fullPath);
-    let artPath = undefined;
-    if (metadata.common.picture && metadata.common.picture.length > 0) {
-      const pic = metadata.common.picture[0];
-      artPath = saveArt(Buffer.from(pic.data), pic.format);
-    }
-    item.metadata = extractMetadata(metadata, fullPath, artPath);
+    item.metadata = await readSongMetadata(fullPath);
   } catch (err) {
     console.error(`Failed to parse metadata for ${fullPath}:`, err);
   }
@@ -135,10 +127,6 @@ export const scanLibrary = async (
   dirs: string[],
   { signal, previous, onProgress }: ScanOptions,
 ): Promise<FileItem[]> => {
-  if (!musicMetadataModule) {
-    // Use eval to prevent tsc from transpiling import() to require()
-    musicMetadataModule = await eval('import("music-metadata")');
-  }
   const report = throttle(onProgress);
 
   const files = await discoverMediaFiles(dirs, signal, (count, dir) =>

@@ -22,7 +22,7 @@ Scope today is **audio only** (`.mp3 .wav .ogg .m4a .flac`). Video playback is n
 | Media | `music-metadata` (read tags), `node-id3` (write tags), `chokidar` (folder watcher), HTML5 `<audio>` + Web Audio (equalizer) |
 | Node  | `^20.19.0 \|\| >=22.12.0` (`engines`, required by Vite 8); `.nvmrc` pins `24.22.1`                                          |
 
-There are **no tests and no linter**. Formatting is enforced by Prettier (`.prettierrc.json`: 2 spaces, double quotes, semicolons, trailing commas, width 100, LF). `.editorconfig` mirrors it for editors, and `.gitattributes` stores every text file with LF line endings.
+Tests and lint are described in §12 (Vitest, ESLint; Playwright end-to-end tests are being added). Formatting is enforced by Prettier (`.prettierrc.json`: 2 spaces, double quotes, semicolons, trailing commas, width 100, LF). `.editorconfig` mirrors it for editors, and `.gitattributes` stores every text file with LF line endings.
 
 ---
 
@@ -65,6 +65,12 @@ There are **no tests and no linter**. Formatting is enforced by Prettier (`.pret
 - Follow existing patterns. No new abstractions unless necessary.
 - No unnecessary comments. No placeholder logic.
 
+### Tests
+
+- **Every feature and every fix adds or updates tests in the same change** (§12 says where each kind goes). A bug fix starts with a test that fails without the fix.
+- `npm run check` (types, lint, format, changelog, Vitest) must pass before a change is done.
+- Never point a test at the real profile or the real music library: main-process tests get a temporary userData folder automatically, and audio comes from the generated fixture library (`tests/fixtures/generate.mjs`).
+
 ### Changelog
 
 - **Every user-facing change adds an entry to `CHANGELOG.md` under `## [Unreleased]` in the same commit.** Every `[feat]` and `[fix]` commit needs one; CI fails a push or PR whose `[feat]`/`[fix]` commits don't touch `CHANGELOG.md`.
@@ -106,10 +112,15 @@ npm ci             # install exactly what package-lock.json pins (use `npm insta
 | `npm start`                                   | `compile`, then launches Electron                                                                                       | One-off run of the current code                                        |
 | `npm run compile`                             | `clean` → `tsc` (main + preload → `dist/`) → copy `assets/` → `dist/assets` → `vite build` (renderer → `dist/renderer`) | Build without launching; every packaging script runs it first          |
 | `npm run clean`                               | Deletes `dist/` (Node `fs.rmSync`, cross-platform)                                                                      | Drop stale output from deleted or renamed files                        |
-| `npm run typecheck`                           | `tsc --noEmit` over all of `src/` (Vite doesn't type-check)                                                             | After any TS change                                                    |
+| `npm run typecheck`                           | `tsc --noEmit` over `src/`, then over the tests (`tests/tsconfig.json`); Vite doesn't type-check                        | After any TS change                                                    |
 | `npm run format`                              | Prettier `--write` on the whole repo                                                                                    | Before committing                                                      |
 | `npm run format:check`                        | Prettier `--check`; fails if anything is unformatted                                                                    | CI / pre-commit                                                        |
-| `npm run check`                               | `typecheck` + `format:check` + `changelog:verify`                                                                       | **Run before every commit**: the fastest "is this mergeable" gate      |
+| `npm run lint` / `lint:fix`                   | ESLint (`eslint.config.mjs`): TypeScript rules, React hook rules, project rules (§11)                                   | Part of `check`                                                        |
+| `npm test`                                    | All Vitest tests once (main-process + renderer projects, §12)                                                           | Part of `check`                                                        |
+| `npm run test:watch`                          | Vitest in watch mode                                                                                                    | While writing code/tests                                               |
+| `npm run test:coverage`                       | Vitest with a coverage report in `coverage/` (reported, never enforced)                                                 | To see what isn't tested                                               |
+| `npm run fixtures`                            | Rebuilds the generated test music library (`tests/fixtures/generated/`, git-ignored)                                    | Rarely: tests build it on demand                                       |
+| `npm run check`                               | `typecheck` + `lint` + `format:check` + `changelog:verify` + `test`                                                     | **Run before every commit**: the "is this mergeable" gate              |
 | `npm run changelog:verify`                    | Validates `CHANGELOG.md` structure (`scripts/changelog.mjs verify`)                                                     | Part of `check`                                                        |
 | `npm run pack`                                | `compile` → `electron-builder --dir`: unpacked app in `release/<platform>-unpacked/`, no installer                      | Test the packaged app quickly (asar contents, icons, production paths) |
 | `npm run build`                               | `compile` → installers for the current OS into `release/` (`--publish never`)                                           | Local test of release artifacts                                        |
@@ -119,7 +130,7 @@ npm ci             # install exactly what package-lock.json pins (use `npm insta
 
 - `tsconfig.json`: `rootDir: src`, `outDir: dist`, CommonJS. `vite.config.ts`: `root: src/renderer`, `base: "./"`, output `dist/renderer`. `tsc` also emits renderer `.js` files into `dist/`; Vite replaces `dist/renderer`, and the extra `dist/hooks` files are harmless.
 - `npm run dev` restarts the whole app on every save (no HMR). That's fine for now; a Vite dev server with HMR is a possible later upgrade.
-- There are no automated tests. To verify a change: `npm run check`, then `npm start` and exercise the feature. Main-process logs (`console.*` in `src/main/`) print to the terminal; renderer logs go to DevTools (`Ctrl+Shift+I`).
+- To verify a change: `npm run check` (includes the tests), then `npm start` and exercise the feature. Main-process logs (`console.*` in `src/main/`) print to the terminal; renderer logs go to DevTools (`Ctrl+Shift+I`).
 - **Running Electron from Claude Code inside VS Code:** that environment sets `ELECTRON_RUN_AS_NODE=1`, which makes `electron .` run as plain Node and crash with `Cannot read properties of undefined (reading 'getPath')`. Unset it for the command first (PowerShell: `Remove-Item Env:ELECTRON_RUN_AS_NODE`). Normal terminals aren't affected.
 - **Windows packaging needs Developer Mode** (Settings → System → For developers) or an admin shell. electron-builder extracts its code-signing tools archive, which contains symlinks, and Windows only lets you create symlinks with that privilege. Without it, `pack`/`build` fail with `Cannot create symbolic link : A required privilege is not held by the client`, before the exe icon and version info are embedded.
 - `dist/`, `release/` and `node_modules/` are gitignored.
@@ -435,6 +446,14 @@ scripts/                             # Node ESM, no dependencies
 └── release.mjs                      # `npm run release` — version bump, changelog finalize, [release] commit, tag
 tsconfig.json / vite.config.ts       # Main+preload compile (tsc → dist/) / renderer bundle (vite → dist/renderer/)
 .prettierrc.json / .prettierignore   # Formatting rules (enforced by `npm run check`)
+eslint.config.mjs                    # Lint rules (TypeScript, React hooks, project rules; §11)
+vitest.config.ts                     # Vitest projects: "main" (Node) and "renderer" (jsdom); coverage settings
+tests/                               # All tests (§12)
+├── tsconfig.json                    # Type-checks the tests (never emits)
+├── helpers/                         # Fake electron module, temp folders, test setup per project
+├── fixtures/generate.mjs            # Builds the test music library (output in fixtures/generated/, git-ignored)
+├── unit/                            # Vitest (Node): main process, scripts, shared + pure renderer utils
+└── renderer/                        # Vitest (jsdom): hooks and components
 .editorconfig / .gitattributes       # Editor defaults / LF line endings for all text files
 .nvmrc                               # Pinned Node version
 src/
@@ -696,6 +715,7 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 
 - **ESM-only packages** (`chokidar`, `music-metadata`, `node-id3`) are loaded with `await eval('import("pkg")')` and cached in a module variable. The `eval` stops `tsc` (CommonJS output) from rewriting the import into `require`. Keep the pattern for any ESM-only dependency.
 - **Styling:** most components use inline `style={{}}` objects with `colors.*`. Larger widgets (Navbar, GroupedView, GlobalSearch, HomeView) use `*.module.css`. Match the style of the file you're editing. Global base CSS (scrollbars, body) is injected in the first effect of `App.tsx`.
+- **Lint rules beyond the standard ones** (`eslint.config.mjs`): React hook rules (`exhaustive-deps` is an error; an intentional exception gets an `eslint-disable-next-line` with the reason on the line above); no `alert`/`confirm`/`prompt` in the renderer; no `dialog.showMessageBox`/`showErrorBox` in main; no `fs.writeFileSync` in main outside `jsonStore` and the art cache. Avoid `any`: type IPC data with `types.d.ts`, and ESM-only packages with a small local interface (see `ParsedAudio` in `metadataService.ts`).
 - **Formatting** is Prettier's job. Don't hand-align code; run `npm run format` before committing, and make sure `npm run check` passes.
 - **State lives in `App.tsx`** and flows down as props; there is no context or store. Hooks return large objects that `App.tsx` destructures. Keep that shape, and don't introduce Redux, Context or a router without asking.
 - `config` is `UserConfig | null` until loaded, so always guard it (`config?.x ?? fallback`). After `updateConfig`, call `setConfig(newConfig)` with the returned value.
@@ -713,3 +733,30 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 - Errors: main-process code logs with `console.error` and returns a safe fallback (`null`, `[]`, `false`). It doesn't throw across IPC.
 - Backlog ideas live in `.todo` (synced lyrics, cover-art writing, picture-in-picture).
 - A finished feature isn't done until its `CHANGELOG.md` entry is written (§2 → Changelog).
+
+---
+
+## 12. Testing
+
+| Layer                                                                      | Tool                            | Where                          | Run            |
+| -------------------------------------------------------------------------- | ------------------------------- | ------------------------------ | -------------- |
+| Unit + integration (main process, scripts, shared and pure renderer utils) | Vitest, Node                    | `tests/unit/**/*.test.ts`      | `npm test`     |
+| Hooks + components                                                         | Vitest, jsdom + Testing Library | `tests/renderer/**/*.test.tsx` | `npm test`     |
+| Lint                                                                       | ESLint                          | whole repo                     | `npm run lint` |
+
+`vitest.config.ts` defines the two Vitest projects (`main`, `renderer`). Tests are type-checked by `tests/tsconfig.json` (part of `npm run typecheck`) and never compiled into `dist/`.
+
+**Helpers** (`tests/helpers/`):
+
+- `electron.ts` is a fake `electron` module, installed for every `main` test file by `main-setup.ts`:
+  - `app.getPath("userData")` is a fresh temp folder per test file;
+  - `ipcMain.handle` / `on` handlers are captured: call them with `invoke(channel, ...args)` / `send(channel, ...args)`;
+  - `openWindow()` creates a fake window whose `webContents.sentOn(channel)` returns what was sent to the page;
+  - `dialog`, `shell`, `net`, `Menu` are `vi.fn` stubs; `protocolHandlers` holds `protocol.handle` handlers.
+
+  Main modules compute paths when imported, so a test that needs a clean module state uses `vi.resetModules()` and imports again.
+
+- `tempdir.ts`: `makeTempDir()` (deleted after the file), `writeFile` / `writeJsonFile` / `readJsonFile`.
+- `renderer-setup.ts`: jest-dom matchers and cleanup for the `renderer` project.
+
+**Test music** (`tests/fixtures/generate.mjs`): about ten small, silent but valid songs with known tags, plus a WAV, untagged files, covers and non-audio files, laid out as two library folders ("Library A", "Library B"). `copyLibrary(target)` copies it into a test's temp folder; never modify the cached original. Every song has a different length, so move detection never confuses two of them. Add songs to `SONGS` when a test needs a new case; the cache rebuilds itself when the generator changes.

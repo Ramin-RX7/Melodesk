@@ -1,12 +1,12 @@
 import { useEffect, useRef } from "react";
 
-import { AppNotification, FileItem } from "../renderer/types";
+import { AppNotification, FileItem, UserConfig } from "../renderer/types";
 import { shuffleArray } from "../utils/array";
 import { useAudioPlayer } from "./useAudioPlayer";
 import { useQueue } from "./useQueue";
 
 type Props = {
-  config: any;
+  config: UserConfig | null;
   queueState: ReturnType<typeof useQueue>;
   audioState: ReturnType<typeof useAudioPlayer>;
 

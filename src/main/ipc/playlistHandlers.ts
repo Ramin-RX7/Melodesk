@@ -54,8 +54,9 @@ const salvageStringArray = (text: string, key: string): string[] => {
 };
 
 // Fills in fields a hand-edited or older file may lack; null if it isn't a playlist at all.
-const normalizePlaylist = (data: any, id: string): Playlist | null => {
-  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+const normalizePlaylist = (value: unknown, id: string): Playlist | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const data = value as Partial<Playlist>;
   const now = new Date().toISOString();
   return {
     ...data,

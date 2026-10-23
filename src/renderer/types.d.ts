@@ -98,6 +98,15 @@ export interface AppNotification {
   message: string;
 }
 
+/** Tag changes written to an MP3 file (write-metadata). */
+export interface TagEdits {
+  title?: string;
+  artist?: string;
+  album?: string;
+  genre?: string;
+  year?: string;
+}
+
 /** A question for the user, shown in the app's own dialog (main process or renderer). */
 export interface ConfirmOptions {
   title: string;
@@ -189,7 +198,7 @@ declare global {
       /** Asks for confirmation; resolves to the (possibly unchanged) playlist. */
       removePlaylistDuplicates: (id: string) => Promise<Playlist | null>;
       onPlaylistsChanged: (callback: () => void) => () => void;
-      writeMetadata: (filePath: string, tags: any) => Promise<boolean>;
+      writeMetadata: (filePath: string, tags: TagEdits) => Promise<boolean>;
       getArtistInfo: (name: string) => Promise<ArtistInfo | null>;
       /** Custom pictures of all artists that have one, by artist name. */
       getArtistPictures: () => Promise<Record<string, string>>;

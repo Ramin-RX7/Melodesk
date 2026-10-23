@@ -153,6 +153,8 @@ export function PlaylistView({
       setEditDescription(selectedPlaylist.description ?? "");
       setIsEditingDescription(false);
     }
+    // Only when another playlist is opened, not when this one's songs change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedPlaylist?.id]);
 
   useEffect(() => {
@@ -683,7 +685,7 @@ export function PlaylistView({
               <span style={{ fontSize: "12px", color: colors.textDim }}>Sort by:</span>
               <select
                 value={sortBy}
-                onChange={(e) => handleSortByChange(e.target.value as any)}
+                onChange={(e) => handleSortByChange(e.target.value as typeof sortBy)}
                 style={{
                   backgroundColor: "transparent",
                   color: colors.textPrimary,
@@ -739,8 +741,8 @@ export function PlaylistView({
             renderItem={({ track, originalIndex }, i) => (
               <div
                 draggable={!isFixed && sortBy === "custom" && !searchQuery}
-                onDragStart={(e) => (dragItem.current = originalIndex)}
-                onDragEnter={(e) => (dragOverItem.current = originalIndex)}
+                onDragStart={() => (dragItem.current = originalIndex)}
+                onDragEnter={() => (dragOverItem.current = originalIndex)}
                 onDragEnd={handleSortEnd}
                 // A row dragged far enough is unmounted and may never get dragend; the drop target
                 // finishes the move instead (handleSortEnd only acts once).

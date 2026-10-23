@@ -1,8 +1,10 @@
 import { useRef, useState, useEffect } from "react";
 
+import { UserConfig } from "../renderer/types";
+
 const SEEK_AMOUNT = 5;
 
-export function useAudioPlayer(config: any, setConfig: (config: any) => void) {
+export function useAudioPlayer(config: UserConfig | null, setConfig: (config: UserConfig) => void) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -11,8 +13,6 @@ export function useAudioPlayer(config: any, setConfig: (config: any) => void) {
   // would re-render the whole app.
 
   const [duration, setDuration] = useState(0);
-
-  const [isShuffle, setIsShuffle] = useState(false);
 
   // play() rejects with an AbortError when a newer src interrupts it (harmless). Any other
   // rejection means nothing is playing; load failures are reported via the element's error event.

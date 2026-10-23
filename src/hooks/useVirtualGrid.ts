@@ -48,7 +48,8 @@ export function useVirtualGrid<T>(items: T[], { minItemWidth, gap, estimateRowHe
   }, [container]);
 
   // Content above the list can change height (e.g. an artist bio loads), so this is re-measured
-  // after every render; it only updates state when it changed.
+  // after every render; it only updates state when it changed, so it can't loop.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     const scroller = scrollRef.current;
     if (!container || !scroller) return;

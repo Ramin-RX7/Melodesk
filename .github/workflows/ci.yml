@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   check:
-    name: Typecheck, format, changelog
+    name: Check (types, lint, format, changelog, unit tests)
     runs-on: ubuntu-latest
     env:
       # The checks never start Electron, so skip its ~100 MB download.
@@ -32,7 +32,17 @@ jobs:
 
       - run: npm ci
 
+      # Typecheck (source + tests), lint, format, changelog and the Vitest suites.
       - run: npm run check
+
+      # Coverage is reported, never enforced.
+      - run: npm run test:coverage
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ github.sha }}
+          path: coverage/
+          retention-days: 7
 
       - name: Changelog entries for [feat]/[fix] commits
         run: node scripts/changelog.mjs verify "$BASE" "$HEAD"

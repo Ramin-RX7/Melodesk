@@ -1,6 +1,7 @@
 import { protocol } from "electron";
 import fs from "fs";
 import path from "path";
+import { Readable } from "stream";
 
 import { canServe } from "../services/mediaAccess";
 
@@ -103,7 +104,7 @@ export function registerMediaProtocol() {
           "Access-Control-Allow-Origin": "*",
         };
 
-        return new Response(file as any, {
+        return new Response(Readable.toWeb(file) as ReadableStream, {
           status: 206,
           headers: head,
         });
@@ -115,7 +116,7 @@ export function registerMediaProtocol() {
           "Access-Control-Allow-Origin": "*",
         };
 
-        return new Response(fs.createReadStream(decodedPath) as any, {
+        return new Response(Readable.toWeb(fs.createReadStream(decodedPath)) as ReadableStream, {
           status: 200,
           headers: head,
         });

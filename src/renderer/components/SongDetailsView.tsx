@@ -70,7 +70,7 @@ export function SongDetailsView({
       setShowLyricsModal(true);
       onLyricsConsumed?.();
     }
-  }, [openLyrics]);
+  }, [openLyrics, onLyricsConsumed]);
 
   useEffect(() => {
     if (showPlaylistModal) {

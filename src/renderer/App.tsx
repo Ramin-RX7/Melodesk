@@ -164,7 +164,6 @@ export default function App() {
     setShuffledQueue,
 
     activeQueue,
-    removeFromQueue,
     handleShuffleToggle,
     handleRepeatToggle,
   } = queueState;
@@ -200,11 +199,12 @@ export default function App() {
 
   // A library folder that was removed (e.g. in Settings) can't stay open on the Library page,
   // including when Back would return to it.
+  const libraryPaths = config?.libraryPaths;
   useEffect(() => {
-    if (selectedLibraryPath && config && !config.libraryPaths.includes(selectedLibraryPath)) {
+    if (selectedLibraryPath && libraryPaths && !libraryPaths.includes(selectedLibraryPath)) {
       setSelectedLibraryPath(null);
     }
-  }, [config?.libraryPaths, selectedLibraryPath]);
+  }, [libraryPaths, selectedLibraryPath]);
 
   // After a library update, swap the queue's song objects for the fresh ones (same path, or same
   // song id for a file that was moved or renamed) so the queue, playback bar and details page
@@ -223,6 +223,8 @@ export default function App() {
     setShuffledQueue((prev) => prev.map(refresh));
     setCurrentTrack((prev) => (prev ? refresh(prev) : prev));
     setDetailsTrack((prev) => (prev ? refresh(prev) : prev));
+    // Only when the library changes; the playing song is read as of that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allTracks]);
 
   usePlaybackPositionSaver(audioRef, config?.restoreSession ?? false);
@@ -369,23 +371,24 @@ export default function App() {
     return () => {
       document.head.removeChild(style);
     };
+    // Startup runs once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Apply the selected theme + per-role overrides to :root whenever they change.
+  const appearance = config?.appearance;
+  const configLoaded = config !== null;
   useEffect(() => {
-    if (!config) return;
-    const base =
-      getTheme(config.appearance?.themeId ?? DEFAULT_THEME_ID)?.palette ?? DEFAULT_PALETTE;
-    applyPalette(
-      { ...base, ...(config.appearance?.colors ?? {}) },
-      config.themeColor || DEFAULT_THEME_COLOR,
-    );
-  }, [config?.appearance, config?.themeColor]);
+    if (!configLoaded) return;
+    const base = getTheme(appearance?.themeId ?? DEFAULT_THEME_ID)?.palette ?? DEFAULT_PALETTE;
+    applyPalette({ ...base, ...(appearance?.colors ?? {}) }, themeColor);
+  }, [configLoaded, appearance, themeColor]);
 
+  const restoreSession = config?.restoreSession;
   useEffect(() => {
-    if (!config) return;
+    if (restoreSession === undefined) return;
 
-    if (!config.restoreSession) {
+    if (!restoreSession) {
       window.api.clearSession();
       return;
     }
@@ -407,15 +410,7 @@ export default function App() {
       data.position = 0;
     }
     window.api.saveSession(data);
-  }, [
-    currentTrack,
-    queue,
-    shuffledQueue,
-    currentIndex,
-    isShuffle,
-    repeatMode,
-    config?.restoreSession,
-  ]);
+  }, [currentTrack, queue, shuffledQueue, currentIndex, isShuffle, repeatMode, restoreSession]);
 
   const handleScrollRef = (el: HTMLElement | null) => {
     scrollContainerRef.current = el;

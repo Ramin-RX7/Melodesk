@@ -102,7 +102,7 @@ export function GlobalSearch({
       "alphabet",
       false,
       (s) => s,
-      config,
+      config?.minSongsForAlbum,
     );
     const artists = getGroupEntries(
       allTracks,
@@ -111,12 +111,12 @@ export function GlobalSearch({
       "alphabet",
       false,
       (s) => s,
-      config,
+      config?.minSongsForAlbum,
     );
     const matchedPlaylists = playlists.filter((p) => p.name.toLowerCase().includes(q));
 
     return { songs, albums, artists, playlists: matchedPlaylists };
-  }, [q, allTracks, playlists, config]);
+  }, [q, trimmedQuery, allTracks, playlists, config?.minSongsForAlbum]);
 
   const navigate = (target: GlobalSearchNavTarget) => {
     onNavigate(target);

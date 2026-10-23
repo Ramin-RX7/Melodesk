@@ -1,14 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { FileItem } from "../types";
-import {
-  IoFolder,
-  IoFolderOpen,
-  IoMusicalNote,
-  IoChevronForward,
-  IoChevronDown,
-  IoCaretUp,
-  IoCaretDown,
-} from "react-icons/io5";
+import { IoFolder, IoFolderOpen, IoMusicalNote, IoCaretUp, IoCaretDown } from "react-icons/io5";
 import { formatArtists } from "../../utils/metadata";
 import { colors } from "../theme/colors";
 
@@ -223,38 +215,22 @@ export const DirectoryTree: React.FC<DirectoryTreeProps> = ({
       if (!a.isDirectory && b.isDirectory) return 1;
       if (a.isDirectory && b.isDirectory) return a.name.localeCompare(b.name);
 
-      let valA: any = "";
-      let valB: any = "";
-
-      switch (sortCol) {
-        case "name":
-          valA = a.name;
-          valB = b.name;
-          break;
-        case "title":
-          valA = a.metadata?.title || a.name;
-          valB = b.metadata?.title || b.name;
-          break;
-        case "artist":
-          valA = a.metadata?.artists?.[0] || "";
-          valB = b.metadata?.artists?.[0] || "";
-          break;
-        case "album":
-          valA = a.metadata?.album || "";
-          valB = b.metadata?.album || "";
-          break;
-        case "duration":
-          valA = a.metadata?.duration || 0;
-          valB = b.metadata?.duration || 0;
-          break;
-      }
-
-      let res = 0;
-      if (typeof valA === "string") {
-        res = valA.localeCompare(valB);
-      } else {
-        res = valA - valB;
-      }
+      const text = (item: FileItem): string => {
+        switch (sortCol) {
+          case "title":
+            return item.metadata?.title || item.name;
+          case "artist":
+            return item.metadata?.artists?.[0] || "";
+          case "album":
+            return item.metadata?.album || "";
+          default:
+            return item.name;
+        }
+      };
+      const res =
+        sortCol === "duration"
+          ? (a.metadata?.duration || 0) - (b.metadata?.duration || 0)
+          : text(a).localeCompare(text(b));
 
       return sortOrder === "asc" ? res : -res;
     };

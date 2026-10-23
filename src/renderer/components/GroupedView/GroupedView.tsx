@@ -145,7 +145,7 @@ export function GroupedView({
   };
 
   // Both walk the whole library, so they're only recomputed when their inputs change, not on
-  // every redraw (playback, toasts…). getGroupEntries only reads minSongsForAlbum from config.
+  // every redraw (playback, toasts…).
   const minSongsForAlbum = config?.minSongsForAlbum;
   const songs = useMemo(
     () =>
@@ -165,7 +165,7 @@ export function GroupedView({
             sortBy,
             sortDescending,
             normalizeGenre,
-            config,
+            minSongsForAlbum,
           ),
     [
       allTracks,
@@ -419,12 +419,9 @@ export function GroupedView({
 
           <SongGrid
             songs={songs}
-            selectedGroup={selectedGroup.name}
-            type={type}
             currentTrack={currentTrack}
             config={config}
             themeColor={themeColor}
-            onBack={() => {}}
             onSongClick={(song) => handleFileSelect(song, songs)}
             onContextMenu={onContextMenu}
           />

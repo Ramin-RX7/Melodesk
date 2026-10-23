@@ -1,8 +1,10 @@
 import { ipcMain } from "electron";
 import path from "path";
 
+import { TagEdits } from "../../renderer/types";
+
 import { isMediaFile } from "../services/library/mediaUtils";
-import { extractMetadata, saveArt } from "../services/metadataService";
+import { readSongMetadata } from "../services/metadataService";
 import { getCache } from "../services/cacheService";
 import { hashPath } from "../services/hashUtil";
 
@@ -10,23 +12,12 @@ import { hashPath } from "../services/hashUtil";
 const songId = (filePath: string) => getCache()[hashPath(filePath)]?.hash ?? hashPath(filePath);
 
 export function registerMetadataHandlers() {
-  let musicMetadataModule: any = null;
-
   ipcMain.handle("get-metadata", async (_event, filePath: string) => {
-    if (!musicMetadataModule) {
-      musicMetadataModule = await eval('import("music-metadata")');
-    }
-
     const isMedia = isMediaFile(filePath);
     if (!isMedia) return null;
 
     try {
-      const metadata = await musicMetadataModule.parseFile(filePath);
-      let artPath = undefined;
-      if (metadata.common.picture && metadata.common.picture.length > 0) {
-        const pic = metadata.common.picture[0];
-        artPath = saveArt(Buffer.from(pic.data), pic.format);
-      }
+      const metadata = await readSongMetadata(filePath);
 
       return {
         name: path.basename(filePath),
@@ -34,7 +25,7 @@ export function registerMetadataHandlers() {
         isDirectory: false,
         isMedia: true,
         hash: songId(filePath),
-        metadata: extractMetadata(metadata, filePath, artPath),
+        metadata,
       };
     } catch (err) {
       console.error(`Failed to parse metadata for ${filePath}:`, err);
@@ -48,10 +39,13 @@ export function registerMetadataHandlers() {
     }
   });
 
-  let nodeId3Module: any = null;
+  // node-id3 is loaded with import() at runtime (CLAUDE.md §11); this is the part used here.
+  let nodeId3Module: {
+    default: { update: (tags: TagEdits, file: string) => true | Error };
+  } | null = null;
 
   // Tags are only written to MP3 files of the library (node-id3 only handles ID3 tags).
-  ipcMain.handle("write-metadata", async (_event, filePath: string, tags: any) => {
+  ipcMain.handle("write-metadata", async (_event, filePath: string, tags: TagEdits) => {
     if (
       typeof filePath !== "string" ||
       path.extname(filePath).toLowerCase() !== ".mp3" ||
@@ -63,10 +57,8 @@ export function registerMetadataHandlers() {
       return false;
     }
     try {
-      if (!nodeId3Module) {
-        nodeId3Module = await eval('import("node-id3")');
-      }
-      const success = nodeId3Module.default.update(tags, filePath);
+      nodeId3Module ??= await eval('import("node-id3")');
+      const success = nodeId3Module!.default.update(tags, filePath);
       return success === true;
     } catch (error) {
       console.error("Failed to write metadata (node-id3 might not be installed):", error);
