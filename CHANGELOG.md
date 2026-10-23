@@ -38,6 +38,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Long lists open instantly and scroll smoothly, even with thousands of songs: the queue, playlists, the "Add Songs" list, the Artists, Albums and Genres pages and Home's "Show all" pages. Covers load as they come into view.
 - The Artists, Albums, Genres and Playlists pages respond faster in large libraries.
 - Cover art takes less disk space: songs from the same album share one image, and images that are no longer used are removed automatically.
+- MeloDesk now runs on Electron 44, with current Chromium security fixes. The macOS version needs macOS 13 (Ventura) or later.
 
 ### Fixed
 
@@ -65,6 +66,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A quick click on the mini-player can no longer leave the window following the mouse pointer.
 - A song's cover updates when its embedded art is changed in another program.
 - Replacing an artist picture no longer leaves the old image behind on disk.
+- The mini-player no longer slowly grows when it's dragged around on displays with scaling (e.g. 125%).
 
 ## [0.2.0] - 2026-10-23
 

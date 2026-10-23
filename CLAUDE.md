@@ -16,7 +16,7 @@ Scope today is **audio only** (`.mp3 .wav .ogg .m4a .flac`). Video playback is n
 
 | Layer | Tech                                                                                                                        |
 | ----- | --------------------------------------------------------------------------------------------------------------------------- |
-| Shell | Electron 29 (frameless `BrowserWindow`, `contextIsolation`, `sandbox: true`)                                                |
+| Shell | Electron 44 (frameless `BrowserWindow`, `contextIsolation`, `sandbox: true`)                                                |
 | UI    | React 19 function components, inline styles + some CSS Modules, `react-icons`, `@tanstack/react-virtual` (long lists)       |
 | Build | `tsc` (main + preload → CommonJS in `dist/`), Vite 8 (renderer → `dist/renderer/`), electron-builder (installers)           |
 | Media | `music-metadata` (read tags), `node-id3` (write tags), `chokidar` (folder watcher), HTML5 `<audio>` + Web Audio (equalizer) |
@@ -183,11 +183,11 @@ Known platform gaps (not yet fixed):
 
 | Platform              | Issue                                                                                                                                                                                                                                                                                  | Where                         |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| macOS                 | The release workflow builds unsigned x64 + arm64 dmgs (icon converted from the 512×512 `assets/icon.png`), but they haven't been tested on a real Mac. Gatekeeper may report the app as damaged until the user runs `xattr -cr`.                                                       | `package.json`, `release.yml` |
+| macOS                 | The release workflow builds unsigned x64 + arm64 dmgs (icon converted from the 512×512 `assets/icon.png`), but they haven't been tested on a real Mac. Gatekeeper may report the app as damaged until the user runs `xattr -cr`. Electron 44 needs **macOS 13 (Ventura) or later**.    | `package.json`, `release.yml` |
 | macOS                 | After the window closes the app keeps running (normal on macOS), but there is no `activate` handler to reopen the window; the user must Cmd+Q. Window/mini-mode IPC handlers are registered inside `createWindow()`, so creating a second window would throw duplicate-handler errors. | `src/main.ts`                 |
 | macOS                 | No native traffic-light buttons (frameless window); the custom `TitleBar` buttons are used instead.                                                                                                                                                                                    | `TitleBar.tsx`                |
 | macOS / Linux         | The font stack starts with Windows-only "Segoe UI", so other systems fall back to Tahoma / Verdana / sans-serif.                                                                                                                                                                       | `App.tsx`                     |
-| Linux (Wayland)       | Wayland doesn't let apps position windows, so mini-player JS dragging, window-position restore and possibly always-on-top may not work. X11 is fine.                                                                                                                                   | `main.ts`, `MiniPlayer.tsx`   |
+| Linux (Wayland)       | Since Electron 38 the app runs as a native Wayland client on Wayland sessions, and Wayland doesn't let apps position windows: mini-player JS dragging, window-position restore and possibly always-on-top may not work. X11 (or `--ozone-platform=x11`) is fine.                       | `main.ts`, `MiniPlayer.tsx`   |
 | Linux (Ubuntu 23.10+) | Unpackaged `electron .` can fail with an Electron "SUID sandbox helper" error caused by AppArmor. Packaged builds usually avoid it; `--no-sandbox` works around it for local dev only.                                                                                                 | —                             |
 
 ---
@@ -337,7 +337,7 @@ Menus are native Electron menus. The renderer calls `window.api.showSongContextM
 
 ### Mini-player
 
-`App.tsx` `isMini` swaps the whole UI for `<MiniPlayer>` and calls `enterMiniMode` / `exitMiniMode`. `main.ts` resizes the same window, makes it always-on-top, and saves separate bounds for normal and mini mode. Dragging is done in JS: `getWindowBounds` + `setWindowPosition`, which calls `setBounds` with a fixed size to avoid DPI drift. Don't switch it to `-webkit-app-region: drag`, which suppresses the hover events the mini-player needs. (The main `TitleBar` does use `WebkitAppRegion: "drag"`.)
+`App.tsx` `isMini` swaps the whole UI for `<MiniPlayer>` and calls `enterMiniMode` / `exitMiniMode`. `main.ts` resizes the same window, makes it always-on-top, and saves separate bounds for normal and mini mode. Dragging is done in JS: `getWindowBounds` + `setWindowPosition`, which calls `setBounds` with a fixed size to avoid DPI drift. On a scaled display every `setBounds` can come out 1–2 px off (`setPosition` is worse: the window grows on every move), so in mini mode main uses its remembered `miniSize` (set on entering mini mode, changed only by manual resizes via `will-resize`) for every move and when saving the mini bounds. Don't switch it to `-webkit-app-region: drag`, which suppresses the hover events the mini-player needs. (The main `TitleBar` does use `WebkitAppRegion: "drag"`.)
 
 ---
 
@@ -668,6 +668,8 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 - **Artists:** use `artistsOf(song)` from `utils/metadata.ts` (never `metadata.artists` directly) for grouping and navigation. Songs without an artist tag belong to `UNKNOWN_ARTIST`, a special group listed last, without bio or picture editing. Album links are only offered for songs that have an album.
 - **Forms that edit saved data** (e.g. the artist bio) must cancel and reset when the user navigates away or the subject changes, so a draft is never saved onto the wrong item.
 - Some types are re-declared locally on the main side (`Playlist` in `playlistHandlers.ts`, `ArtistInfo` in `artistHandlers.ts`). If you change a shape, update those copies too.
+- **Files dropped onto the window:** get their path with `window.api.getPathForFile(file)` (`webUtils` in the preload). `File.path` no longer exists since Electron 32.
+- **Upgrading Electron:** `package.json` → `allowScripts` lists the exact versions whose install script may run (`"electron@44.9.3": true`). Update that entry together with the version, or npm skips the download and `node_modules/electron/dist` stays empty. Read Electron's breaking-changes page for every version you skip.
 - `media://` paths: convert backslashes to `/`, then `encodeURIComponent`. The protocol strips a leading `/` before a drive letter on Windows.
 - `write-metadata` uses node-id3, so tag writing works for **MP3 only**; other formats fail and return `false`. `SongDetailsView` disables editing for non-MP3 files.
 - Keep path handling cross-platform: use `path.join`, and normalize separators before hashing or comparing paths (see §5).

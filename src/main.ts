@@ -100,13 +100,21 @@ function createWindow() {
   // Tracks whether the window is currently in the small mini-player mode. Bounds
   // are persisted to a separate slot per mode so each size is remembered.
   let isMiniMode = false;
+  // The mini player's intended size: set when it opens and when the user resizes it. Moves and
+  // saves reuse it, because every setBounds on a scaled display can come out 1-2 px off and
+  // reading the size back would let that build up over many drags.
+  let miniSize: { width: number; height: number } | null = null;
+  // Only emitted for resizes by the user, not for setBounds.
+  win.on("will-resize", (_e, newBounds) => {
+    if (isMiniMode) miniSize = { width: newBounds.width, height: newBounds.height };
+  });
 
   // Write the current bounds straight to the appropriate slot (no debounce).
   const flushBounds = () => {
     if (win.isDestroyed()) return;
     if (isMiniMode) {
       const b = win.getBounds();
-      saveMiniWindowBounds({ width: b.width, height: b.height, x: b.x, y: b.y });
+      saveMiniWindowBounds({ ...b, ...miniSize, x: b.x, y: b.y });
     } else {
       // getNormalBounds returns the un-maximized size so we can restore it later.
       const b = win.getNormalBounds();
@@ -157,18 +165,18 @@ function createWindow() {
     const b = win.getBounds();
     return { x: b.x, y: b.y, width: b.width, height: b.height };
   });
-  // Move via setBounds with an explicit, drag-time-constant size rather than
-  // setPosition. On high-DPI displays setPosition round-trips the size through
-  // DIP<->physical pixels and the rounding accumulates, so the window visibly
-  // grows in the drag direction. Passing the locked size every frame keeps it
-  // fixed. (Renderer sends the size captured when the drag started.)
+  // Move via setBounds with an explicit size rather than setPosition. On high-DPI displays
+  // setPosition round-trips the size through DIP<->physical pixels and the rounding accumulates,
+  // so the window visibly grows in the drag direction. In mini mode the remembered size is used
+  // (see miniSize); otherwise the size the renderer captured when the drag started.
   ipcMain.on("set-window-position", (_e, x: number, y: number, width: number, height: number) => {
     if (win.isDestroyed()) return;
+    const size = (isMiniMode && miniSize) || { width, height };
     win.setBounds({
       x: Math.round(x),
       y: Math.round(y),
-      width: Math.round(width),
-      height: Math.round(height),
+      width: Math.round(size.width),
+      height: Math.round(size.height),
     });
   });
 
@@ -188,6 +196,7 @@ function createWindow() {
       MINI_MIN_HEIGHT,
     );
     win.setBounds(mini);
+    miniSize = { width: mini.width, height: mini.height };
     // Highest level so nothing (even other always-on-top windows) covers it.
     win.setAlwaysOnTop(true, "screen-saver");
   });

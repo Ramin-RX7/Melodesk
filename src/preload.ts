@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 contextBridge.exposeInMainWorld("api", {
   selectDirectories: () => ipcRenderer.invoke("select-directories"),
@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld("api", {
     return () => ipcRenderer.removeListener("library-scan-status", listener);
   },
   getMetadata: (filePath: string) => ipcRenderer.invoke("get-metadata", filePath),
+  // Path of a file dropped onto the window (File.path no longer exists since Electron 32).
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
   getPlaylists: () => ipcRenderer.invoke("get-playlists"),
   getPlaylist: (id: string) => ipcRenderer.invoke("get-playlist", id),
   createPlaylist: (name: string) => ipcRenderer.invoke("create-playlist", name),

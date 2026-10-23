@@ -238,7 +238,7 @@ export function usePlaybackController({
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
-      const item = await window.api.getMetadata(file.path);
+      const item = await window.api.getMetadata(window.api.getPathForFile(file));
       if (item && item.isMedia) {
         playTrack(item, [item]);
       }

@@ -148,6 +148,7 @@ declare global {
       getLibraryScanStatus: () => Promise<LibraryScanStatus>;
       onLibraryScanStatus: (callback: (status: LibraryScanStatus) => void) => () => void;
       getMetadata: (filePath: string) => Promise<FileItem>;
+      getPathForFile: (file: File) => string;
       getPlaylists: () => Promise<Playlist[]>;
       getPlaylist: (id: string) => Promise<Playlist | null>;
       createPlaylist: (name: string) => Promise<Playlist>;
