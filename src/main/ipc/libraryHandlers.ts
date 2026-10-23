@@ -36,13 +36,13 @@ export function registerLibraryHandlers() {
     return getDirectoryTree(dirPath);
   });
 
-  ipcMain.handle("select-directory", async () => {
+  ipcMain.handle("select-directories", async () => {
     const result = await dialog.showOpenDialog({
-      properties: ["openDirectory"],
+      properties: ["openDirectory", "multiSelections"],
     });
 
-    if (result.canceled) return null;
-    return result.filePaths[0];
+    if (result.canceled) return [];
+    return result.filePaths;
   });
 
   ipcMain.handle("refresh-library", async () => {

@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("api", {
-  selectDirectory: () => ipcRenderer.invoke("select-directory"),
+  selectDirectories: () => ipcRenderer.invoke("select-directories"),
   getDirectoryTree: (dirPath: string) => ipcRenderer.invoke("get-directory-tree", dirPath),
   showSongContextMenu: (song: any) => ipcRenderer.invoke("show-song-context-menu", song),
   showGroupContextMenu: (groupName: string) =>

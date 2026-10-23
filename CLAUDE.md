@@ -435,7 +435,8 @@ src/
     ├── ipc/
     │   ├── index.ts                 # Registers all IPC handler modules
     │   ├── libraryHandlers.ts       # get-library-files, get-library-scan-status, get-directory-tree,
-    │   │                            #   select-directory, refresh-library (event: library-scan-status, library-updated)
+    │   │                            #   select-directories (multi-select picker), refresh-library
+    │   │                            #   (events: library-scan-status, library-updated)
     │   ├── configHandlers.ts        # get-config, update-config (re-inits watcher when libraryPaths change)
     │   ├── metadataHandlers.ts      # get-metadata (incl. hash), write-metadata (node-id3 tag writing)
     │   ├── playlistHandlers.ts      # get-playlists, get-playlist, create-playlist, update-playlist, delete-playlist
@@ -481,7 +482,7 @@ Paths are relative to `src/`.
 | **Library scanning, supported formats, watcher**      | `main/services/library/*`                                                                      | `mediaUtils.ts` (extensions), `protocols/mediaProtocol.ts` (MIME types; add new formats in **both**)                                        |
 | **Library scan progress / cancellation**              | `main/services/library/libraryUpdater.ts`, `libraryScanner.ts`                                 | `hooks/useLibraryScanStatus.ts`, `components/TitleBar/ScanIndicator.tsx`, `LibraryScanStatus` in `types.d.ts`                               |
 | **Start page** (empty library → Library tab)          | `App.tsx` `init()`                                                                             | —                                                                                                                                           |
-| **Library page / folder tree**                        | `LibraryView.tsx` → `LibraryFoldersView.tsx` / `LibraryFolderView.tsx` → `DirectoryTree.tsx`   | `ipc/libraryHandlers.ts` (`get-directory-tree`, `select-directory`)                                                                         |
+| **Library page / folder tree**                        | `LibraryView.tsx` → `LibraryFoldersView.tsx` / `LibraryFolderView.tsx` → `DirectoryTree.tsx`   | `ipc/libraryHandlers.ts` (`get-directory-tree`, `select-directories`)                                                                       |
 | **Artists / Albums / Genres pages**                   | `components/GroupedView/GroupedView.tsx`                                                       | `groupedView.utils.ts` (grouping/filter/sort, `minSongsForAlbum`), `GroupList` / `GroupCard` / `SongGrid` / `SongCard`, `utils/metadata.ts` |
 | **Artist bio / picture**                              | `ipc/artistHandlers.ts`                                                                        | `GroupedView.tsx` (artist header)                                                                                                           |
 | **Artist splitting** ("A feat. B", "A & B")           | `main/services/metadataService.ts` (`splitArtists`, `getArtists`)                              | `utils/metadata.ts` (`formatArtists`)                                                                                                       |

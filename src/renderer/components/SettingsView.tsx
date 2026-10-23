@@ -90,9 +90,10 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
     save({ keybindings: { ...keybindings, [action]: DEFAULT_KEYBINDINGS[action] } });
 
   const handleAddFolder = async () => {
-    const path = await window.api.selectDirectory();
-    if (path && !config.libraryPaths.includes(path)) {
-      await save({ libraryPaths: [...config.libraryPaths, path] });
+    const paths = await window.api.selectDirectories();
+    const added = paths.filter((p) => !config.libraryPaths.includes(p));
+    if (added.length > 0) {
+      await save({ libraryPaths: [...config.libraryPaths, ...added] });
     }
   };
 

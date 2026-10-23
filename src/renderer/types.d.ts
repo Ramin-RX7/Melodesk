@@ -118,7 +118,8 @@ export type GroupContextMenuAction =
 declare global {
   interface Window {
     api: {
-      selectDirectory: () => Promise<string | null>;
+      /** Folder picker with multi-select; resolves to [] when cancelled. */
+      selectDirectories: () => Promise<string[]>;
       getDirectoryTree: (dirPath: string) => Promise<FileItem[]>;
       showSongContextMenu: (song: FileItem) => Promise<ContextMenuAction | null>;
       showGroupContextMenu: (groupName: string) => Promise<GroupContextMenuAction | null>;
