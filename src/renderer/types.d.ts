@@ -41,6 +41,8 @@ export interface SessionData {
   currentIndex: number;
   isShuffle: boolean;
   repeatMode: "none" | "one" | "all";
+  /** Playback position (seconds) in the current track; restored on launch. */
+  position?: number;
   windowBounds?: WindowBounds;
   miniWindowBounds?: WindowBounds;
 }
@@ -156,6 +158,11 @@ declare global {
         >,
       ) => Promise<Playlist>;
       deletePlaylist: (id: string) => Promise<void>;
+      /** Asks the user about duplicates; resolves to the updated playlist, or null if cancelled. */
+      addSongsToPlaylist: (id: string, paths: string[]) => Promise<Playlist | null>;
+      /** Asks for confirmation; resolves to the (possibly unchanged) playlist. */
+      removePlaylistDuplicates: (id: string) => Promise<Playlist | null>;
+      onPlaylistsChanged: (callback: () => void) => () => void;
       writeMetadata: (filePath: string, tags: any) => Promise<boolean>;
       getArtistInfo: (name: string) => Promise<ArtistInfo | null>;
       /** Custom pictures of all artists that have one, by artist name. */
@@ -167,6 +174,7 @@ declare global {
       getSession: () => Promise<SessionData | null>;
       saveSession: (data: SessionData) => Promise<void>;
       clearSession: () => Promise<void>;
+      savePlaybackPosition: (position: number) => void;
       recordPlay: (hash: string, timestamp?: number) => Promise<void>;
       getPlayCounts: () => Promise<Record<string, number>>;
       getRecentPlays: (limit?: number) => Promise<PlayRecord[]>;

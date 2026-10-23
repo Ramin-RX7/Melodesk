@@ -1,5 +1,6 @@
 import { BrowserWindow, ipcMain, Menu } from "electron";
 
+import { artistsOf } from "../../utils/metadata";
 import { getAllPlaylists } from "./playlistHandlers";
 
 export function registerMenuHandlers() {
@@ -63,8 +64,8 @@ export function registerMenuHandlers() {
         },
       ];
 
-      const artists =
-        song?.metadata?.artists || (song?.metadata?.artist ? [song.metadata.artist] : []);
+      // Songs without an artist tag lead to the "Unknown Artist" page.
+      const artists = artistsOf(song ?? {});
       if (artists.length === 1) {
         template.push({
           label: "Go to Artist",
@@ -78,8 +79,6 @@ export function registerMenuHandlers() {
             click: () => handleAction({ type: "go-to-artist", artist: a }),
           })),
         });
-      } else {
-        template.push({ label: "Go to Artist", enabled: false });
       }
 
       template.push({ label: "Open Details", click: () => handleAction({ type: "open-details" }) });

@@ -11,6 +11,7 @@ import {
   IoClose,
 } from "react-icons/io5";
 import { colors } from "../theme/colors";
+import { UNKNOWN_ARTIST } from "../../utils/metadata";
 
 interface SongDetailsViewProps {
   currentTrack: FileItem;
@@ -108,21 +109,13 @@ export function SongDetailsView({
     }
   };
 
+  // The main process asks about duplicates and reports the result with a toast.
   const handleAddToPlaylist = async (playlist: Playlist) => {
-    if (playlist.songs.includes(currentTrack.path)) {
-      alert("Song is already in this playlist.");
-      setShowPlaylistModal(false);
-      return;
-    }
+    setShowPlaylistModal(false);
     try {
-      await window.api.updatePlaylist(playlist.id, {
-        songs: [...playlist.songs, currentTrack.path],
-      });
-      alert(`Added to ${playlist.name}`);
-      setShowPlaylistModal(false);
+      await window.api.addSongsToPlaylist(playlist.id, [currentTrack.path]);
     } catch (err) {
       console.error(err);
-      alert("Failed to add to playlist");
     }
   };
 
@@ -501,8 +494,16 @@ export function SongDetailsView({
                       </React.Fragment>
                     ))
                   ) : (
-                    <span style={{ color: colors.textDim, fontSize: "clamp(35px, 3vw, 90px)" }}>
-                      Unknown Artist
+                    <span
+                      onClick={() => onNavigate("artist", UNKNOWN_ARTIST)}
+                      title="All songs without an artist"
+                      style={{
+                        color: colors.textDim,
+                        fontSize: "clamp(35px, 3vw, 90px)",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {UNKNOWN_ARTIST}
                     </span>
                   )}
                 </div>

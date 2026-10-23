@@ -6,7 +6,8 @@ import { colors } from "../theme/colors";
 
 export function LibraryFolderView({
   selectedLibraryPath,
-  setSelectedLibraryPath,
+  onCloseFolder,
+  onScrollRef,
   tree,
   config,
   themeColor,
@@ -27,7 +28,7 @@ export function LibraryFolderView({
         }}
       >
         <button
-          onClick={() => setSelectedLibraryPath(null)}
+          onClick={onCloseFolder}
           style={{
             background: "none",
             border: `1px solid ${colors.border}`,
@@ -57,7 +58,10 @@ export function LibraryFolderView({
         </span>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: "120px" }}>
+      <div
+        ref={onScrollRef}
+        style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: "120px" }}
+      >
         <DirectoryTree
           items={tree}
           onFileSelect={handleFileSelect}

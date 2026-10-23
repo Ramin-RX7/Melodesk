@@ -32,8 +32,15 @@ export function useKeyboardControls(params: Params) {
       const kb = p.keybindings ?? DEFAULT_KEYBINDINGS;
 
       const target = event.target as HTMLElement;
+      // A focused slider keeps its arrow keys, but Space does nothing on a slider natively, so it
+      // still plays/pauses (e.g. right after dragging the volume or seek bar).
+      const isSliderSpace =
+        target.tagName === "INPUT" &&
+        (target as HTMLInputElement).type === "range" &&
+        event.code === "Space";
       const isTyping =
-        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+        !isSliderSpace &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
 
       const actions: { id: KeyboardActionId; run: () => void }[] = [
         { id: "focusSearch", run: () => p.focusSearch?.() },

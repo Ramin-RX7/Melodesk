@@ -3,6 +3,7 @@ import { IoSearch, IoSwapVertical, IoShuffle, IoCreate, IoSave, IoImage } from "
 
 import { FileItem, UserConfig, ArtistInfo } from "../../types";
 import { useArtistPictures } from "../../../hooks/useArtistPictures";
+import { UNKNOWN_ARTIST } from "../../../utils/metadata";
 
 import { colors } from "../../theme/colors";
 
@@ -225,8 +226,15 @@ export function GroupedView({
 
         {/* SCROLLABLE CONTENT */}
         <div className={styles.scrollArea} key="detail" ref={scrollAreaRef}>
-          {/* ARTIST PROFILE */}
-          {type === "artist" && artistInfo && (
+          {type === "artist" && selectedGroup?.name === UNKNOWN_ARTIST && (
+            <div style={{ padding: "20px 20px 0", color: colors.textDim, fontSize: "14px" }}>
+              Songs without an artist tag. Add one with Edit Tags on a song&apos;s details page to
+              move it to its artist.
+            </div>
+          )}
+
+          {/* ARTIST PROFILE (not for "Unknown Artist", which isn't a real artist) */}
+          {type === "artist" && artistInfo && selectedGroup?.name !== UNKNOWN_ARTIST && (
             <div
               style={{
                 display: "flex",

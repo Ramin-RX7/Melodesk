@@ -9,7 +9,8 @@ type QueueViewProps = {
   queue: FileItem[];
   currentIndex: number;
   themeColor: string;
-  onPlayTrack: (track: FileItem) => void;
+  /** Plays the row at `index` (the queue may contain the same song more than once). */
+  onPlayTrack: (track: FileItem, index: number) => void;
   onClearQueue: () => void;
   onRemoveFromQueue: (index: number) => void;
   activeItemRemovable: boolean;
@@ -87,7 +88,7 @@ export function QueueView({
               index={index}
               isActive={index === currentIndex}
               themeColor={themeColor}
-              onClick={() => onPlayTrack(track)}
+              onClick={() => onPlayTrack(track, index)}
               onRemove={() => onRemoveFromQueue(index)}
               isRemovable={index !== currentIndex || activeItemRemovable}
               onContextMenu={onContextMenu}

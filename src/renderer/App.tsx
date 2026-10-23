@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 
-import { HomeView } from "./components/HomeView/HomeView";
+import { HomeDetailKey, HomeView } from "./components/HomeView/HomeView";
 import { PlaylistView } from "./components/PlaylistView";
 import { SettingsView } from "./components/SettingsView";
 import { SongDetailsView } from "./components/SongDetailsView";
@@ -23,6 +23,7 @@ import { usePlaybackController } from "../hooks/usePlaybackController";
 import { usePlayTracker } from "../hooks/usePlayTracker";
 import { useLibraryScanStatus } from "../hooks/useLibraryScanStatus";
 import { useToasts } from "../hooks/useToasts";
+import { usePlaybackPositionSaver } from "../hooks/usePlaybackPosition";
 import { Toasts } from "./components/Toasts/Toasts";
 import { colors, buildRootCss, DEFAULT_PALETTE, DEFAULT_THEME_COLOR } from "./theme/colors";
 import { applyPalette } from "./theme/applyTheme";
@@ -50,6 +51,7 @@ type NavSnapshot = {
   selectedLibraryPath: string | null;
   openPlaylistId: string | null;
   playlistsSearch: string;
+  homeDetail: HomeDetailKey | null;
   scrollTop: number;
 };
 
@@ -72,6 +74,8 @@ export default function App() {
   const [openLyricsOnDetails, setOpenLyricsOnDetails] = useState(false);
   const [isMini, setIsMini] = useState(false);
   const { toasts, showToast, dismissToast } = useToasts();
+  // Song whose position the saved session holds (see the session-save effect).
+  const sessionTrackPathRef = useRef<string | null>(null);
 
   const enterMini = () => {
     setIsMini(true);
@@ -106,6 +110,8 @@ export default function App() {
   // Controlled open playlist (replaces playlistToOpen)
   const [openPlaylistId, setOpenPlaylistId] = useState<string | null>(null);
   const [playlistsGlobalSearch, setPlaylistsGlobalSearch] = useState("");
+  // Home's "Show all" page, if one is open (part of navigation history like any page).
+  const [homeDetail, setHomeDetail] = useState<HomeDetailKey | null>(null);
 
   // Scroll container tracking for history restore
   const scrollContainerRef = useRef<HTMLElement | null>(null);
@@ -178,6 +184,7 @@ export default function App() {
     handleRemoveFromQueue,
     handleAudioError,
     handleAudioPlay,
+    handleAudioPlaying,
   } = usePlaybackController({
     config,
     queueState,
@@ -186,6 +193,14 @@ export default function App() {
     setCurrentTrack,
     notify: showToast,
   });
+
+  // A library folder that was removed (e.g. in Settings) can't stay open on the Library page,
+  // including when Back would return to it.
+  useEffect(() => {
+    if (selectedLibraryPath && config && !config.libraryPaths.includes(selectedLibraryPath)) {
+      setSelectedLibraryPath(null);
+    }
+  }, [config?.libraryPaths, selectedLibraryPath]);
 
   // After a library update, swap the queue's song objects for the fresh ones (same path) so
   // the queue, playback bar and details page show current tags. Songs no longer in the library
@@ -199,6 +214,8 @@ export default function App() {
     setCurrentTrack((prev) => (prev ? refresh(prev) : prev));
     setDetailsTrack((prev) => (prev ? refresh(prev) : prev));
   }, [allTracks]);
+
+  usePlaybackPositionSaver(audioRef, config?.restoreSession ?? false);
 
   // Record plays once enough of a song has actually been listened to
   usePlayTracker(audioRef, currentTrack, config?.playCountThresholdPercent ?? 50);
@@ -312,9 +329,22 @@ export default function App() {
                 setCurrentTrack(trackToRestore);
                 if (trackToRestore.metadata?.duration)
                   setDuration(trackToRestore.metadata.duration);
-                if (audioRef.current) {
+                const audio = audioRef.current;
+                if (audio) {
                   const normalizedPath = trackToRestore.path.replace(/\\/g, "/");
-                  audioRef.current.src = `media://${encodeURIComponent(normalizedPath)}`;
+                  audio.src = `media://${encodeURIComponent(normalizedPath)}`;
+                  // Continue where the user left off (only if it's the song that was playing).
+                  const position = session.position ?? 0;
+                  if (trackToRestore.path === session.currentTrackPath && position > 0) {
+                    sessionTrackPathRef.current = trackToRestore.path;
+                    audio.addEventListener(
+                      "loadedmetadata",
+                      () => {
+                        if (position < audio.duration) audio.currentTime = position;
+                      },
+                      { once: true },
+                    );
+                  }
                 }
               }
             }
@@ -360,6 +390,12 @@ export default function App() {
       isShuffle,
       repeatMode,
     };
+    // A different song starts from the beginning; the same song keeps its saved position
+    // (usePlaybackPositionSaver keeps it up to date).
+    if (sessionTrackPathRef.current !== currentTrack.path) {
+      sessionTrackPathRef.current = currentTrack.path;
+      data.position = 0;
+    }
     window.api.saveSession(data);
   }, [
     currentTrack,
@@ -393,22 +429,29 @@ export default function App() {
       selectedLibraryPath,
       openPlaylistId,
       playlistsSearch: playlistsGlobalSearch,
+      homeDetail,
       scrollTop: scrollContainerRef.current?.scrollTop ?? 0,
     };
-    const limit = config?.navigationHistorySize ?? 20;
-    setNavHistory((prev) => [...prev.slice(-(limit - 1)), snap]);
+    // Keep at most `limit` entries (careful: slice(-0) would keep everything).
+    const limit = Math.max(1, config?.navigationHistorySize ?? 20);
+    setNavHistory((prev) => [...prev.slice(Math.max(0, prev.length - (limit - 1))), snap]);
   };
 
   const handleGoBack = () => {
     setNavHistory((prev) => {
       if (prev.length === 0) {
-        if (selectedGroup) {
+        // No history: step out of the current sub-page instead.
+        if (view === "details") {
+          setView(activeTab);
+        } else if (selectedGroup) {
           setSelectedGroup(null);
           setSearchQuery("");
         } else if (openPlaylistId) {
           setOpenPlaylistId(null);
-        } else if (view === "details") {
-          setView(activeTab);
+        } else if (view === "library" && selectedLibraryPath) {
+          setSelectedLibraryPath(null);
+        } else if (view === "home" && homeDetail) {
+          setHomeDetail(null);
         }
         return prev;
       }
@@ -422,6 +465,7 @@ export default function App() {
       setSelectedLibraryPath(snap.selectedLibraryPath);
       setOpenPlaylistId(snap.openPlaylistId);
       setPlaylistsGlobalSearch(snap.playlistsSearch);
+      setHomeDetail(snap.homeDetail);
       pendingScrollRestoreRef.current = snap.scrollTop;
       return prev.slice(0, -1);
     });
@@ -482,13 +526,10 @@ export default function App() {
     } else if (action.type === "group-play-next") {
       playNextMultiple(songs);
     } else if (action.type === "group-add-to-playlist") {
-      const playlist = await window.api.getPlaylist(action.playlistId);
-      if (playlist) {
-        const newPaths = songs.map((s) => s.path).filter((p) => !playlist.songs.includes(p));
-        await window.api.updatePlaylist(action.playlistId, {
-          songs: [...playlist.songs, ...newPaths],
-        });
-      }
+      await window.api.addSongsToPlaylist(
+        action.playlistId,
+        songs.map((s) => s.path),
+      );
     }
   };
 
@@ -500,11 +541,13 @@ export default function App() {
     if (action.type === "play-next") {
       playNext(song);
     } else if (action.type === "go-to-album") {
+      const album = song.metadata?.album;
+      if (!album) return; // the menu item is disabled for songs without an album
       pushNav();
       setActiveTab("albums");
       setView("albums");
       setSearchQuery("");
-      setSelectedGroup({ type: "album", name: song.metadata?.album || "Unknown Album" });
+      setSelectedGroup({ type: "album", name: album });
     } else if (action.type === "go-to-artist") {
       pushNav();
       setActiveTab("artists");
@@ -516,12 +559,7 @@ export default function App() {
       setDetailsTrack(song);
       setView("details");
     } else if (action.type === "add-to-playlist") {
-      const playlist = await window.api.getPlaylist(action.playlistId);
-      if (playlist) {
-        await window.api.updatePlaylist(action.playlistId, {
-          songs: [...playlist.songs, song.path],
-        });
-      }
+      await window.api.addSongsToPlaylist(action.playlistId, [song.path]);
     }
   };
 
@@ -531,6 +569,7 @@ export default function App() {
     setView(tab);
     setSelectedGroup(null);
     setSearchQuery("");
+    setHomeDetail(null);
     if (tab !== "library") {
       setSelectedLibraryPath(null);
     }
@@ -630,6 +669,12 @@ export default function App() {
                       setSelectedGroup({ type: "artist", name });
                     }}
                     onNavigateTab={handleTabChange}
+                    detail={homeDetail}
+                    onOpenDetail={(key) => {
+                      pushNav();
+                      setHomeDetail(key);
+                    }}
+                    onCloseDetail={handleGoBack}
                   />
                 );
               }
@@ -643,6 +688,12 @@ export default function App() {
                     setConfig={setConfig}
                     themeColor={themeColor}
                     setSelectedLibraryPath={setSelectedLibraryPath}
+                    onOpenFolder={(path) => {
+                      pushNav();
+                      setSelectedLibraryPath(path);
+                    }}
+                    onCloseFolder={handleGoBack}
+                    onScrollRef={handleScrollRef}
                     handleFileSelect={handleFileSelect}
                     onContextMenu={showContextMenu}
                   />
@@ -706,7 +757,7 @@ export default function App() {
                     queue={activeQueue}
                     currentIndex={currentIndex}
                     themeColor={themeColor}
-                    onPlayTrack={playTrack}
+                    onPlayTrack={(track, index) => playTrack(track, undefined, index)}
                     onClearQueue={() => {
                       const kept = currentTrack ? [currentTrack] : [];
                       setQueue(kept);
@@ -792,6 +843,7 @@ export default function App() {
         crossOrigin="anonymous"
         onLoadedMetadata={handleLoadedMetadata}
         onPlay={handleAudioPlay}
+        onPlaying={handleAudioPlaying}
         onPause={() => setIsPlaying(false)}
         onEnded={handleEnded}
         onError={handleAudioError}

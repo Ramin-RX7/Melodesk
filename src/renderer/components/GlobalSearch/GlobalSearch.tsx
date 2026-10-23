@@ -45,7 +45,10 @@ export function GlobalSearch({
 
   const limit = config?.searchResultsPerCategory ?? 4;
   const doubleClickToPlay = config?.doubleClickToPlay ?? true;
-  const q = query.trim().toLowerCase();
+  // Spaces around the text are ignored everywhere (songs, albums, artists, playlists and the
+  // "show all" links), so typing "alan " on the way to "alan walker" doesn't hide results.
+  const trimmedQuery = query.trim();
+  const q = trimmedQuery.toLowerCase();
 
   useEffect(() => {
     if (isOpen && q) {
@@ -92,11 +95,19 @@ export function GlobalSearch({
     });
 
     // normalizeGenre is only called for 'genre' type — pass identity fn for album/artist
-    const albums = getGroupEntries(allTracks, "album", query, "alphabet", false, (s) => s, config);
+    const albums = getGroupEntries(
+      allTracks,
+      "album",
+      trimmedQuery,
+      "alphabet",
+      false,
+      (s) => s,
+      config,
+    );
     const artists = getGroupEntries(
       allTracks,
       "artist",
-      query,
+      trimmedQuery,
       "alphabet",
       false,
       (s) => s,
@@ -222,7 +233,7 @@ export function GlobalSearch({
                       <button
                         className={styles.showMoreBtn}
                         style={{ color: themeColor }}
-                        onClick={() => navigate({ tab: "albums", query })}
+                        onClick={() => navigate({ tab: "albums", query: trimmedQuery })}
                       >
                         Show more
                       </button>
@@ -261,7 +272,7 @@ export function GlobalSearch({
                       <button
                         className={styles.showMoreBtn}
                         style={{ color: themeColor }}
-                        onClick={() => navigate({ tab: "artists", query })}
+                        onClick={() => navigate({ tab: "artists", query: trimmedQuery })}
                       >
                         Show more
                       </button>
@@ -300,7 +311,7 @@ export function GlobalSearch({
                       <button
                         className={styles.showMoreBtn}
                         style={{ color: themeColor }}
-                        onClick={() => navigate({ tab: "playlists", query })}
+                        onClick={() => navigate({ tab: "playlists", query: trimmedQuery })}
                       >
                         Show more
                       </button>

@@ -8,6 +8,11 @@ type Props = {
   themeColor: string;
 
   setSelectedLibraryPath: (v: string | null) => void;
+  /** Opens a library folder's tree (recorded in the Back history). */
+  onOpenFolder: (path: string) => void;
+  /** Leaves the folder tree (same as Back). */
+  onCloseFolder: () => void;
+  onScrollRef?: (el: HTMLElement | null) => void;
   setConfig: (config: any) => void;
 
   handleFileSelect: (file: any) => void;

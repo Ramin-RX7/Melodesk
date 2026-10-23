@@ -8,7 +8,8 @@ export function LibraryFoldersView({
   themeColor,
   handleAddFolder,
   handleRefreshLibrary,
-  setSelectedLibraryPath,
+  onOpenFolder,
+  onScrollRef,
   handleRemoveFolder,
   setConfig,
 }: any) {
@@ -17,7 +18,10 @@ export function LibraryFoldersView({
     setConfig(newConfig);
   };
   return (
-    <div style={{ padding: "30px", overflowY: "auto", height: "100%", paddingBottom: "120px" }}>
+    <div
+      ref={onScrollRef}
+      style={{ padding: "30px", overflowY: "auto", height: "100%", paddingBottom: "120px" }}
+    >
       <div
         style={{
           display: "flex",
@@ -71,7 +75,7 @@ export function LibraryFoldersView({
         {config?.libraryPaths.map((path: string) => (
           <div
             key={path}
-            onClick={() => setSelectedLibraryPath(path)}
+            onClick={() => onOpenFolder(path)}
             style={{
               backgroundColor: colors.bgElevated,
               padding: "20px",

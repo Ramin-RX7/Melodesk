@@ -262,9 +262,15 @@ The whole library is sent to the renderer in one message after each scan. That's
 - `usePlaybackController` coordinates the two: `playTrack`, next/prev, `handleEnded` (repeat logic), play-next / play-next-multiple, remove-from-queue, shuffle-play, and drag-and-drop of files onto the window.
   - **`playTrack(track, list)`** makes `list` the queue. Without shuffle it plays `track` at its position. With shuffle, `track` plays **first** and the rest of the list follows in random order.
   - **Start playback with `startPlayback()`** (in `useAudioPlayer`), never with a bare `audio.play()`. It handles the rejected promise (`AbortError` when a newer src interrupts) so the UI never says "playing" when nothing plays.
-  - **Missing or broken files:**
-    - `handleAudioPlay` (the `<audio onPlay>`) checks via `file-exists` that the loaded file still exists. If a file vanished after loading, Chromium retries the request forever and never fires `error`. On a missing file the controller stops the element, shows an error toast and refreshes the library.
-    - `handleAudioError` (`<audio onError>`) reports files that fail to load: missing (refresh) or damaged/unsupported.
+  - **Missing or broken files are skipped, not removed:**
+    - `handleAudioPlay` (the `<audio onPlay>`) checks via `file-exists` that the loaded file still exists. If a file vanished after loading, Chromium retries the request forever and never fires `error`, so the controller stops the element itself.
+    - `handleAudioError` (`<audio onError>`) catches files that fail to load: missing, or damaged/unsupported.
+    - Both go to `handleUnplayable`. It shows a "Skipped …" toast, rescans the library for missing files and calls `handleNext`. The song stays in the queue.
+    - `skippedInARowRef` (reset by `<audio onPlaying>`) stops the skipping with a message once every queued song has failed.
+    - If nothing was meant to be playing (e.g. the restored session's song is gone), it only shows the toast.
+  - **Queue duplicates:** a song can be queued more than once, so queue operations are **index-based**. The Queue page plays `playTrack(track, undefined, index)`. `removeFromQueue` removes the same _occurrence_ from the other list (original or shuffled), not the first path match.
+  - **Play counts:** `usePlayTracker` resets on path change, on a seek back to the start, and on the element's `loadstart` (the same song loaded again counts again).
+  - **Session position:** `usePlaybackPositionSaver` saves `position` into the session every 10 s while playing, on pause and on close (fire-and-forget `save-playback-position`). The session-save effect resets it to 0 when the song changes. `init()` restores it once the restored song's metadata loads.
 - **Playback vs. details page:** `currentTrack` is what's playing. `detailsTrack` (in `App.tsx`) is what the Song Details page shows. Opening details never touches `currentTrack`.
 - **Library updates and tag edits** swap the queue's song objects for fresh ones by path (the `allTracks` effect and `handleTrackUpdated` in `App.tsx`). Songs no longer in the library stay in the queue until played or removed.
 
@@ -291,6 +297,8 @@ Write messages for users: say what happened and what the app is doing about it.
 ### Routing & navigation (renderer)
 
 There is **no router library**. `App.tsx` holds `view: Page` and `activeTab` and renders the page through an `if (view === …)` chain inside `<main>`. Back navigation uses a `NavSnapshot` stack (`pushNav()` / `handleGoBack()`, capped by `config.navigationHistorySize`), which also restores scroll position through `onScrollRef`. **Call `pushNav()` before every navigation that should be undoable.**
+
+**Every sub-page lives in `App` state and in `NavSnapshot`,** so Back (button, Esc, mouse back) returns from it. That covers the open group, open playlist, open library folder (`selectedLibraryPath`) and Home's "Show all" page (`homeDetail`). A component never keeps its own "which page am I on" state: it gets `open…`/`close…` callbacks, where open means `pushNav()` + set and close means `handleGoBack`. Its scroll container passes `onScrollRef`. `handleGoBack` without history steps out of the current sub-page.
 
 ### Context menus
 
@@ -344,7 +352,7 @@ To test against a throwaway profile without touching the real one, launch with `
 | --------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `config.json`                                                   | `services/configService.ts`                 | `UserConfig`. `getConfig()` shallow-merges over `DEFAULT_CONFIG`; `appearance` and `keybindings` are deep-merged |
 | `library_cache.json`                                            | `services/cacheService.ts`                  | `{ [hash]: FileItem }` (migrates the legacy array format)                                                        |
-| `session.json`                                                  | `services/sessionService.ts`                | Queue / shuffle / repeat / current track path, plus normal and mini window bounds                                |
+| `session.json`                                                  | `services/sessionService.ts`                | Queue / shuffle / repeat / current track path and playback `position`, plus normal and mini window bounds        |
 | `tracker/play_counts.json`, `tracker/play_history/YYYY-MM.json` | `services/trackerService.ts`                | Play counts by hash; monthly play logs                                                                           |
 | `playlists/<id>.json`                                           | `ipc/playlistHandlers.ts`                   | One file per playlist                                                                                            |
 | `artists/<md5(name)>.json`                                      | `ipc/artistHandlers.ts`                     | Artist bio + picture                                                                                             |
@@ -393,6 +401,7 @@ src/
 ├── hooks/                           # React hooks (state + lifecycle only, no UI)
 │   ├── useAudioPlayer.ts            # HTML5 audio element state (play/pause, seek, duration, volume preview/commit)
 │   ├── useAudioTime.ts              # Playback position from the <audio> element (used only by PlaybackBar)
+│   ├── usePlaybackPosition.ts       # usePlaybackPositionSaver: saves the position into the session for restore
 │   ├── useArtistPictures.ts         # All custom artist pictures in one IPC call (+ local update after edits)
 │   ├── useQueue.ts                  # Playback queue state, shuffle, repeat mode, current index
 │   ├── usePlaybackController.ts     # Coordinates audio + queue; next/prev, end-of-track, queue mutations, file drop
@@ -492,13 +501,14 @@ src/
     │   │                            #   (events: library-scan-status, library-updated)
     │   ├── configHandlers.ts        # get-config, update-config (re-inits watcher when libraryPaths change)
     │   ├── metadataHandlers.ts      # get-metadata (incl. hash), write-metadata (node-id3 tag writing)
-    │   ├── playlistHandlers.ts      # get-playlists, get-playlist, create-playlist, update-playlist, delete-playlist;
-    │   │                            #   loadPlaylistFile() repairs damaged files (salvages name/songs, keeps .corrupt backup)
+    │   ├── playlistHandlers.ts      # get-playlists, get-playlist, create-playlist, update-playlist, delete-playlist,
+    │   │                            #   add-songs-to-playlist (duplicate dialog), remove-playlist-duplicates (confirm);
+    │   │                            #   broadcasts playlists-changed; loadPlaylistFile() repairs damaged files
     │   ├── artistHandlers.ts        # get-artist-info, get-artist-pictures (all, by name), update-artist-info,
     │   │                            #   select-artist-image
     │   ├── menuHandlers.ts          # show-song-context-menu + show-group-context-menu
     │   ├── shellHandlers.ts         # show-file-in-folder, open-external-url
-    │   ├── sessionHandlers.ts       # get-session, save-session, clear-session
+    │   ├── sessionHandlers.ts       # get-session, save-session, clear-session, save-playback-position (send)
     │   └── trackerHandlers.ts       # record-play, get-play-counts, get-recent-plays
     │                                # (window-*, get-window-bounds, set-window-position, enter/exit-mini-mode live in main.ts)
     │
@@ -621,6 +631,8 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 - **State lives in `App.tsx`** and flows down as props; there is no context or store. Hooks return large objects that `App.tsx` destructures. Keep that shape, and don't introduce Redux, Context or a router without asking.
 - `config` is `UserConfig | null` until loaded, so always guard it (`config?.x ?? fallback`). After `updateConfig`, call `setConfig(newConfig)` with the returned value.
 - **Playing songs from lists:** every song list plays on **double-click** when `config.doubleClickToPlay` (default `true`), else on single click: `onClick={() => !doubleClickToPlay && play()}` plus `onDoubleClick={() => doubleClickToPlay && play()}`. Pass the visible list as the queue (`handleFileSelect(song, list)` / `playTrack(song, list)`). The **Queue** page is the one exception: a single click there plays.
+- **Adding songs to a playlist always goes through `window.api.addSongsToPlaylist(id, paths)`**, never `updatePlaylist` with a hand-built list. The main process asks about duplicates (add anyway / skip / cancel) and reports the result with a toast. Playlist changes are broadcast as `playlists-changed`, so open playlist pages reload by themselves.
+- **Artists:** use `artistsOf(song)` from `utils/metadata.ts` (never `metadata.artists` directly) for grouping and navigation. Songs without an artist tag belong to `UNKNOWN_ARTIST`, a special group listed last, without bio or picture editing. Album links are only offered for songs that have an album.
 - **Forms that edit saved data** (e.g. the artist bio) must cancel and reset when the user navigates away or the subject changes, so a draft is never saved onto the wrong item.
 - Some types are re-declared locally on the main side (`Playlist` in `playlistHandlers.ts`, `ArtistInfo` in `artistHandlers.ts`). If you change a shape, update those copies too.
 - `media://` paths: convert backslashes to `/`, then `encodeURIComponent`. The protocol strips a leading `/` before a drive letter on Windows.

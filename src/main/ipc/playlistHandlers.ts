@@ -1,8 +1,10 @@
-import { app, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
+import { getCache } from "../services/cacheService";
+import { hashPath } from "../services/hashUtil";
 import { setAside, writeJson } from "../services/jsonStore";
 import { notify } from "../services/notifyService";
 
@@ -151,8 +153,20 @@ export const getAllPlaylists = (): Playlist[] => {
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 };
 
+// Tells every window that playlists changed, so an open playlist page reloads.
+const broadcastPlaylistsChanged = () => {
+  BrowserWindow.getAllWindows().forEach((win) => win.webContents.send("playlists-changed"));
+};
+
 const savePlaylist = (playlist: Playlist) => {
   writeJson(path.join(PLAYLISTS_DIR, `${playlist.id}.json`), playlist, { pretty: true });
+  broadcastPlaylistsChanged();
+};
+
+// Song titles for messages (from the library cache), falling back to the file name.
+const songNames = (paths: string[]): string[] => {
+  const cache = getCache();
+  return paths.map((p) => cache[hashPath(p)]?.metadata?.title || path.basename(p));
 };
 
 export function setupPlaylistHandlers() {
@@ -213,8 +227,109 @@ export function setupPlaylistHandlers() {
         fs.unlinkSync(filePath);
       }
       fs.rmSync(`${filePath}.bak`, { force: true });
+      broadcastPlaylistsChanged();
     } catch (error) {
       console.error("Failed to delete playlist:", error);
     }
+  });
+
+  // Adds songs to a playlist. Songs already in it (or picked twice) are duplicates: the user
+  // chooses to add them anyway, skip them, or cancel. Resolves to the playlist (null if cancelled).
+  ipcMain.handle("add-songs-to-playlist", async (event, id: string, paths: string[]) => {
+    const playlist = fs.existsSync(path.join(PLAYLISTS_DIR, `${id}.json`))
+      ? loadPlaylistFile(`${id}.json`)
+      : null;
+    if (!playlist || paths.length === 0) return playlist;
+
+    const seen = new Set(playlist.songs);
+    const unique: string[] = [];
+    const duplicates: string[] = [];
+    for (const p of paths) {
+      if (seen.has(p)) duplicates.push(p);
+      else {
+        seen.add(p);
+        unique.push(p);
+      }
+    }
+
+    let toAdd = paths;
+    if (duplicates.length > 0) {
+      const names = songNames(duplicates);
+      const listed = names.slice(0, 10).join("\n") + (names.length > 10 ? "\n…" : "");
+      const options = {
+        type: "question" as const,
+        buttons: ["Add anyway", "Skip duplicates", "Cancel"],
+        defaultId: 1,
+        cancelId: 2,
+        title: "Add to playlist",
+        message:
+          paths.length === 1
+            ? `"${names[0]}" is already in "${playlist.name}".`
+            : `${duplicates.length} of the ${paths.length} songs ${duplicates.length === 1 ? "is" : "are"} already in "${playlist.name}".`,
+        detail: `${listed}\n\nAdd ${duplicates.length === 1 ? "it" : "them"} again anyway, or skip ${duplicates.length === 1 ? "it" : "them"}?`,
+      };
+      const win = BrowserWindow.fromWebContents(event.sender);
+      const { response } = win
+        ? await dialog.showMessageBox(win, options)
+        : await dialog.showMessageBox(options);
+      if (response === 2) return null;
+      if (response === 1) toAdd = unique;
+    }
+
+    if (toAdd.length === 0) {
+      notify("info", `Nothing was added to "${playlist.name}".`);
+      return playlist;
+    }
+    const updated = {
+      ...playlist,
+      songs: [...playlist.songs, ...toAdd],
+      updatedAt: new Date().toISOString(),
+    };
+    savePlaylist(updated);
+    notify(
+      "success",
+      toAdd.length === 1
+        ? `Added "${songNames(toAdd)[0]}" to "${playlist.name}".`
+        : `Added ${toAdd.length} songs to "${playlist.name}".`,
+    );
+    return updated;
+  });
+
+  // Removes repeated songs from a playlist (keeping the first copy of each) after confirmation.
+  ipcMain.handle("remove-playlist-duplicates", async (event, id: string) => {
+    const playlist = fs.existsSync(path.join(PLAYLISTS_DIR, `${id}.json`))
+      ? loadPlaylistFile(`${id}.json`)
+      : null;
+    if (!playlist) return null;
+
+    const songs = [...new Set(playlist.songs)];
+    const removed = playlist.songs.length - songs.length;
+    if (removed === 0) {
+      notify("info", `"${playlist.name}" has no duplicate songs.`);
+      return playlist;
+    }
+
+    const options = {
+      type: "question" as const,
+      buttons: ["Remove duplicates", "Cancel"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "Remove duplicates",
+      message: `Remove ${removed} duplicate song${removed === 1 ? "" : "s"} from "${playlist.name}"?`,
+      detail: "The first copy of each song is kept.",
+    };
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const { response } = win
+      ? await dialog.showMessageBox(win, options)
+      : await dialog.showMessageBox(options);
+    if (response !== 0) return playlist;
+
+    const updated = { ...playlist, songs, updatedAt: new Date().toISOString() };
+    savePlaylist(updated);
+    notify(
+      "success",
+      `Removed ${removed} duplicate song${removed === 1 ? "" : "s"} from "${playlist.name}".`,
+    );
+    return updated;
   });
 }

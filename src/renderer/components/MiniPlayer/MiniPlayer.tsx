@@ -46,11 +46,19 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
     ww: number;
     wh: number;
   } | null>(null);
+  // Whether the left button is currently down on the mini player (set synchronously).
+  const pressedRef = React.useRef(false);
 
   React.useEffect(() => {
     const onMove = (e: MouseEvent) => {
       const d = dragRef.current;
       if (!d) return;
+      // The button was released without us seeing the mouseup (e.g. outside the window):
+      // never let the window follow a pointer that isn't holding the left button.
+      if ((e.buttons & 1) === 0) {
+        dragRef.current = null;
+        return;
+      }
       window.api.setWindowPosition(
         d.wx + (e.screenX - d.mx),
         d.wy + (e.screenY - d.my),
@@ -59,6 +67,7 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
       );
     };
     const onUp = () => {
+      pressedRef.current = false;
       dragRef.current = null;
     };
     window.addEventListener("mousemove", onMove);
@@ -73,7 +82,10 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
     if (e.button !== 0) return;
     // Clicking a control should not start a window drag.
     if ((e.target as HTMLElement).closest("button")) return;
+    pressedRef.current = true;
     const b = await window.api.getWindowBounds();
+    // A quick click can release the button before the window position arrives: no drag then.
+    if (!pressedRef.current) return;
     dragRef.current = { mx: e.screenX, my: e.screenY, wx: b.x, wy: b.y, ww: b.width, wh: b.height };
   };
 

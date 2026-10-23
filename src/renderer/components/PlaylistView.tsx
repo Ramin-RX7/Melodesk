@@ -13,6 +13,7 @@ import {
   IoClose,
   IoTime,
   IoFlame,
+  IoCopyOutline,
 } from "react-icons/io5";
 import { colors } from "../theme/colors";
 
@@ -134,6 +135,8 @@ export function PlaylistView({
   useEffect(() => {
     loadPlaylists();
     loadTrackerData();
+    // Reload when a playlist changes elsewhere (e.g. songs added from a right-click menu).
+    return window.api.onPlaylistsChanged(loadPlaylists);
   }, []);
 
   useEffect(() => {
@@ -200,13 +203,18 @@ export function PlaylistView({
 
   const handleAddSong = async (track: FileItem) => {
     if (!selectedPlaylist || selectedPlaylist.isFixed) return;
-    const newSongs = [...selectedPlaylist.songs, track.path];
     try {
-      const updated = await window.api.updatePlaylist(selectedPlaylist.id, { songs: newSongs });
-      setPlaylists(playlists.map((p) => (p.id === updated.id ? updated : p)));
+      const updated = await window.api.addSongsToPlaylist(selectedPlaylist.id, [track.path]);
+      if (updated) setPlaylists(playlists.map((p) => (p.id === updated.id ? updated : p)));
     } catch (error) {
       console.error("Failed to add song:", error);
     }
+  };
+
+  const handleRemoveDuplicates = async () => {
+    if (!selectedPlaylist || selectedPlaylist.isFixed) return;
+    const updated = await window.api.removePlaylistDuplicates(selectedPlaylist.id);
+    if (updated) setPlaylists(playlists.map((p) => (p.id === updated.id ? updated : p)));
   };
 
   const handleRemoveSong = async (indexToRemove: number) => {
@@ -578,6 +586,26 @@ export function PlaylistView({
                   }}
                 >
                   <IoAdd /> Add Songs
+                </button>
+              )}
+              {!isFixed && (
+                <button
+                  onClick={handleRemoveDuplicates}
+                  title="Remove songs that appear more than once (keeps the first copy)"
+                  style={{
+                    backgroundColor: "transparent",
+                    color: colors.textPrimary,
+                    border: `1px solid ${colors.textPrimary}`,
+                    padding: "8px 24px",
+                    borderRadius: "20px",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                  }}
+                >
+                  <IoCopyOutline /> Remove Duplicates
                 </button>
               )}
             </div>

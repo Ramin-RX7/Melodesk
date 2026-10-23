@@ -70,11 +70,21 @@ export function usePlayTracker(
       }
     };
 
+    // The same song loaded again (picked again, or repeat-all over a one-song queue) is a new
+    // listen: the path doesn't change, so this effect doesn't re-run, but the element reloads.
+    const onLoadStart = () => {
+      listenedRef.current = 0;
+      lastTimeRef.current = 0;
+      countedRef.current = false;
+    };
+
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("seeked", onSeeked);
+    audio.addEventListener("loadstart", onLoadStart);
     return () => {
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("seeked", onSeeked);
+      audio.removeEventListener("loadstart", onLoadStart);
     };
   }, [audioRef, currentTrack?.path, currentTrack?.hash, thresholdPercent]);
 }

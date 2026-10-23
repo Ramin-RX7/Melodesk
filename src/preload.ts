@@ -35,6 +35,14 @@ contextBridge.exposeInMainWorld("api", {
   createPlaylist: (name: string) => ipcRenderer.invoke("create-playlist", name),
   updatePlaylist: (id: string, data: any) => ipcRenderer.invoke("update-playlist", id, data),
   deletePlaylist: (id: string) => ipcRenderer.invoke("delete-playlist", id),
+  addSongsToPlaylist: (id: string, paths: string[]) =>
+    ipcRenderer.invoke("add-songs-to-playlist", id, paths),
+  removePlaylistDuplicates: (id: string) => ipcRenderer.invoke("remove-playlist-duplicates", id),
+  onPlaylistsChanged: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on("playlists-changed", listener);
+    return () => ipcRenderer.removeListener("playlists-changed", listener);
+  },
   writeMetadata: (filePath: string, tags: any) =>
     ipcRenderer.invoke("write-metadata", filePath, tags),
   getArtistInfo: (name: string) => ipcRenderer.invoke("get-artist-info", name),
@@ -47,6 +55,7 @@ contextBridge.exposeInMainWorld("api", {
   getSession: () => ipcRenderer.invoke("get-session"),
   saveSession: (data: any) => ipcRenderer.invoke("save-session", data),
   clearSession: () => ipcRenderer.invoke("clear-session"),
+  savePlaybackPosition: (position: number) => ipcRenderer.send("save-playback-position", position),
   recordPlay: (hash: string, timestamp?: number) =>
     ipcRenderer.invoke("record-play", hash, timestamp),
   getPlayCounts: () => ipcRenderer.invoke("get-play-counts"),

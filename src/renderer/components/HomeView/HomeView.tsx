@@ -19,13 +19,18 @@ interface HomeViewProps {
   onScrollRef: (el: HTMLElement | null) => void;
   onSelectArtist: (name: string) => void;
   onNavigateTab: (tab: "library" | "artists" | "albums" | "genres") => void;
+  /** The open "Show all" page, if any. Owned by App so it's part of the Back history. */
+  detail: HomeDetailKey | null;
+  onOpenDetail: (key: HomeDetailKey) => void;
+  onCloseDetail: () => void;
 }
 
 const DEFAULT_PREVIEW_LIMIT = 10;
 const RECENT_FETCH_LIMIT = 200;
 const RECENT_MAX = 100;
 
-type DetailKey = "recent" | "most-played" | "popular-artists" | "never-played";
+export type HomeDetailKey = "recent" | "most-played" | "popular-artists" | "never-played";
+type DetailKey = HomeDetailKey;
 
 type ArtistEntry = { name: string; plays: number; songCount: number };
 
@@ -48,11 +53,14 @@ export function HomeView({
   onScrollRef,
   onSelectArtist,
   onNavigateTab,
+  detail,
+  onOpenDetail,
+  onCloseDetail,
 }: HomeViewProps) {
   const previewLimit = Math.max(1, config?.homeItemLimit ?? DEFAULT_PREVIEW_LIMIT);
   const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
   const [recentPlays, setRecentPlays] = useState<PlayRecord[]>([]);
-  const [detail, setDetail] = useState<DetailKey | null>(null);
+  const setDetail = (key: DetailKey | null) => (key ? onOpenDetail(key) : onCloseDetail());
   const { artistPictures } = useArtistPictures();
 
   const scrollAreaRef = useCallback(

@@ -14,8 +14,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - When your library folders change on disk (songs added, changed or removed), you're told that the library is being updated in the background.
 - Your settings, playlists, play counts, session and artist info are now backed up automatically. If one of these files gets damaged, MeloDesk restores it from the backup and tells you, instead of starting over with defaults.
 
+- The playback position is remembered: when your last session is restored, the song continues where you left off.
+- Adding songs to a playlist now tells you which ones are already in it, and lets you add them anyway, skip them or cancel.
+- Playlists have a "Remove Duplicates" button (asks first, keeps the first copy of each song).
+- An "Unknown Artist" page on the Artists tab gathers all songs without an artist tag; "Go to Artist" and the song details page lead there for such songs.
+
 ### Changed
 
+- Songs that can't be played (moved, deleted or damaged files) are now skipped automatically, with a message saying which song and why. They stay in the queue.
+- An open playlist updates right away when songs are added to it from elsewhere (e.g. the right-click menu).
 - Opening MeloDesk while it's already running now brings the open window to the front instead of starting a second copy.
 - Library folders can no longer overlap. Adding a folder that is inside one of your library folders explains why it isn't needed. Adding a folder that contains library folders asks whether to replace them with it, or to cancel.
 - Smoother playback: the app no longer redraws every page several times a second while a song plays.
@@ -44,6 +51,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Removing a library folder no longer leaves songs from a folder with a similar name (e.g. "Music\A" and "Music\AB") in your library.
 - Songs no longer appear twice if your library folders overlapped.
 - Seeking in songs is more reliable in edge cases.
+- When a song is in the queue more than once, removing it removes exactly the copy you chose (also with shuffle on), and clicking a repeated song plays that copy.
+- Playing a song again (e.g. picking it again from the queue) now counts as another play.
+- Space now plays/pauses even right after you used the volume or seek slider.
+- Back (button, Esc or mouse back button) now also returns from library folders and from Home's "Show all" pages, restoring where you had scrolled to. A history size of 1 no longer keeps unlimited history.
+- Removing a library folder in Settings now closes it on the Library page.
+- "Go to Album" is unavailable for songs without an album, instead of opening an empty page.
+- Search ignores spaces at the start or end of what you type, so artists and albums no longer disappear from the results while you're typing (e.g. "alan ").
+- A quick click on the mini-player can no longer leave the window following the mouse pointer.
 
 ## [0.2.0] - 2026-10-23
 

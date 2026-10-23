@@ -1,4 +1,5 @@
 import { FileItem, UserConfig } from "../../types";
+import { artistsOf, UNKNOWN_ARTIST } from "../../../utils/metadata";
 import { GroupSortBy, GroupType } from "./types";
 
 export function getFilteredSongs(
@@ -10,15 +11,16 @@ export function getFilteredSongs(
 ) {
   const filteredSongs = allTracks.filter((track) => {
     const meta = track.metadata;
-    if (!meta) return false;
+    // Songs without tags still belong to the "Unknown Artist" group.
+    if (!meta && type !== "artist") return false;
 
     const isMatch =
       type === "artist"
-        ? meta.artists?.includes(selectedGroup)
+        ? artistsOf(track).includes(selectedGroup)
         : type === "album"
-          ? meta.album === selectedGroup
+          ? meta!.album === selectedGroup
           : type === "genre"
-            ? meta.genre?.some((g) => g.toLowerCase() === selectedGroup.toLowerCase())
+            ? meta!.genre?.some((g) => g.toLowerCase() === selectedGroup.toLowerCase())
             : false;
 
     if (!isMatch) return false;
@@ -26,9 +28,9 @@ export function getFilteredSongs(
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
 
-      const title = (meta.title || track.name).toLowerCase();
-      const artist = (meta.artists?.join(", ") || "").toLowerCase();
-      const album = (meta.album || "").toLowerCase();
+      const title = (meta?.title || track.name).toLowerCase();
+      const artist = (meta?.artists?.join(", ") || "").toLowerCase();
+      const album = (meta?.album || "").toLowerCase();
 
       return title.includes(query) || artist.includes(query) || album.includes(query);
     }
@@ -73,14 +75,16 @@ export function getGroupEntries(
   allTracks.forEach((track) => {
     const meta = track.metadata;
 
-    if (!meta) return;
-
     if (type === "artist") {
-      const artists = meta.artists || [];
-      artists.forEach((artist) => {
+      artistsOf(track).forEach((artist) => {
         groups[artist] = (groups[artist] || 0) + 1;
       });
-    } else if (type === "album" && meta.album) {
+      return;
+    }
+
+    if (!meta) return;
+
+    if (type === "album" && meta.album) {
       groups[meta.album] = (groups[meta.album] || 0) + 1;
     } else if (type === "genre" && meta.genre) {
       meta.genre.forEach((g) => {
@@ -122,6 +126,12 @@ export function getGroupEntries(
 
     return sortDescending ? -res : res;
   });
+
+  // "Unknown Artist" isn't a real artist: always list it last.
+  if (type === "artist") {
+    const unknown = entries.findIndex(([name]) => name === UNKNOWN_ARTIST);
+    if (unknown >= 0) entries.push(...entries.splice(unknown, 1));
+  }
 
   return entries;
 }

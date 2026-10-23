@@ -37,23 +37,28 @@ export function useQueue(currentTrack: FileItem | null) {
     setIsShuffle((prev) => !prev);
   };
 
+  // Removes the row at `indexToRemove` from the visible (active) queue, plus the matching entry
+  // of the other list. A song can be queued more than once, so "matching" means the same
+  // occurrence: removing the 2nd copy here removes the 2nd copy there.
   const removeFromQueue = (indexToRemove: number) => {
     const trackToRemove = activeQueue[indexToRemove];
     if (!trackToRemove) return;
 
+    const occurrence = activeQueue
+      .slice(0, indexToRemove)
+      .filter((t) => t.path === trackToRemove.path).length;
+    const removeOccurrence = (list: FileItem[]) => {
+      const positions = list.flatMap((t, i) => (t.path === trackToRemove.path ? [i] : []));
+      const target = positions[Math.min(occurrence, positions.length - 1)];
+      return target === undefined ? list : list.filter((_, i) => i !== target);
+    };
+
     if (isShuffle) {
-      const newShuffled = shuffledQueue.filter((_, i) => i !== indexToRemove);
-      const queueIdx = queue.findIndex((t) => t.path === trackToRemove.path);
-      const newQueue = queueIdx >= 0 ? queue.filter((_, i) => i !== queueIdx) : queue;
-      setShuffledQueue(newShuffled);
-      setQueue(newQueue);
+      setShuffledQueue(shuffledQueue.filter((_, i) => i !== indexToRemove));
+      setQueue(removeOccurrence(queue));
     } else {
-      const newQueue = queue.filter((_, i) => i !== indexToRemove);
-      const shuffledIdx = shuffledQueue.findIndex((t) => t.path === trackToRemove.path);
-      const newShuffled =
-        shuffledIdx >= 0 ? shuffledQueue.filter((_, i) => i !== shuffledIdx) : shuffledQueue;
-      setQueue(newQueue);
-      setShuffledQueue(newShuffled);
+      setQueue(queue.filter((_, i) => i !== indexToRemove));
+      setShuffledQueue(removeOccurrence(shuffledQueue));
     }
 
     if (indexToRemove < currentIndex) {

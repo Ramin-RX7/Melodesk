@@ -36,7 +36,7 @@ export function usePlaybackController({
     removeFromQueue,
     repeatMode,
   } = queueState;
-  const { audioRef, setDuration, setIsPlaying, startPlayback } = audioState;
+  const { audioRef, isPlaying, setDuration, setIsPlaying, startPlayback } = audioState;
 
   const playTrack = (track: FileItem, newQueue?: FileItem[], explicitIndex?: number) => {
     setCurrentTrack(track);
@@ -84,30 +84,46 @@ export function usePlaybackController({
       ? currentTrack.metadata?.title || currentTrack.name
       : filePath.split("/").pop();
 
-  // The file was moved or deleted outside the app: tell the user and rescan the library so it
-  // matches what's on disk.
-  const reportMissingFile = (filePath: string) => {
-    notify({
-      level: "error",
-      message: `"${displayName(filePath)}" wasn't found. It may have been moved or deleted. Refreshing your library…`,
-    });
-    window.api.refreshLibrary();
+  // Songs skipped in a row because they couldn't be played; reset once a song really plays.
+  // Stops the skipping when every song in the queue fails (e.g. with repeat-all on).
+  const skippedInARowRef = useRef(0);
+
+  // A song that can't be played (moved/deleted, or damaged/unsupported) stays in the queue but
+  // is skipped, with a toast saying why. A missing file also triggers a library rescan. If
+  // nothing was meant to be playing (e.g. a restored session's song is gone), only tell the user.
+  const handleUnplayable = (filePath: string, missing: boolean, wasPlaying: boolean) => {
+    const name = displayName(filePath);
+    const reason = missing
+      ? "the file wasn't found (moved or deleted?)"
+      : "the file couldn't be played (damaged or unsupported format)";
+    if (missing) window.api.refreshLibrary();
+
+    const { handleNext, queueLength } = mediaActionsRef.current;
+    if (!wasPlaying) {
+      notify({ level: "error", message: `Can't play "${name}": ${reason}.` });
+      return;
+    }
+    skippedInARowRef.current++;
+    if (skippedInARowRef.current >= queueLength) {
+      skippedInARowRef.current = 0;
+      notify({
+        level: "error",
+        message: `Stopped: none of the songs in the queue could be played. Last one: "${name}" — ${reason}.`,
+      });
+      return;
+    }
+    notify({ level: "error", message: `Skipped "${name}": ${reason}.` });
+    handleNext();
   };
 
   // The <audio> element failed to load its source.
   const handleAudioError = async () => {
     const filePath = loadedFilePath();
     if (!filePath) return; // src was cleared on purpose
+    const wasPlaying = mediaActionsRef.current.isPlaying;
     setIsPlaying(false);
-
-    if (await window.api.fileExists(filePath)) {
-      notify({
-        level: "error",
-        message: `Couldn't play "${displayName(filePath)}". The file may be damaged or in an unsupported format.`,
-      });
-    } else {
-      reportMissingFile(filePath);
-    }
+    const missing = !(await window.api.fileExists(filePath));
+    handleUnplayable(filePath, missing, wasPlaying);
   };
 
   // Every play attempt (button, keys, media keys, next/previous, repeat) fires the element's
@@ -124,7 +140,12 @@ export function usePlaybackController({
     audio.removeAttribute("src");
     audio.load();
     setIsPlaying(false);
-    reportMissingFile(filePath);
+    handleUnplayable(filePath, true, true);
+  };
+
+  // Playback actually started (data is flowing), so the skip streak is over.
+  const handleAudioPlaying = () => {
+    skippedInARowRef.current = 0;
   };
 
   const handleShufflePlay = (songs: FileItem[]) => {
@@ -207,8 +228,16 @@ export function usePlaybackController({
 
   // OS media controls (Windows media overlay, media keys, lock screen). Registered once; the ref
   // makes them call the latest handlers.
-  const mediaActionsRef = useRef({ startPlayback, handleNext, handlePrevious });
-  mediaActionsRef.current = { startPlayback, handleNext, handlePrevious };
+  // Latest handlers/state for callbacks that run later (OS media keys, async error handling).
+  const latestActions = () => ({
+    startPlayback,
+    handleNext,
+    handlePrevious,
+    isPlaying,
+    queueLength: activeQueue.length,
+  });
+  const mediaActionsRef = useRef(latestActions());
+  mediaActionsRef.current = latestActions();
 
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
@@ -363,5 +392,6 @@ export function usePlaybackController({
     handleRemoveFromQueue,
     handleAudioError,
     handleAudioPlay,
+    handleAudioPlaying,
   };
 }
