@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    name: Verify tag and changelog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Tag matches package.json version
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      - run: node scripts/changelog.mjs verify
+
+      - run: node scripts/changelog.mjs notes "${GITHUB_REF_NAME#v}"
+
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win
+          - os: ubuntu-latest
+            platform: linux
+          - os: macos-latest
+            platform: mac
+    runs-on: ${{ matrix.os }}
+    env:
+      # No code-signing certificates: build unsigned installers.
+      CSC_IDENTITY_AUTO_DISCOVERY: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build:${{ matrix.platform }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: |
+            release/*.exe
+            release/*.zip
+            release/*.AppImage
+            release/*.dmg
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: release-*
+          merge-multiple: true
+
+      - name: Write release notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          {
+            node scripts/changelog.mjs notes "$VERSION"
+            cat <<EOF
+
+          ---
+
+          ### Downloads
+
+          | Platform | File |
+          | --- | --- |
+          | Windows installer | \`MeloDesk-Setup-$VERSION.exe\` |
+          | Windows portable (single file, nothing to install) | \`MeloDesk-$VERSION-portable.exe\` |
+          | Windows portable (folder, unzip and run \`melodesk.exe\`) | \`MeloDesk-$VERSION-win-x64.zip\` |
+          | Linux | \`MeloDesk-$VERSION-x86_64.AppImage\` (\`chmod +x\`, then run) |
+          | macOS (Apple Silicon) | \`MeloDesk-$VERSION-mac-arm64.dmg\` |
+          | macOS (Intel) | \`MeloDesk-$VERSION-mac-x64.dmg\` |
+
+          The builds are not code-signed yet. Windows SmartScreen may show "Windows protected your PC": choose **More info → Run anyway**. On macOS, if the app is reported as damaged, run \`xattr -cr /Applications/MeloDesk.app\` once.
+          EOF
+          } > notes.md
+          cat notes.md
+
+      - name: Create release
+        run: gh release create "$GITHUB_REF_NAME" artifacts/* --verify-tag --title "MeloDesk $GITHUB_REF_NAME" --notes-file notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}

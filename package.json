@@ -14,16 +14,26 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run typecheck && npm run format:check",
+    "check": "npm run typecheck && npm run format:check && npm run changelog:verify",
+    "changelog:verify": "node scripts/changelog.mjs verify",
     "pack": "npm run compile && electron-builder --dir",
-    "build": "npm run compile && electron-builder",
-    "build:win": "npm run compile && electron-builder --win",
-    "build:mac": "npm run compile && electron-builder --mac",
-    "build:linux": "npm run compile && electron-builder --linux"
+    "build": "npm run compile && electron-builder --publish never",
+    "build:win": "npm run compile && electron-builder --win --publish never",
+    "build:mac": "npm run compile && electron-builder --mac --publish never",
+    "build:linux": "npm run compile && electron-builder --linux --publish never",
+    "release": "node scripts/release.mjs",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major"
   },
   "keywords": [],
   "author": "RaminRX7",
   "license": "ISC",
+  "homepage": "https://github.com/Ramin-RX7/Melodesk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ramin-RX7/Melodesk.git"
+  },
   "devDependencies": {
     "@types/node": "^25.9.0",
     "@types/react": "^19.2.14",
@@ -60,23 +70,64 @@
     ],
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "artifactName": "${productName}-${version}-win-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
-      "installerHeaderIcon": "assets/icon.ico"
+      "installerHeaderIcon": "assets/icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
     },
     "mac": {
-      "icon": "assets/icon.png"
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.music",
+      "icon": "assets/icon.png",
+      "artifactName": "${productName}-${version}-mac-${arch}.${ext}"
     },
     "linux": {
-      "icon": "assets/icon.png"
+      "target": [
+        "AppImage"
+      ],
+      "category": "Audio",
+      "icon": "assets/icon.png",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     }
+  },
+  "allowScripts": {
+    "electron@29.4.6": true,
+    "electron-winstaller@5.4.0": true
   }
 }

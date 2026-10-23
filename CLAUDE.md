@@ -20,13 +20,20 @@ Scope today is **audio only** (`.mp3 .wav .ogg .m4a .flac`). Video playback is n
 | UI    | React 19 function components, inline styles + some CSS Modules, `react-icons`                                               |
 | Build | `tsc` (main + preload → CommonJS in `dist/`), Vite 8 (renderer → `dist/renderer/`), electron-builder (installers)           |
 | Media | `music-metadata` (read tags), `node-id3` (write tags), `chokidar` (folder watcher), HTML5 `<audio>` + Web Audio (equalizer) |
-| Node  | `^20.19.0 \|\| >=22.12.0` (`engines`, required by Vite 8); `.nvmrc` pins `20.19.1`                                          |
+| Node  | `^20.19.0 \|\| >=22.12.0` (`engines`, required by Vite 8); `.nvmrc` pins `24.22.1`                                          |
 
 There are **no tests and no linter**. Formatting is enforced by Prettier (`.prettierrc.json`: 2 spaces, double quotes, semicolons, trailing commas, width 100, LF). `.editorconfig` mirrors it for editors, and `.gitattributes` stores every text file with LF line endings.
 
 ---
 
 ## 2. Core rules
+
+### Git: the user owns every commit
+
+- **AI agents never commit, and never stage.** No `git commit`, `git add`, `git commit --amend`, `git tag`, `git push`, `git reset`/`rebase`/`stash` or anything else that changes the index, history, tags or remotes. Leave every change unstaged in the working tree; the user decides what to stage, commit, tag and push.
+- This includes indirect routes: **never run `npm run release`** (it commits and tags) or any script that does git writes on the agent's behalf.
+- Read-only git is fine and encouraged: `status`, `diff`, `log`, `show`, `blame`, `branch --list`, `tag --list`.
+- When work is done, report what changed and, if useful, suggest a commit message (using the prefixes below) for the user to use.
 
 ### Dependencies
 
@@ -58,9 +65,16 @@ There are **no tests and no linter**. Formatting is enforced by Prettier (`.pret
 - Follow existing patterns. No new abstractions unless necessary.
 - No unnecessary comments. No placeholder logic.
 
+### Changelog
+
+- **Every user-facing change adds an entry to `CHANGELOG.md` under `## [Unreleased]` in the same commit.** Every `[feat]` and `[fix]` commit needs one; CI fails a push or PR whose `[feat]`/`[fix]` commits don't touch `CHANGELOG.md`.
+- Use the Keep a Changelog categories as `###` headings (`Added`, `Changed`, `Fixed`, `Removed`, `Deprecated`, `Security`); `####` feature-area subheadings are optional. One `- ` bullet per change.
+- Write for users, not developers: what they can now do or what no longer goes wrong ("Playlists can be sorted by duration"), not internals ("refactor usePlaybackController").
+- Never edit released version sections or the link definitions at the bottom. `npm run release` manages those.
+
 ### Commits
 
-Messages use a bracketed type prefix: `[feat] …`, `[fix] …`, `[refactor] …`, `[chore] …`, `[config] …`.
+Messages use a bracketed type prefix: `[feat] …`, `[fix] …`, `[refactor] …`, `[chore] …`, `[config] …`, and `[release] vX.Y.Z` (created only by `npm run release`).
 
 ---
 
@@ -86,19 +100,22 @@ Messages use a bracketed type prefix: `[feat] …`, `[fix] …`, `[refactor] …
 npm ci             # install exactly what package-lock.json pins (use `npm install` when changing deps)
 ```
 
-| Script                                  | What it does                                                                                                            | When to use it                                                         |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `npm run dev`                           | Watches `src/` and `assets/`; on every change runs `npm start` again (rebuild + restart Electron)                       | Day-to-day development                                                 |
-| `npm start`                             | `compile`, then launches Electron                                                                                       | One-off run of the current code                                        |
-| `npm run compile`                       | `clean` → `tsc` (main + preload → `dist/`) → copy `assets/` → `dist/assets` → `vite build` (renderer → `dist/renderer`) | Build without launching; every packaging script runs it first          |
-| `npm run clean`                         | Deletes `dist/` (Node `fs.rmSync`, cross-platform)                                                                      | Drop stale output from deleted or renamed files                        |
-| `npm run typecheck`                     | `tsc --noEmit` over all of `src/` (Vite doesn't type-check)                                                             | After any TS change                                                    |
-| `npm run format`                        | Prettier `--write` on the whole repo                                                                                    | Before committing                                                      |
-| `npm run format:check`                  | Prettier `--check`; fails if anything is unformatted                                                                    | CI / pre-commit                                                        |
-| `npm run check`                         | `typecheck` + `format:check`                                                                                            | **Run before every commit**: the fastest "is this mergeable" gate      |
-| `npm run pack`                          | `compile` → `electron-builder --dir`: unpacked app in `release/<platform>-unpacked/`, no installer                      | Test the packaged app quickly (asar contents, icons, production paths) |
-| `npm run build`                         | `compile` → installers for the current OS into `release/`                                                               | Releases                                                               |
-| `npm run build:win` / `:mac` / `:linux` | Same, for a specific OS (build on that OS, see §5)                                                                      | Releases                                                               |
+| Script                                        | What it does                                                                                                            | When to use it                                                         |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`                                 | Watches `src/` and `assets/`; on every change runs `npm start` again (rebuild + restart Electron)                       | Day-to-day development                                                 |
+| `npm start`                                   | `compile`, then launches Electron                                                                                       | One-off run of the current code                                        |
+| `npm run compile`                             | `clean` → `tsc` (main + preload → `dist/`) → copy `assets/` → `dist/assets` → `vite build` (renderer → `dist/renderer`) | Build without launching; every packaging script runs it first          |
+| `npm run clean`                               | Deletes `dist/` (Node `fs.rmSync`, cross-platform)                                                                      | Drop stale output from deleted or renamed files                        |
+| `npm run typecheck`                           | `tsc --noEmit` over all of `src/` (Vite doesn't type-check)                                                             | After any TS change                                                    |
+| `npm run format`                              | Prettier `--write` on the whole repo                                                                                    | Before committing                                                      |
+| `npm run format:check`                        | Prettier `--check`; fails if anything is unformatted                                                                    | CI / pre-commit                                                        |
+| `npm run check`                               | `typecheck` + `format:check` + `changelog:verify`                                                                       | **Run before every commit**: the fastest "is this mergeable" gate      |
+| `npm run changelog:verify`                    | Validates `CHANGELOG.md` structure (`scripts/changelog.mjs verify`)                                                     | Part of `check`                                                        |
+| `npm run pack`                                | `compile` → `electron-builder --dir`: unpacked app in `release/<platform>-unpacked/`, no installer                      | Test the packaged app quickly (asar contents, icons, production paths) |
+| `npm run build`                               | `compile` → installers for the current OS into `release/` (`--publish never`)                                           | Local test of release artifacts                                        |
+| `npm run build:win` / `:mac` / `:linux`       | Same, for a specific OS (build on that OS, see §5); CI uses these                                                       | Local test of release artifacts                                        |
+| `npm run release -- <bump>`                   | Cuts a release: version bump + CHANGELOG + `[release]` commit + `vX.Y.Z` tag (never pushes). `--dry-run` to preview     | Releasing (see below)                                                  |
+| `npm run release:patch` / `:minor` / `:major` | Shortcuts for `release -- patch` etc.                                                                                   | Releasing                                                              |
 
 - `tsconfig.json`: `rootDir: src`, `outDir: dist`, CommonJS. `vite.config.ts`: `root: src/renderer`, `base: "./"`, output `dist/renderer`. `tsc` also emits renderer `.js` files into `dist/`; Vite replaces `dist/renderer`, and the extra `dist/hooks` files are harmless.
 - `npm run dev` restarts the whole app on every save (no HMR). That's fine for now; a Vite dev server with HMR is a possible later upgrade.
@@ -110,27 +127,59 @@ npm ci             # install exactly what package-lock.json pins (use `npm insta
 ### Versioning
 
 - The app version lives in `package.json` → `version` and must be **valid semver `MAJOR.MINOR.PATCH`** (e.g. `0.2.0`, not `0.2`). electron-builder uses it for artifact names and installer metadata.
-- `package-lock.json` repeats the version (top level and `packages[""]`). Keep both in sync, e.g. with `npm version <x.y.z> --no-git-tag-version`.
-- Bumping the version is a `package.json` change, so it needs user approval (§2).
+- **Don't bump it by hand.** `npm run release` bumps `package.json` and `package-lock.json` together. Releasing is done by the user only: agents never run it, because it commits and tags (§2 → Git).
+- `patch` for fixes only, `minor` for new features, `major` for breaking changes (e.g. incompatible config/data formats).
+
+### Releasing
+
+1. While developing, entries accumulate under `## [Unreleased]` in `CHANGELOG.md` (§2 → Changelog).
+2. `npm run release -- minor` (or `patch` / `major` / `X.Y.Z`; add `--dry-run` to preview). It refuses to run unless you're on `master`, the tree is clean, you're not behind `origin`, the tag is new, Unreleased has entries and `npm run check` passes. It then bumps the version, moves Unreleased to `## [X.Y.Z] - <date>`, commits `[release] vX.Y.Z` and creates an annotated tag `vX.Y.Z`.
+3. `git push origin master --follow-tags`. Pushing the tag triggers `.github/workflows/release.yml`, which:
+   - checks that the tag matches `package.json` and that the version has changelog notes;
+   - builds on Windows, Linux and macOS runners;
+   - publishes a GitHub Release whose notes are that version's CHANGELOG section plus a downloads table.
+
+   Undo before pushing: `git tag -d vX.Y.Z && git reset --hard HEAD~1`.
+
+Release artifacts (names come from `artifactName` in `package.json` → `build`):
+
+| File                                            | What it is                                                                 |
+| ----------------------------------------------- | -------------------------------------------------------------------------- |
+| `MeloDesk-Setup-X.Y.Z.exe`                      | Windows NSIS installer (choose install dir, Start menu entry, uninstaller) |
+| `MeloDesk-X.Y.Z-portable.exe`                   | Windows portable single file (self-extracts to temp on each launch)        |
+| `MeloDesk-X.Y.Z-win-x64.zip`                    | Windows portable folder (unzip, run `melodesk.exe`)                        |
+| `MeloDesk-X.Y.Z-x86_64.AppImage`                | Linux                                                                      |
+| `MeloDesk-X.Y.Z-mac-arm64.dmg` / `-mac-x64.dmg` | macOS, Apple Silicon / Intel                                               |
+
+None of the builds are code-signed: Windows SmartScreen and macOS Gatekeeper warn on first launch (the release notes explain the workaround).
+
+### CI (`.github/workflows/ci.yml`)
+
+Runs on every push to `master` and on PRs to `master`:
+
+- **check** (Ubuntu): `npm ci`, `npm run check`, plus `changelog.mjs verify <before> <after>`, which fails if the pushed range has `[feat]`/`[fix]` commits but no `CHANGELOG.md` change.
+- **build** (Windows + Linux, after check): `npm run build:win` / `build:linux`. The files are uploaded as workflow artifacts for 7 days, which is handy for testing a commit without releasing.
+
+macOS is only built by the release workflow, to save runner minutes.
 
 ---
 
 ## 5. Platform support
 
-Development and testing happen on **Windows** (installer targets: NSIS + portable). The code is written to be cross-platform. All runtime dependencies are pure JS (no native modules), paths are normalized before hashing or building URLs, and Cmd is treated as Ctrl in shortcuts. So cloning and running `npm start` should work on macOS and Linux, but neither has been tested.
+Development and testing happen on **Windows**. Releases ship Windows, Linux (AppImage) and macOS (dmg) builds produced on GitHub runners (§4 → Releasing). The code is written to be cross-platform. All runtime dependencies are pure JS (no native modules), paths are normalized before hashing or building URLs, and Cmd is treated as Ctrl in shortcuts. So cloning and running `npm start` should work on macOS and Linux, but neither has been tested.
 
 Build installers on the target OS: `.dmg` can only be built on macOS, and unsigned macOS builds trigger Gatekeeper warnings. On Linux, electron-builder's default AppImage target needs nothing extra.
 
 Known platform gaps (not yet fixed):
 
-| Platform              | Issue                                                                                                                                                                                                                                                                                  | Where                       |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| macOS                 | `build.mac.icon` uses the 512×512 `assets/icon.png` (electron-builder converts it to `.icns`). The macOS build itself has never been run.                                                                                                                                              | `package.json`              |
-| macOS                 | After the window closes the app keeps running (normal on macOS), but there is no `activate` handler to reopen the window; the user must Cmd+Q. Window/mini-mode IPC handlers are registered inside `createWindow()`, so creating a second window would throw duplicate-handler errors. | `src/main.ts`               |
-| macOS                 | No native traffic-light buttons (frameless window); the custom `TitleBar` buttons are used instead.                                                                                                                                                                                    | `TitleBar.tsx`              |
-| macOS / Linux         | The font stack starts with Windows-only "Segoe UI", so other systems fall back to Tahoma / Verdana / sans-serif.                                                                                                                                                                       | `App.tsx`                   |
-| Linux (Wayland)       | Wayland doesn't let apps position windows, so mini-player JS dragging, window-position restore and possibly always-on-top may not work. X11 is fine.                                                                                                                                   | `main.ts`, `MiniPlayer.tsx` |
-| Linux (Ubuntu 23.10+) | Unpackaged `electron .` can fail with an Electron "SUID sandbox helper" error caused by AppArmor. Packaged builds usually avoid it; `--no-sandbox` works around it for local dev only.                                                                                                 | —                           |
+| Platform              | Issue                                                                                                                                                                                                                                                                                  | Where                         |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| macOS                 | The release workflow builds unsigned x64 + arm64 dmgs (icon converted from the 512×512 `assets/icon.png`), but they haven't been tested on a real Mac. Gatekeeper may report the app as damaged until the user runs `xattr -cr`.                                                       | `package.json`, `release.yml` |
+| macOS                 | After the window closes the app keeps running (normal on macOS), but there is no `activate` handler to reopen the window; the user must Cmd+Q. Window/mini-mode IPC handlers are registered inside `createWindow()`, so creating a second window would throw duplicate-handler errors. | `src/main.ts`                 |
+| macOS                 | No native traffic-light buttons (frameless window); the custom `TitleBar` buttons are used instead.                                                                                                                                                                                    | `TitleBar.tsx`                |
+| macOS / Linux         | The font stack starts with Windows-only "Segoe UI", so other systems fall back to Tahoma / Verdana / sans-serif.                                                                                                                                                                       | `App.tsx`                     |
+| Linux (Wayland)       | Wayland doesn't let apps position windows, so mini-player JS dragging, window-position restore and possibly always-on-top may not work. X11 is fine.                                                                                                                                   | `main.ts`, `MiniPlayer.tsx`   |
+| Linux (Ubuntu 23.10+) | Unpackaged `electron .` can fail with an Electron "SUID sandbox helper" error caused by AppArmor. Packaged builds usually avoid it; `--no-sandbox` works around it for local dev only.                                                                                                 | —                             |
 
 ---
 
@@ -240,7 +289,14 @@ All persistence uses synchronous `fs` + JSON with `try/catch` + `console.error`.
 ```text
 assets/                              # icon.ico (Windows), icon.png (512×512, macOS/Linux/window icon); copied to dist/assets
 .todo                                # Backlog (issues + feature ideas)
+CHANGELOG.md                         # Keep a Changelog: Unreleased + released versions; source of release notes
 package.json                         # Scripts (§4), deps, electron-builder config under "build"
+.github/workflows/
+├── ci.yml                           # Push/PR to master: check (typecheck, format, changelog) + Windows/Linux builds
+└── release.yml                      # Tag vX.Y.Z: verify → build win/linux/mac → publish GitHub Release
+scripts/                             # Node ESM, no dependencies
+├── changelog.mjs                    # CHANGELOG parse/serialize; CLI: `notes <version>`, `verify [<base> <head>]`
+└── release.mjs                      # `npm run release` — version bump, changelog finalize, [release] commit, tag
 tsconfig.json / vite.config.ts       # Main+preload compile (tsc → dist/) / renderer bundle (vite → dist/renderer/)
 .prettierrc.json / .prettierignore   # Formatting rules (enforced by `npm run check`)
 .editorconfig / .gitattributes       # Editor defaults / LF line endings for all text files
@@ -399,6 +455,7 @@ Paths are relative to `src/`.
 | **Audio streaming problems** (seeking, CORS, silence) | `protocols/mediaProtocol.ts`                                                                   | `main.ts` `registerSchemesAsPrivileged`, `<audio crossOrigin="anonymous">` in `App.tsx`                                                     |
 | **App lifecycle, platform behavior**                  | `src/main.ts`                                                                                  | §5 Platform support                                                                                                                         |
 | **Packaging, icons, version**                         | `package.json` → `build`, `version` (needs approval)                                           | `assets/`, §4 Versioning                                                                                                                    |
+| **Release, CI, changelog**                            | `scripts/release.mjs`, `scripts/changelog.mjs`, `.github/workflows/*.yml`                      | `CHANGELOG.md`, `package.json` scripts + `build.*.artifactName`, §4 Releasing                                                               |
 
 ---
 
@@ -462,3 +519,4 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 - Keep path handling cross-platform: use `path.join`, and normalize separators before hashing or comparing paths (see §5).
 - Errors: main-process code logs with `console.error` and returns a safe fallback (`null`, `[]`, `false`). It doesn't throw across IPC.
 - Backlog ideas live in `.todo` (synced lyrics, cover-art writing, picture-in-picture).
+- A finished feature isn't done until its `CHANGELOG.md` entry is written (§2 → Changelog).
