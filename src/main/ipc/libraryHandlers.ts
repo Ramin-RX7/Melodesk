@@ -1,9 +1,66 @@
-import { ipcMain, dialog } from "electron";
+import { BrowserWindow, ipcMain, dialog } from "electron";
+import fs from "fs";
 
 import { getCacheList } from "../services/cacheService";
-import { getConfig } from "../services/configService";
+import { getConfig, saveConfig } from "../services/configService";
+import { notify } from "../services/notifyService";
+import { isSameOrInside, isSamePath } from "../services/library/libraryPaths";
 import { getDirectoryTree } from "../services/library/libraryScanner";
 import { getScanStatus, isScanning, updateLibrary } from "../services/library/libraryUpdater";
+import { setupWatcher } from "../services/library/libraryWatcher";
+
+// Adds folders to the library. Library folders never overlap:
+// - a folder that is (inside) a library folder is refused, with an explanation;
+// - a folder that contains library folders replaces them if the user agrees (their songs stay
+//   in the library through the new folder), otherwise it isn't added.
+const addLibraryFolders = async (win: BrowserWindow | null, selected: string[]) => {
+  let paths = [...getConfig().libraryPaths];
+  let changed = false;
+
+  // Parents first, so a parent and its child picked together resolve to the parent.
+  for (const folder of [...selected].sort((a, b) => a.length - b.length)) {
+    const owner = paths.find((p) => isSameOrInside(folder, p));
+    if (owner) {
+      if (isSamePath(folder, owner)) {
+        notify("info", `"${folder}" is already in your library.`);
+      } else {
+        notify(
+          "error",
+          `"${folder}" wasn't added: it's inside "${owner}", which is already in your library, so its songs are already included.`,
+        );
+      }
+      continue;
+    }
+
+    const inner = paths.filter((p) => isSameOrInside(p, folder));
+    if (inner.length > 0) {
+      const options = {
+        type: "question" as const,
+        buttons: ["Add and remove inner folders", "Cancel"],
+        defaultId: 0,
+        cancelId: 1,
+        title: "Add library folder",
+        message: `"${folder}" contains ${inner.length === 1 ? "a folder that is" : "folders that are"} already in your library:`,
+        detail: `${inner.join("\n")}\n\nAdd "${folder}" and remove ${inner.length === 1 ? "that folder" : "those folders"} from the library list? Their songs stay in your library, since they're inside the new folder.`,
+      };
+      const { response } = win
+        ? await dialog.showMessageBox(win, options)
+        : await dialog.showMessageBox(options);
+      if (response !== 0) continue;
+      paths = paths.filter((p) => !inner.includes(p));
+    }
+
+    paths.push(folder);
+    changed = true;
+  }
+
+  if (!changed) return getConfig();
+  const config = { ...getConfig(), libraryPaths: paths };
+  saveConfig(config);
+  await setupWatcher();
+  updateLibrary();
+  return config;
+};
 
 export function registerLibraryHandlers() {
   ipcMain.handle("get-library-files", async () => {
@@ -12,7 +69,7 @@ export function registerLibraryHandlers() {
     // Always check if cache is consistent with library paths on startup/request
     const config = getConfig();
     const allExisting = cachedFiles.filter((f) => {
-      return config.libraryPaths.some((lp) => f.path.startsWith(lp));
+      return config.libraryPaths.some((lp) => isSameOrInside(f.path, lp));
     });
 
     // A running update (e.g. the one started at launch) already brings the cache up to date.
@@ -26,6 +83,10 @@ export function registerLibraryHandlers() {
     }
 
     return allExisting;
+  });
+
+  ipcMain.handle("file-exists", (_event, filePath: string) => {
+    return fs.existsSync(filePath);
   });
 
   ipcMain.handle("get-library-scan-status", () => {
@@ -43,6 +104,10 @@ export function registerLibraryHandlers() {
 
     if (result.canceled) return [];
     return result.filePaths;
+  });
+
+  ipcMain.handle("add-library-folders", async (event, folders: string[]) => {
+    return addLibraryFolders(BrowserWindow.fromWebContents(event.sender), folders);
   });
 
   ipcMain.handle("refresh-library", async () => {

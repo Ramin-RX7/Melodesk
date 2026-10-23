@@ -22,6 +22,8 @@ import { useQueue } from "../hooks/useQueue";
 import { usePlaybackController } from "../hooks/usePlaybackController";
 import { usePlayTracker } from "../hooks/usePlayTracker";
 import { useLibraryScanStatus } from "../hooks/useLibraryScanStatus";
+import { useToasts } from "../hooks/useToasts";
+import { Toasts } from "./components/Toasts/Toasts";
 import { colors, buildRootCss, DEFAULT_PALETTE, DEFAULT_THEME_COLOR } from "./theme/colors";
 import { applyPalette } from "./theme/applyTheme";
 import { getTheme, DEFAULT_THEME_ID } from "./theme/themes";
@@ -64,8 +66,12 @@ export default function App() {
     name: string;
   } | null>(null);
   const [currentTrack, setCurrentTrack] = useState<FileItem | null>(null);
+  // The song shown on the details page. Independent of playback: opening a song's details
+  // never changes what is playing.
+  const [detailsTrack, setDetailsTrack] = useState<FileItem | null>(null);
   const [openLyricsOnDetails, setOpenLyricsOnDetails] = useState(false);
   const [isMini, setIsMini] = useState(false);
+  const { toasts, showToast, dismissToast } = useToasts();
 
   const enterMini = () => {
     setIsMini(true);
@@ -76,9 +82,14 @@ export default function App() {
     window.api.exitMiniMode();
   };
 
+  // A song's tags were edited on the details page: show the new data everywhere it appears.
   const handleTrackUpdated = (updatedTrack: FileItem) => {
-    setCurrentTrack(updatedTrack);
-    setAllTracks((prev) => prev.map((t) => (t.path === updatedTrack.path ? updatedTrack : t)));
+    const replace = (t: FileItem) => (t.path === updatedTrack.path ? updatedTrack : t);
+    setDetailsTrack(updatedTrack);
+    setCurrentTrack((prev) => (prev ? replace(prev) : prev));
+    setAllTracks((prev) => prev.map(replace));
+    setQueue((prev) => prev.map(replace));
+    setShuffledQueue((prev) => prev.map(replace));
   };
 
   // Single source of truth for theme color fallback
@@ -110,7 +121,6 @@ export default function App() {
     audioRef,
 
     isPlaying,
-    currentTime,
     duration,
 
     setDuration,
@@ -122,9 +132,9 @@ export default function App() {
     seekForward,
     seekBackward,
 
-    handleTimeUpdate,
     handleLoadedMetadata,
-    handleVolumeChange,
+    previewVolume,
+    commitVolume,
   } = audioPlayerState;
 
   // Insert the Web Audio equalizer between the <audio> element and the speakers.
@@ -166,13 +176,29 @@ export default function App() {
     playNextAndPlay,
     playNextMultiple,
     handleRemoveFromQueue,
+    handleAudioError,
+    handleAudioPlay,
   } = usePlaybackController({
     config,
     queueState,
     audioState: audioPlayerState,
     currentTrack,
     setCurrentTrack,
+    notify: showToast,
   });
+
+  // After a library update, swap the queue's song objects for the fresh ones (same path) so
+  // the queue, playback bar and details page show current tags. Songs no longer in the library
+  // stay as they are.
+  useEffect(() => {
+    if (allTracks.length === 0) return;
+    const byPath = new Map(allTracks.map((t) => [t.path, t]));
+    const refresh = (t: FileItem) => byPath.get(t.path) ?? t;
+    setQueue((prev) => prev.map(refresh));
+    setShuffledQueue((prev) => prev.map(refresh));
+    setCurrentTrack((prev) => (prev ? refresh(prev) : prev));
+    setDetailsTrack((prev) => (prev ? refresh(prev) : prev));
+  }, [allTracks]);
 
   // Record plays once enough of a song has actually been listened to
   usePlayTracker(audioRef, currentTrack, config?.playCountThresholdPercent ?? 50);
@@ -254,6 +280,18 @@ export default function App() {
             const restoredShuffled = session.shuffledQueue
               .map((p) => trackMap.get(p))
               .filter(Boolean) as FileItem[];
+            // Songs from the last session that are no longer in the library (moved or deleted)
+            // are left out. Skipped while the library is still empty (first scan running).
+            const missing = session.queue.length - restoredQueue.length;
+            if (missing > 0 && tracks.length > 0) {
+              showToast({
+                level: "info",
+                message:
+                  restoredQueue.length === 0
+                    ? "Your last session couldn't be restored: its songs are no longer in your library."
+                    : `${missing} song${missing === 1 ? "" : "s"} from your last session ${missing === 1 ? "is" : "are"} no longer in your library and ${missing === 1 ? "was" : "were"} removed from the queue.`,
+              });
+            }
             if (restoredQueue.length > 0) {
               setQueue(restoredQueue);
               setShuffledQueue(restoredShuffled.length > 0 ? restoredShuffled : restoredQueue);
@@ -261,11 +299,15 @@ export default function App() {
               setRepeatMode(session.repeatMode);
               const activeLen = session.isShuffle ? restoredShuffled.length : restoredQueue.length;
               const clampedIndex = Math.max(0, Math.min(session.currentIndex, activeLen - 1));
-              setCurrentIndex(clampedIndex);
               const activeList = session.isShuffle ? restoredShuffled : restoredQueue;
               const trackToRestore =
                 (session.currentTrackPath ? trackMap.get(session.currentTrackPath) : null) ??
                 activeList[clampedIndex];
+              // Locate the track in the restored list: removed songs shift the saved index.
+              const restoredIndex = trackToRestore
+                ? activeList.findIndex((t) => t.path === trackToRestore.path)
+                : -1;
+              setCurrentIndex(restoredIndex >= 0 ? restoredIndex : clampedIndex);
               if (trackToRestore) {
                 setCurrentTrack(trackToRestore);
                 if (trackToRestore.metadata?.duration)
@@ -471,7 +513,7 @@ export default function App() {
       setSelectedGroup({ type: "artist", name: action.artist });
     } else if (action.type === "open-details") {
       pushNav();
-      setCurrentTrack(song);
+      setDetailsTrack(song);
       setView("details");
     } else if (action.type === "add-to-playlist") {
       const playlist = await window.api.getPlaylist(action.playlistId);
@@ -685,9 +727,9 @@ export default function App() {
               }
 
               if (view === "details") {
-                return view === "details" && currentTrack ? (
+                return view === "details" && detailsTrack ? (
                   <SongDetailsView
-                    currentTrack={currentTrack}
+                    currentTrack={detailsTrack}
                     themeColor={themeColor}
                     onBack={handleGoBack}
                     onNavigate={(type, name) => {
@@ -713,13 +755,19 @@ export default function App() {
             isPlaying={isPlaying}
             onTogglePlay={togglePlay}
             currentTrack={currentTrack || undefined}
-            currentTime={currentTime}
+            audioRef={audioRef}
             duration={duration}
             onSeek={handleSeek}
-            onShowDetails={() => setView("details")}
+            onShowDetails={() => {
+              if (!currentTrack) return;
+              if (view !== "details") pushNav();
+              setDetailsTrack(currentTrack);
+              setView("details");
+            }}
             onShowLyrics={() => {
               if (!currentTrack) return;
               if (view !== "details") pushNav();
+              setDetailsTrack(currentTrack);
               setOpenLyricsOnDetails(true);
               setView("details");
             }}
@@ -731,7 +779,8 @@ export default function App() {
             onToggleRepeat={handleRepeatToggle}
             onShowQueue={toggleQueue}
             volume={config?.volume ?? 0.5}
-            onVolumeChange={handleVolumeChange}
+            onVolumeChange={previewVolume}
+            onVolumeCommit={commitVolume}
             themeColor={themeColor}
             onContextMenu={showContextMenu}
           />
@@ -741,12 +790,14 @@ export default function App() {
       <audio
         ref={audioRef}
         crossOrigin="anonymous"
-        onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
-        onPlay={() => setIsPlaying(true)}
+        onPlay={handleAudioPlay}
         onPause={() => setIsPlaying(false)}
         onEnded={handleEnded}
+        onError={handleAudioError}
       />
+
+      <Toasts toasts={toasts} themeColor={themeColor} onDismiss={dismissToast} />
     </div>
   );
 }

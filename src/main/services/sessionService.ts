@@ -3,26 +3,16 @@ import fs from "fs";
 import path from "path";
 
 import { SessionData, WindowBounds } from "../../renderer/types";
+import { readJson, writeJson } from "./jsonStore";
 
 const SESSION_PATH = path.join(app.getPath("userData"), "session.json");
 
 export const getSession = (): SessionData | null => {
-  try {
-    if (fs.existsSync(SESSION_PATH)) {
-      return JSON.parse(fs.readFileSync(SESSION_PATH, "utf-8")) as SessionData;
-    }
-  } catch (error) {
-    console.error("Failed to read session:", error);
-  }
-  return null;
+  return readJson<SessionData | null>(SESSION_PATH, null, { label: "last session" });
 };
 
 const writeSession = (data: Partial<SessionData>): void => {
-  try {
-    fs.writeFileSync(SESSION_PATH, JSON.stringify(data, null, 2));
-  } catch (error) {
-    console.error("Failed to save session:", error);
-  }
+  writeJson(SESSION_PATH, data, { pretty: true });
 };
 
 export const saveSession = (data: Partial<SessionData>): void => {

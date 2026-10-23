@@ -86,6 +86,12 @@ export interface LibraryScanStatus {
   currentPath?: string;
 }
 
+/** A short message shown to the user as a toast; sent by the main process or raised in the UI. */
+export interface AppNotification {
+  level: "info" | "success" | "error";
+  message: string;
+}
+
 export interface Playlist {
   id: string;
   name: string;
@@ -120,6 +126,11 @@ declare global {
     api: {
       /** Folder picker with multi-select; resolves to [] when cancelled. */
       selectDirectories: () => Promise<string[]>;
+      /**
+       * Adds folders to the library, enforcing that library folders never overlap (may ask the
+       * user to confirm replacing inner folders). Resolves to the resulting config.
+       */
+      addLibraryFolders: (folders: string[]) => Promise<UserConfig>;
       getDirectoryTree: (dirPath: string) => Promise<FileItem[]>;
       showSongContextMenu: (song: FileItem) => Promise<ContextMenuAction | null>;
       showGroupContextMenu: (groupName: string) => Promise<GroupContextMenuAction | null>;
@@ -128,6 +139,10 @@ declare global {
       getLibraryFiles: () => Promise<FileItem[]>;
       onLibraryUpdated: (callback: (files: FileItem[]) => void) => () => void;
       refreshLibrary: () => Promise<void>;
+      fileExists: (filePath: string) => Promise<boolean>;
+      /** Notifications raised before the UI was listening (e.g. during startup). */
+      takePendingNotifications: () => Promise<AppNotification[]>;
+      onNotification: (callback: (notification: AppNotification) => void) => () => void;
       getLibraryScanStatus: () => Promise<LibraryScanStatus>;
       onLibraryScanStatus: (callback: (status: LibraryScanStatus) => void) => () => void;
       getMetadata: (filePath: string) => Promise<FileItem>;
@@ -143,6 +158,8 @@ declare global {
       deletePlaylist: (id: string) => Promise<void>;
       writeMetadata: (filePath: string, tags: any) => Promise<boolean>;
       getArtistInfo: (name: string) => Promise<ArtistInfo | null>;
+      /** Custom pictures of all artists that have one, by artist name. */
+      getArtistPictures: () => Promise<Record<string, string>>;
       updateArtistInfo: (name: string, data: Partial<ArtistInfo>) => Promise<ArtistInfo>;
       selectArtistImage: () => Promise<string | null>;
       showFileInFolder: (filePath: string) => Promise<void>;

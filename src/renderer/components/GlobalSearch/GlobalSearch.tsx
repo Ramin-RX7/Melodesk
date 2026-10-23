@@ -44,6 +44,7 @@ export function GlobalSearch({
   const inputRef = externalInputRef ?? internalInputRef;
 
   const limit = config?.searchResultsPerCategory ?? 4;
+  const doubleClickToPlay = config?.doubleClickToPlay ?? true;
   const q = query.trim().toLowerCase();
 
   useEffect(() => {
@@ -112,6 +113,12 @@ export function GlobalSearch({
     setQuery("");
   };
 
+  const playResult = (song: FileItem) => {
+    onPlaySong(song, results!.songs);
+    setIsOpen(false);
+    setQuery("");
+  };
+
   const hasAnyResult =
     results &&
     (results.songs.length > 0 ||
@@ -173,11 +180,8 @@ export function GlobalSearch({
                     <div
                       key={song.path}
                       className={styles.resultItem}
-                      onClick={() => {
-                        onPlaySong(song, results!.songs);
-                        setIsOpen(false);
-                        setQuery("");
-                      }}
+                      onClick={() => !doubleClickToPlay && playResult(song)}
+                      onDoubleClick={() => doubleClickToPlay && playResult(song)}
                       onContextMenu={
                         onSongContextMenu ? (e) => onSongContextMenu(e, song) : undefined
                       }

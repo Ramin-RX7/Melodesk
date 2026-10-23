@@ -20,16 +20,8 @@ export function LibraryView(props: Props) {
 
   const handleAddFolder = async () => {
     const paths = await window.api.selectDirectories();
-
-    if (config) {
-      const added = paths.filter((p) => !config.libraryPaths.includes(p));
-      if (added.length > 0) {
-        const newConfig = await window.api.updateConfig({
-          libraryPaths: [...config.libraryPaths, ...added],
-        });
-
-        setConfig(newConfig);
-      }
+    if (paths.length > 0) {
+      setConfig(await window.api.addLibraryFolders(paths));
     }
   };
 

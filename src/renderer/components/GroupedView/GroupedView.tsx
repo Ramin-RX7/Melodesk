@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { IoSearch, IoSwapVertical, IoShuffle, IoCreate, IoSave, IoImage } from "react-icons/io5";
 
 import { FileItem, UserConfig, ArtistInfo } from "../../types";
+import { useArtistPictures } from "../../../hooks/useArtistPictures";
 
 import { colors } from "../../theme/colors";
 
@@ -85,23 +86,37 @@ export function GroupedView({
     [onScrollRef],
   );
 
+  const { artistPictures, setArtistPicture } = useArtistPictures();
   const [artistInfo, setArtistInfo] = useState<ArtistInfo | null>(null);
   const [isEditingArtist, setIsEditingArtist] = useState(false);
   const [editBio, setEditBio] = useState("");
 
+  // Switching to another artist or page cancels an unsaved bio edit, so a draft can never be
+  // saved onto a different artist. Responses for an artist we already left are ignored.
   useEffect(() => {
-    if (type === "artist" && selectedGroup) {
-      window.api
-        .getArtistInfo(selectedGroup.name)
-        .then((info) => {
-          setArtistInfo(info);
-          if (info) setEditBio(info.bio || "");
-        })
-        .catch(console.error);
-    } else {
-      setArtistInfo(null);
-    }
+    setIsEditingArtist(false);
+    setEditBio("");
+    setArtistInfo(null);
+    if (type !== "artist" || !selectedGroup) return;
+
+    let active = true;
+    window.api
+      .getArtistInfo(selectedGroup.name)
+      .then((info) => {
+        if (!active) return;
+        setArtistInfo(info);
+        setEditBio(info?.bio || "");
+      })
+      .catch(console.error);
+    return () => {
+      active = false;
+    };
   }, [type, selectedGroup]);
+
+  const cancelArtistEdit = () => {
+    setIsEditingArtist(false);
+    setEditBio(artistInfo?.bio || "");
+  };
 
   const handleSaveArtist = async () => {
     if (!selectedGroup) return;
@@ -121,6 +136,7 @@ export function GroupedView({
       if (path) {
         const updated = await window.api.updateArtistInfo(selectedGroup.name, { picture: path });
         setArtistInfo(updated);
+        setArtistPicture(selectedGroup.name, path);
       }
     } catch (err) {
       console.error(err);
@@ -301,7 +317,7 @@ export function GroupedView({
                   ) : (
                     <div style={{ display: "flex", gap: "10px" }}>
                       <button
-                        onClick={() => setIsEditingArtist(false)}
+                        onClick={cancelArtistEdit}
                         style={{
                           background: "none",
                           border: `1px solid ${colors.borderStrong}`,
@@ -445,6 +461,7 @@ export function GroupedView({
           entries={entries}
           type={type}
           allTracks={allTracks}
+          artistPictures={artistPictures}
           onSelect={(name) => onGroupSelect({ type, name })}
           onContextMenu={
             onGroupContextMenu

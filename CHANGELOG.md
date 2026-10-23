@@ -10,10 +10,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Add several library folders at once: the "Add Folder" picker now lets you select multiple folders.
 - Library scans now show their progress in the title bar ("Scanning library… 329 / 666"); hover to see the file being read, click to open the Library page.
+- Notifications: MeloDesk now tells you when something needs your attention, such as a song that can't be found, changes it noticed in your library folders, or a damaged playlist that was repaired.
+- When your library folders change on disk (songs added, changed or removed), you're told that the library is being updated in the background.
+- Your settings, playlists, play counts, session and artist info are now backed up automatically. If one of these files gets damaged, MeloDesk restores it from the backup and tells you, instead of starting over with defaults.
 
 ### Changed
 
+- Opening MeloDesk while it's already running now brings the open window to the front instead of starting a second copy.
+- Library folders can no longer overlap. Adding a folder that is inside one of your library folders explains why it isn't needed. Adding a folder that contains library folders asks whether to replace them with it, or to cancel.
+- Smoother playback: the app no longer redraws every page several times a second while a song plays.
+- The Artists page and Home load artist pictures in one go, and artist cards on Home now show cover art when no custom picture is set.
+- The volume is saved when you let go of the slider, instead of on every step while dragging.
 - When your library is empty, MeloDesk opens on the Library page so you can add a folder right away.
+- Songs now play on double-click everywhere (album, artist and genre pages, playlists and search results), following the "Double-click to play" setting. The queue still plays on a single click.
+- Playing a song from a list while shuffle is on now plays that song first, followed by the rest of the list in random order.
+- If songs from your last session are no longer in your library, you're told how many were removed from the restored queue.
 - Rescanning the library only re-reads songs that were added or changed since the last scan, so refreshes and restarts are much faster.
 - Library folders open instantly, even large ones.
 
@@ -21,6 +32,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Adding or removing a library folder now updates your library right away, instead of waiting for a refresh or restart.
 - Starting a new library scan (refresh, folder change or files changing on disk) now replaces the scan in progress instead of running alongside it.
+- Opening a song's details from the right-click menu no longer changes the song shown in the playback bar, its play count or the saved session.
+- Playing a song from a list with shuffle on no longer skips part of the list.
+- Playing a song that was moved or deleted no longer leaves the player stuck on "playing"; you get an error and the library is refreshed.
+- A damaged playlist file no longer hides all your playlists. As much of it as possible is recovered, and the original file is kept as a backup.
+- An unsaved artist bio is now discarded when you leave the artist's page, so it can no longer be saved onto a different artist. Cancel now discards the draft.
+- Editing a song's tags now updates it in the queue straight away.
+- The playback bar's details button now records history, so Back returns to the page you were on.
+- A crash or power cut while MeloDesk is saving can no longer leave a half-written settings, playlist or play-count file.
+- The Windows media overlay (media keys, lock screen) now shows all of a song's artists, and no longer keeps the previous song's title for songs without cover art.
+- Removing a library folder no longer leaves songs from a folder with a similar name (e.g. "Music\A" and "Music\AB") in your library.
+- Songs no longer appear twice if your library folders overlapped.
+- Seeking in songs is more reliable in edge cases.
 
 ## [0.2.0] - 2026-10-23
 

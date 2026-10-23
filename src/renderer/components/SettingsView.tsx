@@ -91,9 +91,8 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
 
   const handleAddFolder = async () => {
     const paths = await window.api.selectDirectories();
-    const added = paths.filter((p) => !config.libraryPaths.includes(p));
-    if (added.length > 0) {
-      await save({ libraryPaths: [...config.libraryPaths, ...added] });
+    if (paths.length > 0) {
+      setConfig(await window.api.addLibraryFolders(paths));
     }
   };
 

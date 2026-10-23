@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 
 import { PlayRecord } from "../../renderer/types";
+import { readJson, writeJson } from "./jsonStore";
 
 // Play tracking lives outside the library cache so counts/history survive cache
 // rebuilds and can be read/written directly.
@@ -30,29 +31,10 @@ const monthKey = (timestamp: number): string => {
 
 const historyPathFor = (month: string): string => path.join(HISTORY_DIR, `${month}.json`);
 
-const readJson = <T>(filePath: string, fallback: T): T => {
-  try {
-    if (fs.existsSync(filePath)) {
-      return JSON.parse(fs.readFileSync(filePath, "utf-8")) as T;
-    }
-  } catch (error) {
-    console.error(`Failed to read ${filePath}:`, error);
-  }
-  return fallback;
-};
-
-const writeJson = (filePath: string, data: unknown): void => {
-  try {
-    fs.writeFileSync(filePath, JSON.stringify(data));
-  } catch (error) {
-    console.error(`Failed to write ${filePath}:`, error);
-  }
-};
-
 /* ---------------- COUNTS ---------------- */
 
 export const getPlayCounts = (): PlayCounts => {
-  return readJson<PlayCounts>(COUNTS_PATH, {});
+  return readJson<PlayCounts>(COUNTS_PATH, {}, { label: "play counts" });
 };
 
 export const getPlayCount = (hash: string): number => {
@@ -77,7 +59,7 @@ const listMonths = (): string[] => {
 
 export const getHistory = (month?: string): PlayRecord[] => {
   const key = month ?? monthKey(Date.now());
-  return readJson<PlayRecord[]>(historyPathFor(key), []);
+  return readJson<PlayRecord[]>(historyPathFor(key), [], { label: `play history (${key})` });
 };
 
 // Most recent plays across all months, newest first.

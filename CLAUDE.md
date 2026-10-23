@@ -215,11 +215,19 @@ Known platform gaps (not yet fixed):
 ### Startup sequence
 
 1. `main.ts` registers the `media://` scheme as privileged with `stream` and `corsEnabled`. CORS is required; without it the Web Audio EQ graph outputs silence.
-2. `app.whenReady` → `registerIpcHandlers()` → `setupWatcher()` → `updateLibrary()` (background rescan) → `registerMediaProtocol()` → `createWindow()`.
-3. The renderer's `App.tsx` `init()`: `getConfig()` → `getLibraryFiles()` (served instantly from the cache) → if `config.restoreSession`, rebuild the queue and current track from `getSession()` (paths mapped back to `FileItem`s).
-4. When the background scan finishes, main broadcasts `library-updated` with the full file list, and `useLibrary` updates `allTracks`.
+2. **Single instance:** `app.requestSingleInstanceLock()`. A second launch on the same profile quits at once; the running app gets `second-instance` and restores and focuses its window. Two processes would otherwise overwrite each other's JSON files.
+3. `app.whenReady` → `registerIpcHandlers()` → `setupWatcher()` → `updateLibrary()` (background rescan) → `registerMediaProtocol()` → `createWindow()`.
+4. The renderer's `App.tsx` `init()`: `getConfig()` → `getLibraryFiles()` (served instantly from the cache) → if `config.restoreSession`, rebuild the queue and current track from `getSession()` (paths mapped back to `FileItem`s).
+5. When the background scan finishes, main broadcasts `library-updated` with the full file list, and `useLibrary` updates `allTracks`.
 
 ### Library pipeline
+
+**Library folders never overlap.** Folders are added only through `add-library-folders` (`libraryHandlers.ts`), which enforces:
+
+- a folder that is, or is inside, a library folder is refused with a toast;
+- a folder that contains library folders replaces them only if the user confirms a native dialog, otherwise it isn't added.
+
+Path checks use `libraryPaths.ts`: whole path segments, case-insensitive on Windows, so `D:\Music\A` never matches `D:\Music\AB`. As a safety net for older configs, `updateLibrary` scans only `outermostFolders(libraryPaths)`, so no file is found twice.
 
 `libraryUpdater.updateLibrary()` is the only entry point for a scan. It's called:
 
@@ -247,9 +255,35 @@ The whole library is sent to the renderer in one message after each scan. That's
 ### Playback pipeline (renderer)
 
 - A single `<audio>` element lives at the bottom of `App.tsx`. Its `src` is `media://<encodeURIComponent(path with forward slashes)>`.
-- `useAudioPlayer` owns play/pause, time, duration, seek and volume. Volume persists to config.
+- `useAudioPlayer` owns play/pause, duration, seek and volume.
+  - **Volume:** `previewVolume` while the slider moves (sets the element only), then `commitVolume` on release (pointer-up / key-up), which writes config once.
+  - **Playback position is deliberately not app state.** `useAudioTime(audioRef)` subscribes to the element and is used only by `PlaybackBar`, so `App` doesn't re-render about 4 times a second during playback. Never add per-`timeupdate` state to `App` or the playback hooks; read `audioRef.current.currentTime` when you need the position once.
 - `useQueue` owns `queue`, `shuffledQueue`, `currentIndex`, `isShuffle` and `repeatMode`. `activeQueue` is whichever list is in use.
 - `usePlaybackController` coordinates the two: `playTrack`, next/prev, `handleEnded` (repeat logic), play-next / play-next-multiple, remove-from-queue, shuffle-play, and drag-and-drop of files onto the window.
+  - **`playTrack(track, list)`** makes `list` the queue. Without shuffle it plays `track` at its position. With shuffle, `track` plays **first** and the rest of the list follows in random order.
+  - **Start playback with `startPlayback()`** (in `useAudioPlayer`), never with a bare `audio.play()`. It handles the rejected promise (`AbortError` when a newer src interrupts) so the UI never says "playing" when nothing plays.
+  - **Missing or broken files:**
+    - `handleAudioPlay` (the `<audio onPlay>`) checks via `file-exists` that the loaded file still exists. If a file vanished after loading, Chromium retries the request forever and never fires `error`. On a missing file the controller stops the element, shows an error toast and refreshes the library.
+    - `handleAudioError` (`<audio onError>`) reports files that fail to load: missing (refresh) or damaged/unsupported.
+- **Playback vs. details page:** `currentTrack` is what's playing. `detailsTrack` (in `App.tsx`) is what the Song Details page shows. Opening details never touches `currentTrack`.
+- **Library updates and tag edits** swap the queue's song objects for fresh ones by path (the `allTracks` effect and `handleTrackUpdated` in `App.tsx`). Songs no longer in the library stay in the queue until played or removed.
+
+### Notifications (toasts)
+
+`useToasts` (in `App.tsx`) owns the toast list; `components/Toasts` renders it bottom-right, above the playback bar. Levels are `info`, `success` and `error` (shown 5 s, 4 s and 9 s).
+
+- **From the renderer:** `showToast({ level, message })`, passed down as needed (`usePlaybackController` gets it as `notify`).
+- **From the main process:** `notify(level, message)` from `main/services/notifyService.ts`. It sends `notification` to every window, and `useToasts` subscribes through `window.api.onNotification`. Notifications raised before the renderer is listening (e.g. a damaged file found at startup) are queued and fetched once with `take-pending-notifications`.
+
+Current senders:
+
+- the library watcher ("Changes found in your library folders…");
+- playlist recovery;
+- missing or unplayable songs;
+- session restore (songs that left the library).
+
+Write messages for users: say what happened and what the app is doing about it.
+
 - `useEqualizer` builds the Web Audio graph **once per element**: source → 10 peaking biquads → destination. A WeakMap guards it because `createMediaElementSource` throws if called twice. When the EQ is disabled, every band ramps to 0 dB; the graph is never torn down.
 - `usePlayTracker` counts only time actually _listened_ (seeks don't count) and calls `recordPlay(hash)` once `playCountThresholdPercent` is reached.
 - `useKeyboardControls` maps `config.keybindings` plus the built-in media keys to actions. Unmodified keys are ignored while the user is typing in an input. Mouse button 3 triggers "back".
@@ -316,7 +350,18 @@ To test against a throwaway profile without touching the real one, launch with `
 | `artists/<md5(name)>.json`                                      | `ipc/artistHandlers.ts`                     | Artist bio + picture                                                                                             |
 | `art_cache/`                                                    | `metadataService.saveArt` / artist handlers | Extracted cover art and artist images                                                                            |
 
-All persistence uses synchronous `fs` + JSON with `try/catch` + `console.error`. Follow that pattern.
+**All JSON persistence goes through `main/services/jsonStore.ts`.** Never `fs.writeFileSync` a data file directly.
+
+- `writeJson(file, data, { pretty?, backup? })`:
+  1. writes `<file>.tmp` and fsyncs it;
+  2. copies the current file to `<file>.bak` if it still parses (skipped with `backup: false`, used for the rebuildable cache);
+  3. renames the temp file over the original, retrying briefly on Windows `EPERM`/`EBUSY`.
+
+  A crash leaves the old file or the new one, never half of one.
+
+- `readJson(file, fallback, { label, notifyUser? })`: a file that doesn't parse is **never overwritten with defaults**. It's moved to `<file>.corrupt` (`setAside`), restored from `<file>.bak` when possible (and re-saved), and the user gets a toast naming `label` ("settings", "play counts", …). Without a usable backup it returns `fallback` and says so.
+- **Playlists** use `writeJson` too. Their loader (`loadPlaylistFile`) also tries `.bak` first, then salvages songs from the damaged text.
+- Files ending in `.tmp`, `.bak` or `.corrupt` are never loaded as data: playlist listing only reads `*.json`.
 
 ---
 
@@ -346,13 +391,16 @@ src/
 │                                    #   metadata, artists, shell, session, tracker, window controls, mini-mode)
 │
 ├── hooks/                           # React hooks (state + lifecycle only, no UI)
-│   ├── useAudioPlayer.ts            # HTML5 audio element state (play/pause, seek, duration, volume → config)
+│   ├── useAudioPlayer.ts            # HTML5 audio element state (play/pause, seek, duration, volume preview/commit)
+│   ├── useAudioTime.ts              # Playback position from the <audio> element (used only by PlaybackBar)
+│   ├── useArtistPictures.ts         # All custom artist pictures in one IPC call (+ local update after edits)
 │   ├── useQueue.ts                  # Playback queue state, shuffle, repeat mode, current index
 │   ├── usePlaybackController.ts     # Coordinates audio + queue; next/prev, end-of-track, queue mutations, file drop
 │   ├── useEqualizer.ts              # Web Audio 10-band EQ graph on the <audio> element; applies config gains
 │   ├── useKeyboardControls.ts       # Global key/mouse-back handler driven by config.keybindings
 │   ├── useLibrary.ts                # Subscribes to library-updated events; loads directory trees
 │   ├── useLibraryScanStatus.ts      # Live LibraryScanStatus (initial fetch + library-scan-status events)
+│   ├── useToasts.ts                 # Toast list: showToast/dismissToast + main-process "notification" events
 │   └── usePlayTracker.ts            # Records a play (window.api.recordPlay) once a configurable % is actually listened to
 │
 ├── types/
@@ -386,6 +434,10 @@ src/
 │       │   ├── navConfig.ts         # Tab config array (Home, Library, Artists, Albums, Genres, Playlists)
 │       │   ├── types.ts             # Page and NavTab types (Page is duplicated in App.tsx — keep in sync)
 │       │   └── Navbar.module.css
+│       │
+│       ├── Toasts/
+│       │   ├── Toasts.tsx           # Renders the toast list (info / success / error) bottom-right
+│       │   └── Toasts.module.css
 │       │
 │       ├── TitleBar/
 │       │   ├── TitleBar.tsx         # Custom frameless window chrome — title, scan indicator, mini-player/min/max/close
@@ -435,12 +487,15 @@ src/
     ├── ipc/
     │   ├── index.ts                 # Registers all IPC handler modules
     │   ├── libraryHandlers.ts       # get-library-files, get-library-scan-status, get-directory-tree,
-    │   │                            #   select-directories (multi-select picker), refresh-library
+    │   │                            #   select-directories (multi-select picker), add-library-folders
+    │   │                            #   (no-overlap rules + replace dialog), refresh-library, file-exists
     │   │                            #   (events: library-scan-status, library-updated)
     │   ├── configHandlers.ts        # get-config, update-config (re-inits watcher when libraryPaths change)
     │   ├── metadataHandlers.ts      # get-metadata (incl. hash), write-metadata (node-id3 tag writing)
-    │   ├── playlistHandlers.ts      # get-playlists, get-playlist, create-playlist, update-playlist, delete-playlist
-    │   ├── artistHandlers.ts        # get-artist-info, update-artist-info, select-artist-image
+    │   ├── playlistHandlers.ts      # get-playlists, get-playlist, create-playlist, update-playlist, delete-playlist;
+    │   │                            #   loadPlaylistFile() repairs damaged files (salvages name/songs, keeps .corrupt backup)
+    │   ├── artistHandlers.ts        # get-artist-info, get-artist-pictures (all, by name), update-artist-info,
+    │   │                            #   select-artist-image
     │   ├── menuHandlers.ts          # show-song-context-menu + show-group-context-menu
     │   ├── shellHandlers.ts         # show-file-in-folder, open-external-url
     │   ├── sessionHandlers.ts       # get-session, save-session, clear-session
@@ -452,6 +507,8 @@ src/
     │
     └── services/
         ├── configService.ts         # Loads/saves userData/config.json; DEFAULT_CONFIG schema lives here
+        ├── notifyService.ts         # notify(level, message) — toast in every window; queues early ones
+        ├── jsonStore.ts             # readJson/writeJson: atomic writes, .bak backups, .corrupt + restore
         ├── cacheService.ts          # userData/library_cache.json — hash-keyed FileItem map (migrates legacy array format)
         ├── metadataService.ts       # Tag extraction helpers (artists splitting, extractMetadata); saves album art
         ├── hashUtil.ts              # hashPath() — stable sha1 song id derived from the (normalized) file path
@@ -461,7 +518,10 @@ src/
         └── library/
             ├── libraryScanner.ts    # scanLibrary() (cancellable, reuses unchanged files); getDirectoryTree() from cache
             ├── libraryUpdater.ts    # updateLibrary(): one scan at a time (aborts the previous), scan status, saves cache
-            ├── libraryWatcher.ts    # Chokidar watcher on library paths; debounced (2s) change detection
+            ├── libraryWatcher.ts    # Chokidar watcher on library paths (audio files + folders only); debounced
+            │                        #   (2s) → notifies the user with a summary, then runs updateLibrary()
+            ├── libraryPaths.ts      # isSamePath / isSameOrInside (segment-aware, case-insensitive on Windows),
+            │                        #   outermostFolders() — library folders never overlap
             └── mediaUtils.ts        # isMediaFile() — supported extensions
 ```
 
@@ -481,6 +541,8 @@ Paths are relative to `src/`.
 | **Play counts / stats / Home page**                   | `components/HomeView/HomeView.tsx`                                                             | `hooks/usePlayTracker.ts`, `main/services/trackerService.ts`, `ipc/trackerHandlers.ts`                                                      |
 | **Library scanning, supported formats, watcher**      | `main/services/library/*`                                                                      | `mediaUtils.ts` (extensions), `protocols/mediaProtocol.ts` (MIME types; add new formats in **both**)                                        |
 | **Library scan progress / cancellation**              | `main/services/library/libraryUpdater.ts`, `libraryScanner.ts`                                 | `hooks/useLibraryScanStatus.ts`, `components/TitleBar/ScanIndicator.tsx`, `LibraryScanStatus` in `types.d.ts`                               |
+| **Messages to the user (toasts)**                     | `hooks/useToasts.ts`, `components/Toasts/Toasts.tsx`                                           | `main/services/notifyService.ts` (from main), `AppNotification` in `types.d.ts`                                                             |
+| **Missing / unplayable files**                        | `usePlaybackController.ts` (`handleAudioPlay`, `handleAudioError`)                             | `useAudioPlayer.startPlayback`, `file-exists` in `libraryHandlers.ts`                                                                       |
 | **Start page** (empty library → Library tab)          | `App.tsx` `init()`                                                                             | —                                                                                                                                           |
 | **Library page / folder tree**                        | `LibraryView.tsx` → `LibraryFoldersView.tsx` / `LibraryFolderView.tsx` → `DirectoryTree.tsx`   | `ipc/libraryHandlers.ts` (`get-directory-tree`, `select-directories`)                                                                       |
 | **Artists / Albums / Genres pages**                   | `components/GroupedView/GroupedView.tsx`                                                       | `groupedView.utils.ts` (grouping/filter/sort, `minSongsForAlbum`), `GroupList` / `GroupCard` / `SongGrid` / `SongCard`, `utils/metadata.ts` |
@@ -547,7 +609,7 @@ Add the extension to `mediaUtils.ts` **and** its MIME type to `getMimeType` in `
 
 ### Persist a new kind of data
 
-Add a service in `main/services/` that reads and writes a JSON file under `app.getPath("userData")` (sync `fs`, `try/catch`, safe fallback), expose it through IPC, and add a row to the persistence table in §7.
+Add a service in `main/services/` that reads and writes a JSON file under `app.getPath("userData")` with `readJson` / `writeJson` from `jsonStore.ts` (give it a user-facing `label`), expose it through IPC, and add a row to the persistence table in §7.
 
 ---
 
@@ -558,6 +620,8 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 - **Formatting** is Prettier's job. Don't hand-align code; run `npm run format` before committing, and make sure `npm run check` passes.
 - **State lives in `App.tsx`** and flows down as props; there is no context or store. Hooks return large objects that `App.tsx` destructures. Keep that shape, and don't introduce Redux, Context or a router without asking.
 - `config` is `UserConfig | null` until loaded, so always guard it (`config?.x ?? fallback`). After `updateConfig`, call `setConfig(newConfig)` with the returned value.
+- **Playing songs from lists:** every song list plays on **double-click** when `config.doubleClickToPlay` (default `true`), else on single click: `onClick={() => !doubleClickToPlay && play()}` plus `onDoubleClick={() => doubleClickToPlay && play()}`. Pass the visible list as the queue (`handleFileSelect(song, list)` / `playTrack(song, list)`). The **Queue** page is the one exception: a single click there plays.
+- **Forms that edit saved data** (e.g. the artist bio) must cancel and reset when the user navigates away or the subject changes, so a draft is never saved onto the wrong item.
 - Some types are re-declared locally on the main side (`Playlist` in `playlistHandlers.ts`, `ArtistInfo` in `artistHandlers.ts`). If you change a shape, update those copies too.
 - `media://` paths: convert backslashes to `/`, then `encodeURIComponent`. The protocol strips a leading `/` before a drive letter on Windows.
 - `write-metadata` uses node-id3, so tag writing works for **MP3 only**; other formats fail and return `false`. `SongDetailsView` disables editing for non-MP3 files.

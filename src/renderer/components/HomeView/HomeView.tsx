@@ -3,6 +3,7 @@ import { IoShuffle, IoArrowBack } from "react-icons/io5";
 
 import { FileItem, PlayRecord, UserConfig } from "../../types";
 import { normalizeGenre } from "../../../utils/metadata";
+import { useArtistPictures } from "../../../hooks/useArtistPictures";
 import { SongCard } from "../GroupedView/SongCard";
 import { GroupCard } from "../GroupedView/GroupCard";
 import styles from "./HomeView.module.css";
@@ -52,6 +53,7 @@ export function HomeView({
   const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
   const [recentPlays, setRecentPlays] = useState<PlayRecord[]>([]);
   const [detail, setDetail] = useState<DetailKey | null>(null);
+  const { artistPictures } = useArtistPictures();
 
   const scrollAreaRef = useCallback(
     (el: HTMLElement | null) => {
@@ -125,6 +127,20 @@ export function HomeView({
     }
     return map;
   }, [mediaTracks, playCounts]);
+
+  // Artist -> cover art of one of their songs, for artists without a custom picture.
+  const artistCovers = useMemo(() => {
+    const covers = new Map<string, string>();
+    for (const track of mediaTracks) {
+      const picture = track.metadata?.picture;
+      if (!picture) continue;
+      for (const artist of track.metadata?.artists ?? []) {
+        const name = artist.trim();
+        if (name && !covers.has(name)) covers.set(name, picture);
+      }
+    }
+    return covers;
+  }, [mediaTracks]);
 
   const popularArtists = useMemo<ArtistEntry[]>(() => {
     return Array.from(artistStats.entries())
@@ -207,6 +223,7 @@ export function HomeView({
       type="artist"
       name={artist.name}
       count={artist.songCount}
+      picture={artistPictures[artist.name] || artistCovers.get(artist.name)}
       onClick={() => onSelectArtist(artist.name)}
     />
   );

@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("api", {
   selectDirectories: () => ipcRenderer.invoke("select-directories"),
+  addLibraryFolders: (folders: string[]) => ipcRenderer.invoke("add-library-folders", folders),
   getDirectoryTree: (dirPath: string) => ipcRenderer.invoke("get-directory-tree", dirPath),
   showSongContextMenu: (song: any) => ipcRenderer.invoke("show-song-context-menu", song),
   showGroupContextMenu: (groupName: string) =>
@@ -15,6 +16,13 @@ contextBridge.exposeInMainWorld("api", {
     return () => ipcRenderer.removeListener("library-updated", listener);
   },
   refreshLibrary: () => ipcRenderer.invoke("refresh-library"),
+  fileExists: (filePath: string) => ipcRenderer.invoke("file-exists", filePath),
+  takePendingNotifications: () => ipcRenderer.invoke("take-pending-notifications"),
+  onNotification: (callback: (notification: any) => void) => {
+    const listener = (_event: any, notification: any) => callback(notification);
+    ipcRenderer.on("notification", listener);
+    return () => ipcRenderer.removeListener("notification", listener);
+  },
   getLibraryScanStatus: () => ipcRenderer.invoke("get-library-scan-status"),
   onLibraryScanStatus: (callback: (status: any) => void) => {
     const listener = (_event: any, status: any) => callback(status);
@@ -30,6 +38,7 @@ contextBridge.exposeInMainWorld("api", {
   writeMetadata: (filePath: string, tags: any) =>
     ipcRenderer.invoke("write-metadata", filePath, tags),
   getArtistInfo: (name: string) => ipcRenderer.invoke("get-artist-info", name),
+  getArtistPictures: () => ipcRenderer.invoke("get-artist-pictures"),
   updateArtistInfo: (name: string, data: any) =>
     ipcRenderer.invoke("update-artist-info", name, data),
   selectArtistImage: () => ipcRenderer.invoke("select-artist-image"),

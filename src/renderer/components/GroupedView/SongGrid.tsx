@@ -26,6 +26,8 @@ export function SongGrid({
   onSongClick,
   onContextMenu,
 }: Props) {
+  const doubleClickToPlay = config?.doubleClickToPlay ?? true;
+
   return (
     <div className={styles.page}>
       <div className={styles.grid}>
@@ -35,11 +37,11 @@ export function SongGrid({
             song={song}
             currentTrack={currentTrack}
             themeColor={themeColor}
-            onClick={() => onSongClick(song)}
+            onClick={() => {
+              if (!doubleClickToPlay) onSongClick(song);
+            }}
             onDoubleClick={() => {
-              if (config?.doubleClickToPlay) {
-                onSongClick(song);
-              }
+              if (doubleClickToPlay) onSongClick(song);
             }}
             onContextMenu={(e) => onContextMenu?.(e, song)}
           />

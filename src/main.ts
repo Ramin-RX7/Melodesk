@@ -208,19 +208,36 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, "renderer/index.html"));
+  return win;
 }
 
-app.whenReady().then(async () => {
-  // Register IPC handlers
-  registerIpcHandlers();
-  // Setup file watcher
-  await setupWatcher();
-  updateLibrary(); // Also run a background update on startup
-  // Handle media:// protocol
-  registerMediaProtocol();
-  // Create the main application window
-  createWindow();
-});
+// Only one MeloDesk may run per profile: two processes would both write the same JSON files
+// (play counts, cache, session) and overwrite each other's changes. A second launch just brings
+// the running window to the front.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  let mainWindow: BrowserWindow | null = null;
+
+  app.on("second-instance", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  });
+
+  app.whenReady().then(async () => {
+    // Register IPC handlers
+    registerIpcHandlers();
+    // Setup file watcher
+    await setupWatcher();
+    updateLibrary(); // Also run a background update on startup
+    // Handle media:// protocol
+    registerMediaProtocol();
+    // Create the main application window
+    mainWindow = createWindow();
+  });
+}
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

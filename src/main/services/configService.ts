@@ -1,9 +1,9 @@
 import { app } from "electron";
-import fs from "fs";
 import path from "path";
 
 import { UserConfig } from "../../renderer/types";
 import { DEFAULT_KEYBINDINGS } from "../../utils/keybindings";
+import { readJson, writeJson } from "./jsonStore";
 
 const CONFIG_PATH = path.join(app.getPath("userData"), "config.json");
 
@@ -27,31 +27,20 @@ const DEFAULT_CONFIG: UserConfig = {
 };
 
 export const getConfig = (): UserConfig => {
-  try {
-    if (fs.existsSync(CONFIG_PATH)) {
-      const data = fs.readFileSync(CONFIG_PATH, "utf-8");
-      const parsed = JSON.parse(data);
-      // Deep-merge `appearance` so a saved config that predates it (or lacks a
-      // sub-field) still fills in from defaults.
-      return {
-        ...DEFAULT_CONFIG,
-        ...parsed,
-        appearance: { ...DEFAULT_CONFIG.appearance, ...(parsed.appearance ?? {}) },
-        // Per-action merge so a config predating an action (or the field
-        // entirely) still picks up the new default binding.
-        keybindings: { ...DEFAULT_CONFIG.keybindings, ...(parsed.keybindings ?? {}) },
-      };
-    }
-  } catch (error) {
-    console.error("Failed to read config:", error);
-  }
-  return DEFAULT_CONFIG;
+  const parsed = readJson<Partial<UserConfig> | null>(CONFIG_PATH, null, { label: "settings" });
+  if (!parsed) return DEFAULT_CONFIG;
+  return {
+    ...DEFAULT_CONFIG,
+    ...parsed,
+    // Deep-merge `appearance` so a saved config that predates it (or lacks a
+    // sub-field) still fills in from defaults.
+    appearance: { ...DEFAULT_CONFIG.appearance, ...(parsed.appearance ?? {}) },
+    // Per-action merge so a config predating an action (or the field
+    // entirely) still picks up the new default binding.
+    keybindings: { ...DEFAULT_CONFIG.keybindings, ...(parsed.keybindings ?? {}) },
+  };
 };
 
 export const saveConfig = (config: UserConfig) => {
-  try {
-    fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
-  } catch (error) {
-    console.error("Failed to save config:", error);
-  }
+  writeJson(CONFIG_PATH, config, { pretty: true });
 };

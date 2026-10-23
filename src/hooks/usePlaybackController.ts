@@ -1,6 +1,6 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
-import { FileItem } from "../renderer/types";
+import { AppNotification, FileItem } from "../renderer/types";
 import { shuffleArray } from "../utils/array";
 import { useAudioPlayer } from "./useAudioPlayer";
 import { useQueue } from "./useQueue";
@@ -12,6 +12,7 @@ type Props = {
 
   currentTrack: FileItem | null;
   setCurrentTrack: (track: FileItem | null) => void;
+  notify: (notification: AppNotification) => void;
 };
 
 export function usePlaybackController({
@@ -20,6 +21,7 @@ export function usePlaybackController({
   audioState,
   currentTrack,
   setCurrentTrack,
+  notify,
 }: Props) {
   const {
     queue,
@@ -34,19 +36,22 @@ export function usePlaybackController({
     removeFromQueue,
     repeatMode,
   } = queueState;
-  const { audioRef, setDuration, setIsPlaying, currentTime } = audioState;
+  const { audioRef, setDuration, setIsPlaying, startPlayback } = audioState;
 
   const playTrack = (track: FileItem, newQueue?: FileItem[], explicitIndex?: number) => {
     setCurrentTrack(track);
 
     if (newQueue) {
+      // The list becomes the queue. With shuffle on, the chosen song plays first and the rest
+      // of the list (songs before and after it) follows in random order.
       setQueue(newQueue);
+      const index = explicitIndex ?? newQueue.findIndex((t) => t.path === track.path);
       if (isShuffle) {
-        const newShuffled = shuffleArray(newQueue);
-        setShuffledQueue(newShuffled);
-        setCurrentIndex(newShuffled.findIndex((t) => t.path === track.path));
+        const rest = newQueue.filter((_, i) => i !== index);
+        setShuffledQueue([track, ...shuffleArray(rest)]);
+        setCurrentIndex(0);
       } else {
-        setCurrentIndex(newQueue.findIndex((t) => t.path === track.path));
+        setCurrentIndex(index);
       }
     } else if (explicitIndex !== undefined) {
       setCurrentIndex(explicitIndex);
@@ -64,9 +69,62 @@ export function usePlaybackController({
     if (audioRef.current) {
       const normalizedPath = track.path.replace(/\\/g, "/");
       audioRef.current.src = `media://${encodeURIComponent(normalizedPath)}`;
-      audioRef.current.play();
-      setIsPlaying(true);
+      startPlayback();
     }
+  };
+
+  // Path of the file the <audio> element is loading, or null when no song is loaded.
+  const loadedFilePath = (): string | null => {
+    const src = audioRef.current?.getAttribute("src");
+    return src?.startsWith("media://") ? decodeURIComponent(src.slice("media://".length)) : null;
+  };
+
+  const displayName = (filePath: string) =>
+    currentTrack?.path.replace(/\\/g, "/") === filePath
+      ? currentTrack.metadata?.title || currentTrack.name
+      : filePath.split("/").pop();
+
+  // The file was moved or deleted outside the app: tell the user and rescan the library so it
+  // matches what's on disk.
+  const reportMissingFile = (filePath: string) => {
+    notify({
+      level: "error",
+      message: `"${displayName(filePath)}" wasn't found. It may have been moved or deleted. Refreshing your library…`,
+    });
+    window.api.refreshLibrary();
+  };
+
+  // The <audio> element failed to load its source.
+  const handleAudioError = async () => {
+    const filePath = loadedFilePath();
+    if (!filePath) return; // src was cleared on purpose
+    setIsPlaying(false);
+
+    if (await window.api.fileExists(filePath)) {
+      notify({
+        level: "error",
+        message: `Couldn't play "${displayName(filePath)}". The file may be damaged or in an unsupported format.`,
+      });
+    } else {
+      reportMissingFile(filePath);
+    }
+  };
+
+  // Every play attempt (button, keys, media keys, next/previous, repeat) fires the element's
+  // "play" event. If the file vanished after it was loaded, Chromium keeps retrying the request
+  // without ever firing "error", so check here and stop the element ourselves.
+  const handleAudioPlay = async () => {
+    setIsPlaying(true);
+    const filePath = loadedFilePath();
+    if (!filePath || (await window.api.fileExists(filePath))) return;
+
+    const audio = audioRef.current;
+    if (!audio || loadedFilePath() !== filePath) return; // another song started meanwhile
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+    setIsPlaying(false);
+    reportMissingFile(filePath);
   };
 
   const handleShufflePlay = (songs: FileItem[]) => {
@@ -86,8 +144,7 @@ export function usePlaybackController({
     if (audioRef.current) {
       const normalizedPath = firstSong.path.replace(/\\/g, "/");
       audioRef.current.src = `media://${encodeURIComponent(normalizedPath)}`;
-      audioRef.current.play();
-      setIsPlaying(true);
+      startPlayback();
     }
   };
 
@@ -109,7 +166,7 @@ export function usePlaybackController({
     if (activeQueue.length === 0) return;
 
     // If more than 3 seconds in, restart track
-    if (currentTime > 3) {
+    if ((audioRef.current?.currentTime ?? 0) > 3) {
       if (audioRef.current) audioRef.current.currentTime = 0;
       return;
     }
@@ -129,7 +186,7 @@ export function usePlaybackController({
     if (repeatMode === "one") {
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
-        audioRef.current.play();
+        startPlayback();
       }
     } else {
       handleNext();
@@ -148,56 +205,62 @@ export function usePlaybackController({
     }
   };
 
+  // OS media controls (Windows media overlay, media keys, lock screen). Registered once; the ref
+  // makes them call the latest handlers.
+  const mediaActionsRef = useRef({ startPlayback, handleNext, handlePrevious });
+  mediaActionsRef.current = { startPlayback, handleNext, handlePrevious };
+
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
+    const session = navigator.mediaSession;
+    session.setActionHandler("play", () => mediaActionsRef.current.startPlayback());
+    session.setActionHandler("pause", () => audioRef.current?.pause());
+    session.setActionHandler("nexttrack", () => mediaActionsRef.current.handleNext());
+    session.setActionHandler("previoustrack", () => mediaActionsRef.current.handlePrevious());
+  }, [audioRef]);
 
-    navigator.mediaSession.setActionHandler("play", () => {
-      audioRef.current?.play();
-    });
+  // Song info shown by the OS: set as soon as the song changes (so it's never stale, even for
+  // songs without cover art); the cover is added once it has been read.
+  useEffect(() => {
+    if (!("mediaSession" in navigator)) return;
+    if (!currentTrack) {
+      navigator.mediaSession.metadata = null;
+      return;
+    }
 
-    navigator.mediaSession.setActionHandler("pause", () => {
-      audioRef.current?.pause();
-    });
-
-    navigator.mediaSession.setActionHandler("nexttrack", () => {
-      handleNext(); // you must provide this
-    });
-
-    navigator.mediaSession.setActionHandler("previoustrack", () => {
-      handlePrevious(); // you must provide this
-    });
-
-    let track = currentTrack;
-    if (!track?.metadata?.picture) return;
-    const convert = () => {
-      const normalized = track.metadata?.picture?.replace(/\\/g, "/");
-
-      fetch(`file://${normalized}`)
-        .then((res) => res.blob())
-        .then((blob) => {
-          const reader = new FileReader();
-
-          reader.onloadend = () => {
-            const base64 = reader.result as string;
-
-            navigator.mediaSession.metadata = new MediaMetadata({
-              title: track.metadata?.title || track.name,
-              artist: track.metadata?.artist || "Unknown",
-              album: track.metadata?.album || "",
-              artwork: [
-                {
-                  src: base64,
-                  sizes: "512x512",
-                  type: "image/png",
-                },
-              ],
-            });
-          };
-          reader.readAsDataURL(blob);
-        });
+    const meta = currentTrack.metadata;
+    const info = {
+      title: meta?.title || currentTrack.name,
+      artist: meta?.artists?.join(", ") || meta?.artist || "Unknown artist",
+      album: meta?.album || "",
     };
-    convert();
-  }, [handleNext, handlePrevious]);
+    navigator.mediaSession.metadata = new MediaMetadata(info);
+    if (!meta?.picture) return;
+
+    let active = true;
+    fetch(`file://${meta.picture.replace(/\\/g, "/")}`)
+      .then((res) => res.blob())
+      .then(
+        (blob) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          }),
+      )
+      .then((dataUrl) => {
+        if (active) {
+          navigator.mediaSession.metadata = new MediaMetadata({
+            ...info,
+            artwork: [{ src: dataUrl, sizes: "512x512" }],
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [currentTrack]);
   const playNext = (track: FileItem) => {
     if (activeQueue.length === 0) {
       playTrack(track);
@@ -298,5 +361,7 @@ export function usePlaybackController({
     playNextAndPlay,
     playNextMultiple,
     handleRemoveFromQueue,
+    handleAudioError,
+    handleAudioPlay,
   };
 }

@@ -5,6 +5,7 @@ import { getConfig } from "../configService";
 import { LibraryScanStatus } from "../../../renderer/types";
 import { CacheMap, getCache, saveCache } from "../cacheService";
 import { scanLibrary } from "../library/libraryScanner";
+import { outermostFolders } from "./libraryPaths";
 
 // Only one library update runs at a time: starting a new one aborts the previous run, which
 // then exits without touching the cache.
@@ -38,7 +39,9 @@ export const updateLibrary = async () => {
   setStatus({ scanning: true, phase: "discovering", processed: 0, total: 0 });
 
   try {
-    const dirs = getConfig().libraryPaths.filter((dirPath) => fs.existsSync(dirPath));
+    const dirs = outermostFolders(getConfig().libraryPaths).filter((dirPath) =>
+      fs.existsSync(dirPath),
+    );
     const allFiles = await scanLibrary(dirs, {
       signal: controller.signal,
       previous: (known ??= getCache()),

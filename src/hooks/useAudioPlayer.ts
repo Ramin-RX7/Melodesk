@@ -7,30 +7,38 @@ export function useAudioPlayer(config: any, setConfig: (config: any) => void) {
 
   const [isPlaying, setIsPlaying] = useState(false);
 
-  const [currentTime, setCurrentTime] = useState(0);
+  // The playback position isn't kept here (see useAudioTime): updating it ~4 times a second
+  // would re-render the whole app.
 
   const [duration, setDuration] = useState(0);
 
   const [isShuffle, setIsShuffle] = useState(false);
+
+  // play() rejects with an AbortError when a newer src interrupts it (harmless). Any other
+  // rejection means nothing is playing; load failures are reported via the element's error event.
+  const startPlayback = () => {
+    if (!audioRef.current) return;
+    setIsPlaying(true);
+    audioRef.current.play().catch((error) => {
+      if (error?.name !== "AbortError") setIsPlaying(false);
+    });
+  };
 
   const togglePlay = () => {
     if (!audioRef.current) return;
 
     if (isPlaying) {
       audioRef.current.pause();
+      setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      startPlayback();
     }
-
-    setIsPlaying((prev) => !prev);
   };
 
   const handleSeek = (time: number) => {
     if (!audioRef.current) return;
 
     audioRef.current.currentTime = time;
-
-    setCurrentTime(time);
   };
 
   const seekForward = () => {
@@ -47,12 +55,6 @@ export function useAudioPlayer(config: any, setConfig: (config: any) => void) {
     handleSeek(Math.max(0, audioRef.current.currentTime - SEEK_AMOUNT));
   };
 
-  const handleTimeUpdate = () => {
-    if (!audioRef.current) return;
-
-    setCurrentTime(audioRef.current.currentTime);
-  };
-
   const handleLoadedMetadata = () => {
     if (!audioRef.current) return;
 
@@ -63,40 +65,47 @@ export function useAudioPlayer(config: any, setConfig: (config: any) => void) {
     }
   };
 
-  const handleVolumeChange = async (newVolume: number) => {
+  // While the volume slider moves: change what you hear, without saving anything.
+  const previewVolume = (newVolume: number) => {
     if (audioRef.current) {
       audioRef.current.volume = newVolume;
     }
-    if (config) {
+  };
+
+  // When the slider is released: save the volume (one config write per adjustment).
+  const commitVolume = async (newVolume: number) => {
+    previewVolume(newVolume);
+    if (config && config.volume !== newVolume) {
       const newConfig = await window.api.updateConfig({ volume: newVolume });
       setConfig(newConfig);
     }
   };
 
+  const savedVolume = config?.volume;
   useEffect(() => {
-    if (config && audioRef.current) {
-      audioRef.current.volume = config.volume;
+    if (savedVolume !== undefined && audioRef.current) {
+      audioRef.current.volume = savedVolume;
     }
-  }, [config]);
+  }, [savedVolume]);
 
   return {
     audioRef,
 
     isPlaying,
-    currentTime,
     duration,
 
     setDuration,
     setIsPlaying,
 
+    startPlayback,
     togglePlay,
 
     handleSeek,
     seekForward,
     seekBackward,
 
-    handleTimeUpdate,
     handleLoadedMetadata,
-    handleVolumeChange,
+    previewVolume,
+    commitVolume,
   };
 }

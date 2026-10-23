@@ -1,5 +1,5 @@
 import { IoDisc, IoMusicalNotes, IoPerson } from "react-icons/io5";
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 import { colors } from "../../theme/colors";
 import styles from "./GroupedView.module.css";
@@ -14,23 +14,10 @@ type Props = {
   onContextMenu?: (e: React.MouseEvent) => void;
 };
 
+// `picture` is resolved by the parent: an artist's custom picture (useArtistPictures) or the
+// cover art of one of the group's songs.
 export function GroupCard({ type, name, count, picture, onClick, onContextMenu }: Props) {
-  const [customPicture, setCustomPicture] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (type === "artist") {
-      window.api
-        .getArtistInfo(name)
-        .then((info) => {
-          if (info && info.picture) {
-            setCustomPicture(info.picture);
-          }
-        })
-        .catch(console.error);
-    }
-  }, [type, name]);
-
-  const displayPicture = customPicture || picture;
+  const displayPicture = picture;
 
   return (
     <div className={styles.groupCard} onClick={onClick} onContextMenu={onContextMenu}>

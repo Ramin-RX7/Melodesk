@@ -1,4 +1,5 @@
 import React from "react";
+import { useAudioTime } from "../../hooks/useAudioTime";
 import { FileItem } from "../types";
 import { colors } from "../theme/colors";
 import {
@@ -21,7 +22,8 @@ interface PlaybackBarProps {
   isPlaying: boolean;
   onTogglePlay: () => void;
   currentTrack?: FileItem;
-  currentTime: number;
+  /** The player's <audio> element; the bar reads the playback position from it. */
+  audioRef: React.RefObject<HTMLAudioElement | null>;
   duration: number;
   onSeek: (time: number) => void;
   onShowDetails: () => void;
@@ -34,7 +36,10 @@ interface PlaybackBarProps {
   onToggleRepeat: () => void;
   onShowQueue: () => void;
   volume: number;
+  /** Live, while the slider moves. */
   onVolumeChange: (volume: number) => void;
+  /** When the user lets go of the slider: saves the volume. */
+  onVolumeCommit: (volume: number) => void;
   themeColor: string;
   onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 }
@@ -43,7 +48,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
   isPlaying,
   onTogglePlay,
   currentTrack,
-  currentTime,
+  audioRef,
   duration,
   onSeek,
   onShowDetails,
@@ -57,9 +62,11 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
   onShowQueue,
   volume,
   onVolumeChange,
+  onVolumeCommit,
   themeColor,
   onContextMenu,
 }) => {
+  const currentTime = useAudioTime(audioRef);
   const [localTime, setLocalTime] = React.useState(currentTime);
   const isDragging = React.useRef(false);
 
@@ -69,6 +76,10 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
       setLocalTime(currentTime);
     }
   }, [currentTime]);
+
+  // The slider moves (and the volume changes) live while dragging; the saved value follows.
+  const [localVolume, setLocalVolume] = React.useState(volume);
+  React.useEffect(() => setLocalVolume(volume), [volume]);
 
   const formatTime = (seconds: number) => {
     if (typeof seconds !== "number" || isNaN(seconds) || seconds === Infinity || seconds < 0)
@@ -358,11 +369,11 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
                 alignItems: "center",
               }}
             >
-              {volume === 0 ? (
+              {localVolume === 0 ? (
                 <IoVolumeMute />
-              ) : volume < 0.3 ? (
+              ) : localVolume < 0.3 ? (
                 <IoVolumeLow />
-              ) : volume < 0.7 ? (
+              ) : localVolume < 0.7 ? (
                 <IoVolumeMedium />
               ) : (
                 <IoVolumeHigh />
@@ -373,8 +384,14 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
               min={0}
               max={1}
               step={0.01}
-              value={volume}
-              onChange={(e) => onVolumeChange(Number(e.target.value))}
+              value={localVolume}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                setLocalVolume(value);
+                onVolumeChange(value);
+              }}
+              onPointerUp={(e) => onVolumeCommit(Number(e.currentTarget.value))}
+              onKeyUp={(e) => onVolumeCommit(Number(e.currentTarget.value))}
               style={{
                 flex: 1,
                 cursor: "pointer",

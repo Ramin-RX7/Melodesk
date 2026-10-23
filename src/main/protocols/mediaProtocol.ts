@@ -25,6 +25,29 @@ const getMimeType = (filePath: string): string => {
   }
 };
 
+// Parses a single-range "Range" header ("bytes=start-end", "bytes=start-" or "bytes=-suffix").
+// Returns null for headers to ignore (malformed or multi-range: the whole file is sent, as HTTP
+// allows), or "unsatisfiable" when the range lies outside the file (answered with 416).
+const parseRange = (
+  header: string,
+  size: number,
+): { start: number; end: number } | "unsatisfiable" | null => {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!match || (match[1] === "" && match[2] === "")) return null;
+
+  if (match[1] === "") {
+    const suffix = Number(match[2]);
+    if (suffix === 0 || size === 0) return "unsatisfiable";
+    return { start: Math.max(0, size - suffix), end: size - 1 };
+  }
+
+  const start = Number(match[1]);
+  const end = match[2] === "" ? size - 1 : Math.min(Number(match[2]), size - 1);
+  if (match[2] !== "" && Number(match[2]) < start) return null;
+  if (start >= size) return "unsatisfiable";
+  return { start, end };
+};
+
 export function registerMediaProtocol() {
   protocol.handle("media", (request) => {
     try {
@@ -45,12 +68,21 @@ export function registerMediaProtocol() {
 
       const stats = fs.statSync(decodedPath);
       const mimeType = getMimeType(decodedPath);
-      const range = request.headers.get("range");
+      const rangeHeader = request.headers.get("range");
+      const range = rangeHeader ? parseRange(rangeHeader, stats.size) : null;
+
+      if (range === "unsatisfiable") {
+        return new Response(null, {
+          status: 416,
+          headers: {
+            "Content-Range": `bytes */${stats.size}`,
+            "Access-Control-Allow-Origin": "*",
+          },
+        });
+      }
 
       if (range) {
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
+        const { start, end } = range;
         const chunksize = end - start + 1;
 
         const file = fs.createReadStream(decodedPath, { start, end });

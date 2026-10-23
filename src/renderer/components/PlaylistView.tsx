@@ -690,7 +690,7 @@ export function PlaylistView({
               onDragEnter={(e) => (dragOverItem.current = originalIndex)}
               onDragEnd={handleSortEnd}
               onDragOver={(e) => e.preventDefault()}
-              onClick={() => onPlayTrack(track, tracks)}
+              onClick={() => !configDoubleClickToPlay && onPlayTrack(track, tracks)}
               onDoubleClick={() => configDoubleClickToPlay && onPlayTrack(track, tracks)}
               onContextMenu={(e) => onContextMenu?.(e, track)}
               style={{
