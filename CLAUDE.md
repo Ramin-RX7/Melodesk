@@ -135,11 +135,19 @@ npm ci             # install exactly what package-lock.json pins (use `npm insta
 1. While developing, entries accumulate under `## [Unreleased]` in `CHANGELOG.md` (§2 → Changelog).
 2. `npm run release -- minor` (or `patch` / `major` / `X.Y.Z`; add `--dry-run` to preview). It refuses to run unless you're on `master`, the tree is clean, you're not behind `origin`, the tag is new, Unreleased has entries and `npm run check` passes. It then bumps the version, moves Unreleased to `## [X.Y.Z] - <date>`, commits `[release] vX.Y.Z` and creates an annotated tag `vX.Y.Z`.
 3. `git push origin master --follow-tags`. Pushing the tag triggers `.github/workflows/release.yml`, which:
-   - checks that the tag matches `package.json` and that the version has changelog notes;
+   - runs `npm run check` and verifies that the tag matches `package.json`;
    - builds on Windows, Linux and macOS runners;
-   - publishes a GitHub Release whose notes are that version's CHANGELOG section plus a downloads table.
+   - creates a **draft** GitHub Release. It has every file plus `SHA256SUMS.txt`; its description is that version's CHANGELOG section followed by `.github/release-footer.md` (the downloads table and install notes). A version with a `-` suffix (e.g. `1.0.0-beta.1`) becomes a pre-release.
 
    Undo before pushing: `git tag -d vX.Y.Z && git reset --hard HEAD~1`.
+
+4. When the run finishes (about 10–15 minutes), open the draft under **Releases**, try the installer, edit the description if you like, then click **Publish release**. Nothing is public until then.
+
+Running the Release workflow by hand (Actions → Release → Run workflow):
+
+- **On a branch:** builds only; download the files from the run's Artifacts (kept 7 days). Use it to test a build without releasing.
+- **On a tag** ("Use workflow from" → Tags → `vX.Y.Z`): builds and drafts that tag's release. Use it when the tag push didn't trigger the workflow (this happened for v0.2.0, whose tag was pushed together with the commit that first added the workflow).
+- Re-running it for a tag whose release already exists replaces the files and description instead of failing.
 
 Release artifacts (names come from `artifactName` in `package.json` → `build`):
 
@@ -150,8 +158,9 @@ Release artifacts (names come from `artifactName` in `package.json` → `build`)
 | `MeloDesk-X.Y.Z-win-x64.zip`                    | Windows portable folder (unzip, run `melodesk.exe`)                        |
 | `MeloDesk-X.Y.Z-x86_64.AppImage`                | Linux                                                                      |
 | `MeloDesk-X.Y.Z-mac-arm64.dmg` / `-mac-x64.dmg` | macOS, Apple Silicon / Intel                                               |
+| `SHA256SUMS.txt`                                | Checksums of all the files above (written by the release workflow)         |
 
-None of the builds are code-signed: Windows SmartScreen and macOS Gatekeeper warn on first launch (the release notes explain the workaround).
+None of the builds are code-signed: Windows SmartScreen and macOS Gatekeeper warn on first launch (the release footer explains the workaround). If you rename artifacts or add a platform, update `.github/release-footer.md` too.
 
 ### CI (`.github/workflows/ci.yml`)
 
@@ -291,9 +300,11 @@ assets/                              # icon.ico (Windows), icon.png (512×512, m
 .todo                                # Backlog (issues + feature ideas)
 CHANGELOG.md                         # Keep a Changelog: Unreleased + released versions; source of release notes
 package.json                         # Scripts (§4), deps, electron-builder config under "build"
-.github/workflows/
-├── ci.yml                           # Push/PR to master: check (typecheck, format, changelog) + Windows/Linux builds
-└── release.yml                      # Tag vX.Y.Z: verify → build win/linux/mac → publish GitHub Release
+.github/
+├── release-footer.md                # Downloads table + unsigned-build notes appended to every release description
+└── workflows/
+    ├── ci.yml                       # Push/PR to master: check (typecheck, format, changelog) + Windows/Linux builds
+    └── release.yml                  # Tag vX.Y.Z (or manual run): check → build win/linux/mac → draft GitHub Release
 scripts/                             # Node ESM, no dependencies
 ├── changelog.mjs                    # CHANGELOG parse/serialize; CLI: `notes <version>`, `verify [<base> <head>]`
 └── release.mjs                      # `npm run release` — version bump, changelog finalize, [release] commit, tag

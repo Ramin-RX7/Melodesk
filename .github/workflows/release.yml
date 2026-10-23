@@ -1,43 +1,84 @@
+# Builds the app and drafts a GitHub release. See CLAUDE.md §4 → Releasing.
+#
+# - Pushing a tag `v<version>` (made by `npm run release`): runs the checks, builds the Windows
+#   installer, portable exe and portable zip, the Linux AppImage and the macOS dmgs, and creates
+#   a draft release with those files, SHA256SUMS.txt and that version's CHANGELOG.md section
+#   (plus .github/release-footer.md) as the description. Publish the draft by hand.
+# - Run manually (Actions → Release → Run workflow):
+#   - on a branch: builds only. The files are attached to the workflow run, for testing a build
+#     without releasing.
+#   - on a tag ("Use workflow from" → Tags → vX.Y.Z): builds and drafts that tag's release, e.g.
+#     when the tag push didn't trigger the workflow.
+# - Re-running it for a tag whose release already exists replaces its files and description.
 name: Release
 
 on:
   push:
-    tags: ["v*.*.*"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-permissions:
-  contents: write
-
 jobs:
-  verify:
-    name: Verify tag and changelog
+  prepare:
+    name: Prepare
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      prerelease: ${{ steps.meta.outputs.prerelease }}
+    env:
+      # The checks never start Electron, so skip its ~100 MB download.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run check
 
-      - name: Tag matches package.json version
+      - name: Check the tag matches package.json
+        id: meta
+        shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          PKG_VERSION="$(node -p "require('./package.json').version")"
-          if [ "$VERSION" != "$PKG_VERSION" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+          version=$(node -p "require('./package.json').version")
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version (expected v$version). Make releases with 'npm run release'."
             exit 1
           fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # A version like 1.2.0-beta.1 becomes a GitHub pre-release.
+          if [[ "$version" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - run: node scripts/changelog.mjs verify
+      - name: Write release notes
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          node scripts/changelog.mjs notes "${{ steps.meta.outputs.version }}" > release-notes.md
+          printf '\n' >> release-notes.md
+          cat .github/release-footer.md >> release-notes.md
+          cat release-notes.md
 
-      - run: node scripts/changelog.mjs notes "${GITHUB_REF_NAME#v}"
+      - if: github.ref_type == 'tag'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: release-notes.md
+          retention-days: 7
 
   build:
     name: Build (${{ matrix.platform }})
-    needs: verify
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -53,70 +94,65 @@ jobs:
       # No code-signing certificates: build unsigned installers.
       CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
-
       - run: npm ci
-
       - run: npm run build:${{ matrix.platform }}
-
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
-          name: release-${{ matrix.platform }}
+          name: build-${{ matrix.platform }}
           path: |
             release/*.exe
             release/*.zip
             release/*.AppImage
             release/*.dmg
           if-no-files-found: error
+          retention-days: 7
 
-  publish:
-    name: Publish GitHub release
-    needs: build
+  release:
+    name: Draft GitHub release
+    if: github.ref_type == 'tag'
+    needs: [prepare, build]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      - uses: actions/download-artifact@v8
         with:
-          node-version-file: .nvmrc
-
-      - uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: release-*
+          pattern: build-*
           merge-multiple: true
+          path: dist
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-notes
 
-      - name: Write release notes
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          {
-            node scripts/changelog.mjs notes "$VERSION"
-            cat <<EOF
+      - name: Write checksums
+        working-directory: dist
+        run: sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt
 
-          ---
-
-          ### Downloads
-
-          | Platform | File |
-          | --- | --- |
-          | Windows installer | \`MeloDesk-Setup-$VERSION.exe\` |
-          | Windows portable (single file, nothing to install) | \`MeloDesk-$VERSION-portable.exe\` |
-          | Windows portable (folder, unzip and run \`melodesk.exe\`) | \`MeloDesk-$VERSION-win-x64.zip\` |
-          | Linux | \`MeloDesk-$VERSION-x86_64.AppImage\` (\`chmod +x\`, then run) |
-          | macOS (Apple Silicon) | \`MeloDesk-$VERSION-mac-arm64.dmg\` |
-          | macOS (Intel) | \`MeloDesk-$VERSION-mac-x64.dmg\` |
-
-          The builds are not code-signed yet. Windows SmartScreen may show "Windows protected your PC": choose **More info → Run anyway**. On macOS, if the app is reported as damaged, run \`xattr -cr /Applications/MeloDesk.app\` once.
-          EOF
-          } > notes.md
-          cat notes.md
-
-      - name: Create release
-        run: gh release create "$GITHUB_REF_NAME" artifacts/* --verify-tag --title "MeloDesk $GITHUB_REF_NAME" --notes-file notes.md
+      - name: Create or update the draft release
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+        run: |
+          tag="$GITHUB_REF_NAME"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            # A re-run: replace the files and notes of the existing release.
+            gh release upload "$tag" dist/* --clobber
+            gh release edit "$tag" --notes-file release-notes.md
+          else
+            flags=()
+            if [[ "$PRERELEASE" == "true" ]]; then flags+=(--prerelease); fi
+            gh release create "$tag" dist/* \
+              --draft \
+              --verify-tag \
+              --title "MeloDesk $VERSION" \
+              --notes-file release-notes.md \
+              "${flags[@]}"
+          fi
