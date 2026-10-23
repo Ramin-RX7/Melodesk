@@ -4,6 +4,7 @@ import path from "path";
 import { TagEdits } from "../../renderer/types";
 
 import { isMediaFile } from "../services/library/mediaUtils";
+import { importEsm } from "../services/esmImport";
 import { readSongMetadata } from "../services/metadataService";
 import { getCache } from "../services/cacheService";
 import { hashPath } from "../services/hashUtil";
@@ -39,7 +40,7 @@ export function registerMetadataHandlers() {
     }
   });
 
-  // node-id3 is loaded with import() at runtime (CLAUDE.md §11); this is the part used here.
+  // node-id3 is ESM-only (importEsm); this is the part used here.
   let nodeId3Module: {
     default: { update: (tags: TagEdits, file: string) => true | Error };
   } | null = null;
@@ -57,7 +58,7 @@ export function registerMetadataHandlers() {
       return false;
     }
     try {
-      nodeId3Module ??= await eval('import("node-id3")');
+      nodeId3Module ??= await importEsm("node-id3");
       const success = nodeId3Module!.default.update(tags, filePath);
       return success === true;
     } catch (error) {

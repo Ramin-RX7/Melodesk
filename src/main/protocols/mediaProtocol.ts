@@ -5,7 +5,7 @@ import { Readable } from "stream";
 
 import { canServe } from "../services/mediaAccess";
 
-const getMimeType = (filePath: string): string => {
+export const getMimeType = (filePath: string): string => {
   const ext = path.extname(filePath).toLowerCase();
   switch (ext) {
     case ".mp3":
@@ -31,7 +31,7 @@ const getMimeType = (filePath: string): string => {
 // Parses a single-range "Range" header ("bytes=start-end", "bytes=start-" or "bytes=-suffix").
 // Returns null for headers to ignore (malformed or multi-range: the whole file is sent, as HTTP
 // allows), or "unsatisfiable" when the range lies outside the file (answered with 416).
-const parseRange = (
+export const parseRange = (
   header: string,
   size: number,
 ): { start: number; end: number } | "unsatisfiable" | null => {

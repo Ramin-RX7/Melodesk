@@ -55,7 +55,7 @@ const count = (n: number, one: string, many = `${one}s`) =>
 
 // One message per scan saying what really changed (nothing when nothing did). Songs of a missing
 // folder aren't listed as removed: that folder has its own message.
-const describeChanges = (changes: LibraryChanges, missing: string[]): string | null => {
+export const describeChanges = (changes: LibraryChanges, missing: string[]): string | null => {
   const removed = changes.removed.filter(
     (song) => !missing.some((folder) => isSameOrInside(song.path, folder)),
   ).length;

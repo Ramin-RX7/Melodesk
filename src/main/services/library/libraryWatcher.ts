@@ -1,10 +1,11 @@
 import fs from "fs";
 
 import { getConfig } from "../configService";
+import { importEsm } from "../esmImport";
 import { updateLibrary } from "./libraryUpdater";
 import { isMediaFile } from "./mediaUtils";
 
-// chokidar is ESM-only (loaded with import() at runtime); these are the parts used here.
+// chokidar is ESM-only (importEsm); these are the parts used here.
 type Watcher = {
   on: (event: string, listener: (arg: never) => void) => Watcher;
   close: () => Promise<void>;
@@ -30,7 +31,7 @@ export const setupWatcher = async () => {
 
   console.log("Setting up watcher for paths:", config.libraryPaths);
   if (!chokidarModule) {
-    chokidarModule = await eval('import("chokidar")');
+    chokidarModule = await importEsm<Chokidar>("chokidar");
   }
 
   // Only watch paths that exist

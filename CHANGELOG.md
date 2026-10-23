@@ -77,6 +77,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Links opened from MeloDesk can only be web pages; other kinds of links are refused.
 - The app window can only read your library folders and its own files, can no longer navigate away or open new windows, and only runs MeloDesk's own code.
 - Song tags can only be changed in MP3 files that are in your library.
+- Playlist actions can only reach playlist files, so a bad request can no longer delete or overwrite your settings or other data.
+- The Library page can only list folders inside your library folders.
 
 ## [0.2.0] - 2026-10-23
 

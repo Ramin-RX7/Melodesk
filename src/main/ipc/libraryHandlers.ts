@@ -92,8 +92,12 @@ export function registerLibraryHandlers() {
     return getScanStatus();
   });
 
+  // Only library folders can be listed: the page must not be able to browse the rest of the disk.
   ipcMain.handle("get-directory-tree", async (_event, dirPath: string) => {
-    return getDirectoryTree(dirPath);
+    const inLibrary =
+      typeof dirPath === "string" &&
+      getConfig().libraryPaths.some((folder) => isSameOrInside(dirPath, folder));
+    return inLibrary ? getDirectoryTree(dirPath) : [];
   });
 
   // Opens in the parent of the folder picked last time (or of the newest library folder), so

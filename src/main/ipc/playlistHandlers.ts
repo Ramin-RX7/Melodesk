@@ -141,6 +141,16 @@ const loadPlaylistFile = (fileName: string): Playlist | null => {
   }
 };
 
+// Playlist ids come from the page, so they must never point outside the playlists folder
+// ("../config" would otherwise reach config.json). Generated ids are UUIDs.
+const isPlaylistId = (id: unknown): id is string => typeof id === "string" && /^[\w-]+$/.test(id);
+
+// The playlist with this id, or null if the id is invalid or there is no such playlist.
+const findPlaylist = (id: unknown): Playlist | null =>
+  isPlaylistId(id) && fs.existsSync(path.join(PLAYLISTS_DIR, `${id}.json`))
+    ? loadPlaylistFile(`${id}.json`)
+    : null;
+
 export const getAllPlaylists = (): Playlist[] => {
   let files: string[];
   try {
@@ -197,8 +207,7 @@ export function setupPlaylistHandlers() {
   });
 
   ipcMain.handle("get-playlist", (_event, id: string) => {
-    if (!fs.existsSync(path.join(PLAYLISTS_DIR, `${id}.json`))) return null;
-    return loadPlaylistFile(`${id}.json`);
+    return findPlaylist(id);
   });
 
   ipcMain.handle("create-playlist", (_event, name: string) => {
@@ -220,10 +229,8 @@ export function setupPlaylistHandlers() {
       id: string,
       data: Partial<Pick<Playlist, "name" | "songs" | "description" | "sortBy" | "sortDescending">>,
     ) => {
-      const filePath = path.join(PLAYLISTS_DIR, `${id}.json`);
       try {
-        if (!fs.existsSync(filePath)) return null;
-        const existing = loadPlaylistFile(`${id}.json`);
+        const existing = findPlaylist(id);
         if (!existing) return null;
         const updated: Playlist = {
           ...existing,
@@ -240,6 +247,7 @@ export function setupPlaylistHandlers() {
   );
 
   ipcMain.handle("delete-playlist", (_event, id: string) => {
+    if (!isPlaylistId(id)) return;
     const filePath = path.join(PLAYLISTS_DIR, `${id}.json`);
     try {
       if (fs.existsSync(filePath)) {
@@ -255,9 +263,7 @@ export function setupPlaylistHandlers() {
   // Adds songs to a playlist. Songs already in it (or picked twice) are duplicates: the user
   // chooses to add them anyway, skip them, or cancel. Resolves to the playlist (null if cancelled).
   ipcMain.handle("add-songs-to-playlist", async (event, id: string, paths: string[]) => {
-    const playlist = fs.existsSync(path.join(PLAYLISTS_DIR, `${id}.json`))
-      ? loadPlaylistFile(`${id}.json`)
-      : null;
+    const playlist = findPlaylist(id);
     if (!playlist || paths.length === 0) return playlist;
 
     const seen = new Set(playlist.songs);
@@ -312,9 +318,7 @@ export function setupPlaylistHandlers() {
 
   // Removes repeated songs from a playlist (keeping the first copy of each) after confirmation.
   ipcMain.handle("remove-playlist-duplicates", async (event, id: string) => {
-    const playlist = fs.existsSync(path.join(PLAYLISTS_DIR, `${id}.json`))
-      ? loadPlaylistFile(`${id}.json`)
-      : null;
+    const playlist = findPlaylist(id);
     if (!playlist) return null;
 
     const songs = [...new Set(playlist.songs)];

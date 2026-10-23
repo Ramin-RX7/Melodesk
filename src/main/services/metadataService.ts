@@ -3,9 +3,9 @@ import path from "path";
 
 import { FileItem } from "../../renderer/types";
 import { ART_CACHE_DIR, contentHash } from "./artCacheService";
+import { importEsm } from "./esmImport";
 
-// music-metadata is ESM-only (loaded with import() at runtime, see CLAUDE.md §11); these are the
-// parts of its result that are read here.
+// music-metadata is ESM-only (importEsm); these are the parts of its result that are read here.
 export interface ParsedAudio {
   common: {
     title?: string;
@@ -119,8 +119,7 @@ export const extractMetadata = (
 // Reads a song's tags and saves its embedded cover to the art cache. Throws if the file can't be
 // parsed.
 export const readSongMetadata = async (filePath: string) => {
-  // eval keeps tsc from turning import() into require() (CLAUDE.md §11).
-  musicMetadata ??= (await eval('import("music-metadata")')) as MusicMetadata;
+  musicMetadata ??= await importEsm<MusicMetadata>("music-metadata");
   const parsed = await musicMetadata.parseFile(filePath);
   const picture = parsed.common.picture?.[0];
   const artPath = picture ? saveArt(Buffer.from(picture.data), picture.format) : undefined;

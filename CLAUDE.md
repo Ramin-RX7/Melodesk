@@ -350,6 +350,7 @@ The window only shows MeloDesk's own pages, but songs and covers come from the u
 - **No navigation, popups, webviews or permissions** (`security.ts`: `will-navigate`, `setWindowOpenHandler`, `setPermissionRequestHandler`).
 - **`open-external-url` opens `http(s)` links only**; other schemes can start programs.
 - **`write-metadata` writes only to MP3 files in the library cache.**
+- **Ids and paths from the page are never trusted as file names:** playlist ids must match `[\w-]+` (`isPlaylistId` in `playlistHandlers.ts`), and `get-directory-tree` only lists folders inside the library folders. Any new handler that turns page input into a file path needs the same kind of check, and a test with `../` input.
 
 ### Routing & navigation (renderer)
 
@@ -447,10 +448,10 @@ scripts/                             # Node ESM, no dependencies
 tsconfig.json / vite.config.ts       # Main+preload compile (tsc → dist/) / renderer bundle (vite → dist/renderer/)
 .prettierrc.json / .prettierignore   # Formatting rules (enforced by `npm run check`)
 eslint.config.mjs                    # Lint rules (TypeScript, React hooks, project rules; §11)
-vitest.config.ts                     # Vitest projects: "main" (Node) and "renderer" (jsdom); coverage settings
+vitest.config.mts                     # Vitest projects: "main" (Node) and "renderer" (jsdom); coverage settings
 tests/                               # All tests (§12)
 ├── tsconfig.json                    # Type-checks the tests (never emits)
-├── helpers/                         # Fake electron module, temp folders, test setup per project
+├── helpers/                         # Fake electron, freshMain/useLibrary (main.ts), temp folders, git repos, setup
 ├── fixtures/generate.mjs            # Builds the test music library (output in fixtures/generated/, git-ignored)
 ├── unit/                            # Vitest (Node): main process, scripts, shared + pure renderer utils
 └── renderer/                        # Vitest (jsdom): hooks and components
@@ -713,7 +714,7 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 
 ## 11. Conventions & gotchas
 
-- **ESM-only packages** (`chokidar`, `music-metadata`, `node-id3`) are loaded with `await eval('import("pkg")')` and cached in a module variable. The `eval` stops `tsc` (CommonJS output) from rewriting the import into `require`. Keep the pattern for any ESM-only dependency.
+- **ESM-only packages** (`chokidar`, `music-metadata`, `node-id3`) are loaded with `importEsm<T>("pkg")` (`main/services/esmImport.ts`) and cached in a module variable, typed by a small local interface. It wraps `eval("import()")`, which stops `tsc` (CommonJS output) from rewriting the import into `require`; tests replace it with a plain `import()`. Use it for any ESM-only dependency.
 - **Styling:** most components use inline `style={{}}` objects with `colors.*`. Larger widgets (Navbar, GroupedView, GlobalSearch, HomeView) use `*.module.css`. Match the style of the file you're editing. Global base CSS (scrollbars, body) is injected in the first effect of `App.tsx`.
 - **Lint rules beyond the standard ones** (`eslint.config.mjs`): React hook rules (`exhaustive-deps` is an error; an intentional exception gets an `eslint-disable-next-line` with the reason on the line above); no `alert`/`confirm`/`prompt` in the renderer; no `dialog.showMessageBox`/`showErrorBox` in main; no `fs.writeFileSync` in main outside `jsonStore` and the art cache. Avoid `any`: type IPC data with `types.d.ts`, and ESM-only packages with a small local interface (see `ParsedAudio` in `metadataService.ts`).
 - **Formatting** is Prettier's job. Don't hand-align code; run `npm run format` before committing, and make sure `npm run check` passes.
@@ -744,17 +745,25 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 | Hooks + components                                                         | Vitest, jsdom + Testing Library | `tests/renderer/**/*.test.tsx` | `npm test`     |
 | Lint                                                                       | ESLint                          | whole repo                     | `npm run lint` |
 
-`vitest.config.ts` defines the two Vitest projects (`main`, `renderer`). Tests are type-checked by `tests/tsconfig.json` (part of `npm run typecheck`) and never compiled into `dist/`.
+`vitest.config.mts` defines the two Vitest projects (`main`, `renderer`). Tests are type-checked by `tests/tsconfig.json` (part of `npm run typecheck`) and never compiled into `dist/`.
 
 **Helpers** (`tests/helpers/`):
 
-- `electron.ts` is a fake `electron` module, installed for every `main` test file by `main-setup.ts`:
-  - `app.getPath("userData")` is a fresh temp folder per test file;
+- `electron.ts` is a fake `electron` module, installed for every `main` test file by `main-setup.ts` (which also swaps `importEsm` for a plain `import()`):
+  - `app.getPath("userData")` is a temp folder (a new one after each `resetFake()`);
   - `ipcMain.handle` / `on` handlers are captured: call them with `invoke(channel, ...args)` / `send(channel, ...args)`;
   - `openWindow()` creates a fake window whose `webContents.sentOn(channel)` returns what was sent to the page;
-  - `dialog`, `shell`, `net`, `Menu` are `vi.fn` stubs; `protocolHandlers` holds `protocol.handle` handlers.
-
-  Main modules compute paths when imported, so a test that needs a clean module state uses `vi.resetModules()` and imports again.
+  - `dialog`, `shell`, `net`, `Menu`, `session`, `app.on` are `vi.fn` stubs; `protocolHandlers` holds `protocol.handle` handlers.
+- `main.ts`, the starting point of every main-process test:
+  - `await freshMain()` (in `beforeEach`) re-imports the app's modules and resets the fake: new empty profile, no handlers or windows. It returns the fake. Mocked modules survive `vi.resetModules()`, which is why the fake is reset rather than re-created. Import `src/main` modules **dynamically after** `freshMain()`: they read `app.getPath` when imported;
+  - `useLibrary()` copies the test music into a temp folder and writes `config.json` pointing at its two library folders; it returns `{ root, a, b, file(relative) }`;
+  - `seedUserData({ "playlists/x.json": {...} })` writes profile files, and `profilePath(...)` resolves them;
+  - `waitFor(fn)` polls a condition, and `age(file, ms)` back-dates a file.
+- **Messages and questions in tests:**
+  - notifications raised before a window listens are queued; `invoke("take-pending-notifications")` returns them, and afterwards they arrive on `win.webContents.sentOn("notification")`;
+  - to answer an `askUser` question, start the `invoke` without awaiting, `waitFor` the `confirm-request` on the window, then `send("confirm-response", id, button)` (see `playlistHandlers.test.ts`).
+- Replace a dependency of the module under test with `vi.doMock(path, factory)` after `freshMain()` (e.g. `libraryUpdater` in the handler tests, chokidar in the watcher test).
+- `gitRepo.ts`: throwaway git repos (empty git config, test identity, a local bare "origin") for the release-script tests. Its helpers are async so those tests can run with `describe.concurrent`.
 
 - `tempdir.ts`: `makeTempDir()` (deleted after the file), `writeFile` / `writeJsonFile` / `readJsonFile`.
 - `renderer-setup.ts`: jest-dom matchers and cleanup for the `renderer` project.
