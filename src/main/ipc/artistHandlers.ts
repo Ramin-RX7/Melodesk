@@ -5,6 +5,7 @@ import crypto from "crypto";
 
 import { ART_CACHE_DIR, contentHash, removeArtistPicture } from "../services/artCacheService";
 import { readJson, writeJson } from "../services/jsonStore";
+import { getSession, saveSession } from "../services/sessionService";
 
 const ARTISTS_DIR = path.join(app.getPath("userData"), "artists");
 
@@ -55,14 +56,19 @@ export function setupArtistHandlers() {
   });
 
   ipcMain.handle("select-artist-image", async () => {
+    // Opens in the folder of the image picked last time.
+    const last = getSession()?.lastPickedImage;
+    const lastFolder = last && path.dirname(last);
     const { canceled, filePaths } = await dialog.showOpenDialog({
       properties: ["openFile"],
+      defaultPath: lastFolder && fs.existsSync(lastFolder) ? lastFolder : undefined,
       filters: [{ name: "Images", extensions: ["jpg", "jpeg", "png", "webp"] }],
     });
 
     if (canceled || filePaths.length === 0) return null;
 
     const sourcePath = filePaths[0];
+    saveSession({ lastPickedImage: sourcePath });
     const data = fs.readFileSync(sourcePath);
     const destPath = path.join(
       ART_CACHE_DIR,

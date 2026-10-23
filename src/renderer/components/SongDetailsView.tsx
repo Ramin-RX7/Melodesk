@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FileItem, Playlist } from "../types";
+import { AppNotification, FileItem, Playlist } from "../types";
 import {
   IoArrowBack,
   IoAdd,
@@ -21,6 +21,7 @@ interface SongDetailsViewProps {
   onTrackUpdated: (track: FileItem) => void;
   openLyrics?: boolean;
   onLyricsConsumed?: () => void;
+  notify: (notification: AppNotification) => void;
 }
 
 export function SongDetailsView({
@@ -31,7 +32,10 @@ export function SongDetailsView({
   onTrackUpdated,
   openLyrics,
   onLyricsConsumed,
+  notify,
 }: SongDetailsViewProps) {
+  const mp3Only = () =>
+    notify({ level: "info", message: "Editing tags is only supported for MP3 files for now." });
   const [isEditing, setIsEditing] = useState(false);
   const [showPlaylistModal, setShowPlaylistModal] = useState(false);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -76,7 +80,7 @@ export function SongDetailsView({
 
   const handleSave = async () => {
     if (!isMp3) {
-      alert("Metadata editing is currently only supported for MP3 files.");
+      mp3Only();
       return;
     }
 
@@ -97,13 +101,14 @@ export function SongDetailsView({
         onTrackUpdated(updatedTrack);
         setIsEditing(false);
       } else {
-        alert(
-          "Failed to save metadata. Please ensure node-id3 is properly installed and the file is not read-only.",
-        );
+        notify({
+          level: "error",
+          message: "The tags couldn't be saved. Check that the file isn't read-only or in use.",
+        });
       }
     } catch (error) {
       console.error(error);
-      alert("An error occurred while saving metadata.");
+      notify({ level: "error", message: "Something went wrong while saving the tags." });
     } finally {
       setIsSaving(false);
     }
@@ -183,9 +188,7 @@ export function SongDetailsView({
           </button>
           {!isEditing && (
             <button
-              onClick={() =>
-                isMp3 ? setIsEditing(true) : alert("Editing is only supported for MP3 files.")
-              }
+              onClick={() => (isMp3 ? setIsEditing(true) : mp3Only())}
               style={{
                 background: "none",
                 border: `1px solid ${colors.textFaint}`,
@@ -665,7 +668,7 @@ export function SongDetailsView({
               >
                 <button
                   onClick={() =>
-                    alert("Cover Art Fix: This feature is a UI placeholder as requested.")
+                    notify({ level: "info", message: "Fixing cover art isn't available yet." })
                   }
                   style={{
                     backgroundColor: colors.bgControl,
@@ -699,7 +702,7 @@ export function SongDetailsView({
                 </button>
                 {/* {!isEditing && (
                   <button 
-                    onClick={() => isMp3 ? setIsEditing(true) : alert("Editing is only supported for MP3 files.")}
+                    onClick={() => isMp3 ? setIsEditing(true) : mp3Only()}
                     style={{ 
                       backgroundColor: "#222", 
                       border: "1px solid #444", 

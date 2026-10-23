@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { FileItem, Playlist, PlayRecord } from "../types";
+import { ConfirmOptions, FileItem, Playlist, PlayRecord } from "../types";
 import { formatArtists } from "../../utils/metadata";
 import {
   IoArrowBack,
@@ -35,6 +35,8 @@ interface PlaylistViewProps {
   onPlaylistDeleted?: (id: string) => void;
   onScrollRef?: (el: HTMLElement | null) => void;
   initialSearch?: string;
+  /** Asks the user in the app's dialog; resolves to the chosen button's index. */
+  confirm: (options: ConfirmOptions) => Promise<number>;
 }
 
 export function PlaylistView({
@@ -50,6 +52,7 @@ export function PlaylistView({
   onPlaylistDeleted,
   onScrollRef,
   initialSearch,
+  confirm,
 }: PlaylistViewProps) {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
@@ -192,7 +195,17 @@ export function PlaylistView({
 
   const handleDeletePlaylist = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm("Are you sure you want to delete this playlist?")) {
+    const name = playlists.find((p) => p.id === id)?.name ?? "this playlist";
+    const answer = await confirm({
+      title: "Delete playlist",
+      message: `Delete "${name}"?`,
+      detail: "The songs stay in your library; only the playlist is removed.",
+      buttons: ["Delete", "Cancel"],
+      defaultId: 1,
+      cancelId: 1,
+      dangerId: 0,
+    });
+    if (answer === 0) {
       try {
         await window.api.deletePlaylist(id);
         setPlaylists(playlists.filter((p) => p.id !== id));

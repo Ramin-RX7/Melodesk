@@ -2,6 +2,8 @@ import { protocol } from "electron";
 import fs from "fs";
 import path from "path";
 
+import { canServe } from "../services/mediaAccess";
+
 const getMimeType = (filePath: string): string => {
   const ext = path.extname(filePath).toLowerCase();
   switch (ext) {
@@ -59,6 +61,11 @@ export function registerMediaProtocol() {
         if (decodedPath.startsWith("/") && /^\/[a-zA-Z]:/.test(decodedPath)) {
           decodedPath = decodedPath.slice(1);
         }
+      }
+
+      if (!canServe(decodedPath)) {
+        console.error(`Refused to serve a file outside the library: ${decodedPath}`);
+        return new Response("Forbidden", { status: 403 });
       }
 
       if (!fs.existsSync(decodedPath)) {

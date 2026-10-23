@@ -8,10 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- You're told when a library folder can't be found (for example an unplugged drive), and again when it's back.
+
 - Add several library folders at once: the "Add Folder" picker now lets you select multiple folders.
 - Library scans now show their progress in the title bar ("Scanning library… 329 / 666"); hover to see the file being read, click to open the Library page.
 - Notifications: MeloDesk now tells you when something needs your attention, such as a song that can't be found, changes it noticed in your library folders, or a damaged playlist that was repaired.
-- When your library folders change on disk (songs added, changed or removed), you're told that the library is being updated in the background.
+- When your library folders change on disk (songs added, changed, moved or removed), the library updates itself and tells you what changed.
 - Your settings, playlists, play counts, session and artist info are now backed up automatically. If one of these files gets damaged, MeloDesk restores it from the backup and tells you, instead of starting over with defaults.
 
 - The playback position is remembered: when your last session is restored, the song continues where you left off.
@@ -22,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Questions and confirmations (duplicate songs, deleting a playlist, applying a theme, replacing library folders) now appear in MeloDesk's own dialog, matching your theme, instead of system message boxes. Problems saving tags are shown as notifications.
+- "Add Folder" opens next to the folder you picked last time, and choosing an artist picture opens in the folder of the last picture you chose.
 - Songs that can't be played (moved, deleted or damaged files) are now skipped automatically, with a message saying which song and why. They stay in the queue.
 - An open playlist updates right away when songs are added to it from elsewhere (e.g. the right-click menu).
 - Opening MeloDesk while it's already running now brings the open window to the front instead of starting a second copy.
@@ -67,6 +71,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A song's cover updates when its embedded art is changed in another program.
 - Replacing an artist picture no longer leaves the old image behind on disk.
 - The mini-player no longer slowly grows when it's dragged around on displays with scaling (e.g. 125%).
+
+### Security
+
+- Links opened from MeloDesk can only be web pages; other kinds of links are refused.
+- The app window can only read your library folders and its own files, can no longer navigate away or open new windows, and only runs MeloDesk's own code.
+- Song tags can only be changed in MP3 files that are in your library.
 
 ## [0.2.0] - 2026-10-23
 

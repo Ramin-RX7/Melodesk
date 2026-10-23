@@ -34,12 +34,20 @@ export const replaceSessionPaths = (replace: (songPath: string) => string): void
 };
 
 export const clearSession = (): void => {
-  // Only clear playback state; window bounds persist independently of the restore-session setting.
+  // Only clear playback state; window bounds and picker folders persist independently of the
+  // restore-session setting.
   const existing = getSession();
-  if (existing?.windowBounds || existing?.miniWindowBounds) {
+  if (
+    existing?.windowBounds ||
+    existing?.miniWindowBounds ||
+    existing?.lastPickedFolder ||
+    existing?.lastPickedImage
+  ) {
     writeSession({
       windowBounds: existing.windowBounds,
       miniWindowBounds: existing.miniWindowBounds,
+      lastPickedFolder: existing.lastPickedFolder,
+      lastPickedImage: existing.lastPickedImage,
     });
   } else if (fs.existsSync(SESSION_PATH)) {
     try {

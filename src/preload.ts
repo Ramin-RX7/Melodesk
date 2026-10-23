@@ -23,6 +23,13 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.on("notification", listener);
     return () => ipcRenderer.removeListener("notification", listener);
   },
+  onConfirmRequest: (callback: (request: any) => void) => {
+    const listener = (_event: any, request: any) => callback(request);
+    ipcRenderer.on("confirm-request", listener);
+    return () => ipcRenderer.removeListener("confirm-request", listener);
+  },
+  respondToConfirm: (id: number, response: number) =>
+    ipcRenderer.send("confirm-response", id, response),
   getLibraryScanStatus: () => ipcRenderer.invoke("get-library-scan-status"),
   onLibraryScanStatus: (callback: (status: any) => void) => {
     const listener = (_event: any, status: any) => callback(status);
@@ -30,8 +37,13 @@ contextBridge.exposeInMainWorld("api", {
     return () => ipcRenderer.removeListener("library-scan-status", listener);
   },
   getMetadata: (filePath: string) => ipcRenderer.invoke("get-metadata", filePath),
-  // Path of a file dropped onto the window (File.path no longer exists since Electron 32).
-  getPathForFile: (file: File) => webUtils.getPathForFile(file),
+  // Path of a file dropped onto the window (File.path no longer exists since Electron 32). Also
+  // lets media:// serve it: outside the library, only files the user dropped can be played.
+  getPathForFile: (file: File) => {
+    const filePath = webUtils.getPathForFile(file);
+    if (filePath) ipcRenderer.send("allow-dropped-file", filePath);
+    return filePath;
+  },
   getPlaylists: () => ipcRenderer.invoke("get-playlists"),
   getPlaylist: (id: string) => ipcRenderer.invoke("get-playlist", id),
   createPlaylist: (name: string) => ipcRenderer.invoke("create-playlist", name),

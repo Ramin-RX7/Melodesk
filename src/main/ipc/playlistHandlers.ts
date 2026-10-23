@@ -1,9 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
 import { getCache } from "../services/cacheService";
+import { askUser } from "../services/confirmService";
 import { hashPath } from "../services/hashUtil";
 import { setAside, writeJson } from "../services/jsonStore";
 import { notify } from "../services/notifyService";
@@ -273,8 +274,7 @@ export function setupPlaylistHandlers() {
     if (duplicates.length > 0) {
       const names = songNames(duplicates);
       const listed = names.slice(0, 10).join("\n") + (names.length > 10 ? "\n…" : "");
-      const options = {
-        type: "question" as const,
+      const { response } = await askUser(event.sender, {
         buttons: ["Add anyway", "Skip duplicates", "Cancel"],
         defaultId: 1,
         cancelId: 2,
@@ -283,12 +283,9 @@ export function setupPlaylistHandlers() {
           paths.length === 1
             ? `"${names[0]}" is already in "${playlist.name}".`
             : `${duplicates.length} of the ${paths.length} songs ${duplicates.length === 1 ? "is" : "are"} already in "${playlist.name}".`,
-        detail: `${listed}\n\nAdd ${duplicates.length === 1 ? "it" : "them"} again anyway, or skip ${duplicates.length === 1 ? "it" : "them"}?`,
-      };
-      const win = BrowserWindow.fromWebContents(event.sender);
-      const { response } = win
-        ? await dialog.showMessageBox(win, options)
-        : await dialog.showMessageBox(options);
+        // The message already names a single song; several are listed here.
+        detail: `${paths.length === 1 ? "" : `${listed}\n\n`}Add ${duplicates.length === 1 ? "it" : "them"} again anyway, or skip ${duplicates.length === 1 ? "it" : "them"}?`,
+      });
       if (response === 2) return null;
       if (response === 1) toAdd = unique;
     }
@@ -326,19 +323,14 @@ export function setupPlaylistHandlers() {
       return playlist;
     }
 
-    const options = {
-      type: "question" as const,
+    const { response } = await askUser(event.sender, {
       buttons: ["Remove duplicates", "Cancel"],
       defaultId: 0,
       cancelId: 1,
       title: "Remove duplicates",
       message: `Remove ${removed} duplicate song${removed === 1 ? "" : "s"} from "${playlist.name}"?`,
       detail: "The first copy of each song is kept.",
-    };
-    const win = BrowserWindow.fromWebContents(event.sender);
-    const { response } = win
-      ? await dialog.showMessageBox(win, options)
-      : await dialog.showMessageBox(options);
+    });
     if (response !== 0) return playlist;
 
     const updated = { ...playlist, songs, updatedAt: new Date().toISOString() };

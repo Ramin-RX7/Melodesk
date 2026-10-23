@@ -286,7 +286,7 @@ export function usePlaybackController({
     if (!meta?.picture) return;
 
     let active = true;
-    fetch(`file://${meta.picture.replace(/\\/g, "/")}`)
+    fetch(`media://${encodeURIComponent(meta.picture.replace(/\\/g, "/"))}`)
       .then((res) => res.blob())
       .then(
         (blob) =>

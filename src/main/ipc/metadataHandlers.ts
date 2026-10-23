@@ -50,7 +50,18 @@ export function registerMetadataHandlers() {
 
   let nodeId3Module: any = null;
 
+  // Tags are only written to MP3 files of the library (node-id3 only handles ID3 tags).
   ipcMain.handle("write-metadata", async (_event, filePath: string, tags: any) => {
+    if (
+      typeof filePath !== "string" ||
+      path.extname(filePath).toLowerCase() !== ".mp3" ||
+      !getCache()[hashPath(filePath)]
+    ) {
+      console.error(
+        `Refused to write tags to a file that isn't an MP3 in the library: ${filePath}`,
+      );
+      return false;
+    }
     try {
       if (!nodeId3Module) {
         nodeId3Module = await eval('import("node-id3")');

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { IoFolder, IoClose } from "react-icons/io5";
 
-import { UserConfig } from "../types";
+import { ConfirmOptions, UserConfig } from "../types";
 import {
   colors,
   PRESET_THEME_COLORS,
@@ -38,9 +38,11 @@ type Props = {
   config: UserConfig | null;
   setConfig: (config: UserConfig) => void;
   themeColor: string;
+  /** Asks the user in the app's dialog; resolves to the chosen button's index. */
+  confirm: (options: ConfirmOptions) => Promise<number>;
 };
 
-export function SettingsView({ config, setConfig, themeColor }: Props) {
+export function SettingsView({ config, setConfig, themeColor, confirm }: Props) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   if (!config) return null;
 
@@ -56,14 +58,21 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
   const base = getTheme(appearance.themeId)?.palette ?? DEFAULT_PALETTE;
   const resolved = { ...base, ...overrides } as Record<ColorKey, string>;
 
-  const applyThemePreset = (t: Theme) => {
+  const applyThemePreset = async (t: Theme) => {
     const willChange =
       appearance.themeId !== t.id ||
       config.themeColor !== t.accent ||
       Object.keys(overrides).length > 0;
     if (
       willChange &&
-      !window.confirm(`Apply the ${t.name} theme? This overwrites your current colors.`)
+      (await confirm({
+        title: "Apply theme",
+        message: `Apply the ${t.name} theme?`,
+        detail: "This replaces your current colors and accent color.",
+        buttons: ["Apply", "Cancel"],
+        defaultId: 0,
+        cancelId: 1,
+      })) !== 0
     ) {
       return;
     }

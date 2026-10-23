@@ -25,6 +25,8 @@ import { useLibraryScanStatus } from "../hooks/useLibraryScanStatus";
 import { useToasts } from "../hooks/useToasts";
 import { usePlaybackPositionSaver } from "../hooks/usePlaybackPosition";
 import { Toasts } from "./components/Toasts/Toasts";
+import { useConfirm } from "../hooks/useConfirm";
+import { ConfirmDialog } from "./components/ConfirmDialog/ConfirmDialog";
 import { colors, buildRootCss, DEFAULT_PALETTE, DEFAULT_THEME_COLOR } from "./theme/colors";
 import { applyPalette } from "./theme/applyTheme";
 import { getTheme, DEFAULT_THEME_ID } from "./theme/themes";
@@ -74,6 +76,7 @@ export default function App() {
   const [openLyricsOnDetails, setOpenLyricsOnDetails] = useState(false);
   const [isMini, setIsMini] = useState(false);
   const { toasts, showToast, dismissToast } = useToasts();
+  const { question, answer: answerQuestion, confirm } = useConfirm();
   // Song whose position the saved session holds (see the session-save effect).
   const sessionTrackPathRef = useRef<string | null>(null);
 
@@ -754,6 +757,7 @@ export default function App() {
                     }}
                     onScrollRef={handleScrollRef}
                     initialSearch={playlistsGlobalSearch}
+                    confirm={confirm}
                   />
                 );
               }
@@ -780,7 +784,12 @@ export default function App() {
 
               if (view === "settings") {
                 return (
-                  <SettingsView config={config} setConfig={setConfig} themeColor={themeColor} />
+                  <SettingsView
+                    config={config}
+                    setConfig={setConfig}
+                    themeColor={themeColor}
+                    confirm={confirm}
+                  />
                 );
               }
 
@@ -801,6 +810,7 @@ export default function App() {
                     onTrackUpdated={handleTrackUpdated}
                     openLyrics={openLyricsOnDetails}
                     onLyricsConsumed={() => setOpenLyricsOnDetails(false)}
+                    notify={showToast}
                   />
                 ) : null;
               }
@@ -857,6 +867,7 @@ export default function App() {
       />
 
       <Toasts toasts={toasts} themeColor={themeColor} onDismiss={dismissToast} />
+      <ConfirmDialog question={question} themeColor={themeColor} onAnswer={answerQuestion} />
     </div>
   );
 }

@@ -4,6 +4,8 @@ import path from "path";
 import { WindowBounds } from "./renderer/types";
 
 import { registerMediaProtocol } from "./main/protocols/mediaProtocol";
+import { applySecurityPolicies } from "./main/security";
+import { allowSessionFiles } from "./main/services/mediaAccess";
 import { updateLibrary } from "./main/services/library/libraryUpdater";
 import { setupWatcher } from "./main/services/library/libraryWatcher";
 import { registerIpcHandlers } from "./main/ipc/index";
@@ -18,7 +20,11 @@ import {
 protocol.registerSchemesAsPrivileged([
   // corsEnabled lets Web Audio's createMediaElementSource read the stream
   // without tainting it (a tainted source plays as silence through the graph).
-  { scheme: "media", privileges: { bypassCSP: true, stream: true, corsEnabled: true } },
+  // supportFetchAPI lets the renderer fetch covers for the OS media controls.
+  {
+    scheme: "media",
+    privileges: { bypassCSP: true, stream: true, corsEnabled: true, supportFetchAPI: true },
+  },
 ]);
 
 const MIN_WIDTH = 600;
@@ -236,6 +242,8 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    applySecurityPolicies();
+    allowSessionFiles();
     // Register IPC handlers
     registerIpcHandlers();
     // Setup file watcher

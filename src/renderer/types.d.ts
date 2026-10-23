@@ -45,6 +45,10 @@ export interface SessionData {
   position?: number;
   windowBounds?: WindowBounds;
   miniWindowBounds?: WindowBounds;
+  /** Last folder picked with "Add Folder"; the next picker opens in its parent folder. */
+  lastPickedFolder?: string;
+  /** Last image picked as an artist picture; the next picker opens in its folder. */
+  lastPickedImage?: string;
 }
 export interface ArtistInfo {
   name: string;
@@ -92,6 +96,25 @@ export interface LibraryScanStatus {
 export interface AppNotification {
   level: "info" | "success" | "error";
   message: string;
+}
+
+/** A question for the user, shown in the app's own dialog (main process or renderer). */
+export interface ConfirmOptions {
+  title: string;
+  message: string;
+  detail?: string;
+  /** Button labels, left to right; the answer is the index of the chosen one. */
+  buttons: string[];
+  /** Button chosen with Enter (and focused). */
+  defaultId: number;
+  /** Answer when the dialog is dismissed (Esc, clicking outside). */
+  cancelId: number;
+  /** Button styled as destructive (e.g. "Delete"). */
+  dangerId?: number;
+}
+
+export interface ConfirmRequest extends ConfirmOptions {
+  id: number;
 }
 
 export interface Playlist {
@@ -145,6 +168,8 @@ declare global {
       /** Notifications raised before the UI was listening (e.g. during startup). */
       takePendingNotifications: () => Promise<AppNotification[]>;
       onNotification: (callback: (notification: AppNotification) => void) => () => void;
+      onConfirmRequest: (callback: (request: ConfirmRequest) => void) => () => void;
+      respondToConfirm: (id: number, response: number) => void;
       getLibraryScanStatus: () => Promise<LibraryScanStatus>;
       onLibraryScanStatus: (callback: (status: LibraryScanStatus) => void) => () => void;
       getMetadata: (filePath: string) => Promise<FileItem>;
