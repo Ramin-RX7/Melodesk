@@ -1,9 +1,10 @@
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 
 import { QueueHeader } from "./QueueHeader";
 import { QueueItem } from "./QueueItem";
 import { FileItem } from "../../types";
 import { colors } from "../../theme/colors";
+import { useVirtualGrid } from "../../../hooks/useVirtualGrid";
 
 type QueueViewProps = {
   queue: FileItem[];
@@ -30,19 +31,10 @@ export function QueueView({
   const totalDuration = useMemo(() => {
     return queue.reduce((acc, track) => acc + (track.metadata?.duration || 0), 0);
   }, [queue]);
-  const listRef = useRef<HTMLDivElement>(null);
+  // Only the rows on screen are rendered, so long queues open instantly.
+  const list = useVirtualGrid(queue, { gap: 0, estimateRowHeight: 60 });
   const scrollToCurrent = () => {
-    const container = listRef.current;
-    if (!container) return;
-
-    const activeEl = container.querySelector(`[data-active="true"]`) as HTMLElement | null;
-
-    if (activeEl) {
-      activeEl.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
-    }
+    if (currentIndex >= 0) list.scrollToItem(currentIndex, "center");
   };
 
   return (
@@ -62,7 +54,6 @@ export function QueueView({
       />
 
       <div
-        ref={listRef}
         style={{
           flex: 1,
           overflowY: "auto",
@@ -81,19 +72,37 @@ export function QueueView({
             Queue is empty
           </div>
         ) : (
-          queue.map((track, index) => (
-            <QueueItem
-              key={`${track.path}-${index}`}
-              track={track}
-              index={index}
-              isActive={index === currentIndex}
-              themeColor={themeColor}
-              onClick={() => onPlayTrack(track, index)}
-              onRemove={() => onRemoveFromQueue(index)}
-              isRemovable={index !== currentIndex || activeItemRemovable}
-              onContextMenu={onContextMenu}
-            />
-          ))
+          <div ref={list.containerRef} style={{ position: "relative", height: list.totalHeight }}>
+            {list.rows.map((row) => {
+              const index = row.firstIndex;
+              const track = row.items[0];
+              return (
+                <div
+                  key={row.key}
+                  ref={list.measureRow}
+                  data-index={row.index}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    transform: `translateY(${row.start}px)`,
+                  }}
+                >
+                  <QueueItem
+                    track={track}
+                    index={index}
+                    isActive={index === currentIndex}
+                    themeColor={themeColor}
+                    onClick={() => onPlayTrack(track, index)}
+                    onRemove={() => onRemoveFromQueue(index)}
+                    isRemovable={index !== currentIndex || activeItemRemovable}
+                    onContextMenu={onContextMenu}
+                  />
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

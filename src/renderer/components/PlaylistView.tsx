@@ -16,6 +16,7 @@ import {
   IoCopyOutline,
 } from "react-icons/io5";
 import { colors } from "../theme/colors";
+import { VirtualGrid } from "./VirtualGrid";
 
 const RECENTLY_PLAYED_ID = "__recently_played__";
 const MOST_PLAYED_ID = "__most_played__";
@@ -61,6 +62,9 @@ export function PlaylistView({
     }
     return map;
   }, [allTracks]);
+
+  // Playlists store paths; looked up once per library update instead of a search per song.
+  const pathToTrack = useMemo(() => new Map(allTracks.map((t) => [t.path, t])), [allTracks]);
 
   // "Recently Played" and "Most Played" are derived, read-only playlists backed
   // by the play tracker. They are shown alongside real playlists but not editable.
@@ -305,7 +309,7 @@ export function PlaylistView({
   // Helper to render 2x2 grid of covers
   const renderGridCover = (playlist: Playlist) => {
     const tracks = playlist.songs
-      .map((path) => allTracks.find((t) => t.path === path))
+      .map((path) => pathToTrack.get(path))
       .filter(Boolean) as FileItem[];
     const covers = tracks.map((t) => t.metadata?.picture).filter(Boolean) as string[];
     const uniqueCovers = Array.from(new Set(covers)).slice(0, 4);
@@ -330,6 +334,8 @@ export function PlaylistView({
     if (uniqueCovers.length < 4) {
       return (
         <img
+          loading="lazy"
+          decoding="async"
           src={`media://${encodeURIComponent(uniqueCovers[0])}`}
           style={{ width: "100%", height: "100%", objectFit: "cover" }}
         />
@@ -348,6 +354,8 @@ export function PlaylistView({
       >
         {uniqueCovers.map((pic, i) => (
           <img
+            loading="lazy"
+            decoding="async"
             key={i}
             src={`media://${encodeURIComponent(pic)}`}
             style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -359,7 +367,7 @@ export function PlaylistView({
 
   if (selectedPlaylist) {
     const tracks = selectedPlaylist.songs
-      .map((path) => allTracks.find((t) => t.path === path))
+      .map((path) => pathToTrack.get(path))
       .filter(Boolean) as FileItem[];
     const totalDuration = tracks.reduce((sum, t) => sum + (t.metadata?.duration || 0), 0);
 
@@ -710,122 +718,132 @@ export function PlaylistView({
           key="detail"
           ref={scrollAreaRef}
         >
-          {filteredTracks.map(({ track, originalIndex }, i) => (
-            <div
-              key={`${track.path}-${originalIndex}`}
-              draggable={!isFixed && sortBy === "custom" && !searchQuery}
-              onDragStart={(e) => (dragItem.current = originalIndex)}
-              onDragEnter={(e) => (dragOverItem.current = originalIndex)}
-              onDragEnd={handleSortEnd}
-              onDragOver={(e) => e.preventDefault()}
-              onClick={() => !configDoubleClickToPlay && onPlayTrack(track, tracks)}
-              onDoubleClick={() => configDoubleClickToPlay && onPlayTrack(track, tracks)}
-              onContextMenu={(e) => onContextMenu?.(e, track)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "15px",
-                padding: "10px 30px",
-                cursor: "pointer",
-                borderBottom: `1px solid ${colors.borderFaint}`,
-                backgroundColor:
-                  currentTrack?.path === track.path ? `${themeColor}22` : "transparent",
-              }}
-              onMouseOver={(e) =>
-                (e.currentTarget.style.backgroundColor =
-                  currentTrack?.path === track.path ? `${themeColor}33` : colors.bgControl)
-              }
-              onMouseOut={(e) =>
-                (e.currentTarget.style.backgroundColor =
-                  currentTrack?.path === track.path ? `${themeColor}22` : "transparent")
-              }
-            >
-              <div style={{ width: "30px", textAlign: "center", color: colors.textFaint }}>
-                {i + 1}
-              </div>
+          <VirtualGrid
+            items={filteredTracks}
+            gap={0}
+            estimateRowHeight={61}
+            getKey={({ track, originalIndex }) => `${track.path}-${originalIndex}`}
+            renderItem={({ track, originalIndex }, i) => (
               <div
+                draggable={!isFixed && sortBy === "custom" && !searchQuery}
+                onDragStart={(e) => (dragItem.current = originalIndex)}
+                onDragEnter={(e) => (dragOverItem.current = originalIndex)}
+                onDragEnd={handleSortEnd}
+                // A row dragged far enough is unmounted and may never get dragend; the drop target
+                // finishes the move instead (handleSortEnd only acts once).
+                onDrop={handleSortEnd}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => !configDoubleClickToPlay && onPlayTrack(track, tracks)}
+                onDoubleClick={() => configDoubleClickToPlay && onPlayTrack(track, tracks)}
+                onContextMenu={(e) => onContextMenu?.(e, track)}
                 style={{
-                  width: "40px",
-                  height: "40px",
-                  backgroundColor: colors.borderSubtle,
-                  borderRadius: "4px",
-                  overflow: "hidden",
-                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "15px",
+                  padding: "10px 30px",
+                  cursor: "pointer",
+                  borderBottom: `1px solid ${colors.borderFaint}`,
+                  backgroundColor:
+                    currentTrack?.path === track.path ? `${themeColor}22` : "transparent",
                 }}
+                onMouseOver={(e) =>
+                  (e.currentTarget.style.backgroundColor =
+                    currentTrack?.path === track.path ? `${themeColor}33` : colors.bgControl)
+                }
+                onMouseOut={(e) =>
+                  (e.currentTarget.style.backgroundColor =
+                    currentTrack?.path === track.path ? `${themeColor}22` : "transparent")
+                }
               >
-                {track.metadata?.picture ? (
-                  <img
-                    src={`media://${encodeURIComponent(track.metadata.picture)}`}
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                ) : (
+                <div style={{ width: "30px", textAlign: "center", color: colors.textFaint }}>
+                  {i + 1}
+                </div>
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    backgroundColor: colors.borderSubtle,
+                    borderRadius: "4px",
+                    overflow: "hidden",
+                    flexShrink: 0,
+                  }}
+                >
+                  {track.metadata?.picture ? (
+                    <img
+                      loading="lazy"
+                      decoding="async"
+                      src={`media://${encodeURIComponent(track.metadata.picture)}`}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <IoMusicalNote color={colors.textIcon} />
+                    </div>
+                  )}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div
                     style={{
-                      width: "100%",
-                      height: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      color: currentTrack?.path === track.path ? themeColor : colors.textPrimary,
+                      fontWeight: "bold",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    <IoMusicalNote color={colors.textIcon} />
+                    {track.metadata?.title || track.name}
                   </div>
+                  <div
+                    title={formatArtists(track.metadata?.artists).full}
+                    style={{
+                      flex: 1,
+                      color: colors.textDim,
+                      fontSize: "14px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {formatArtists(track.metadata?.artists).display}
+                  </div>
+                </div>
+                <div style={{ color: colors.textFaint, fontSize: "13px", padding: "0 20px" }}>
+                  {track.metadata?.duration
+                    ? `${Math.floor(track.metadata.duration / 60)}:${Math.floor(
+                        track.metadata.duration % 60,
+                      )
+                        .toString()
+                        .padStart(2, "0")}`
+                    : "-:--"}
+                </div>
+                {!isFixed && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveSong(originalIndex);
+                    }}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      color: colors.textFaint,
+                      cursor: "pointer",
+                      padding: "5px",
+                    }}
+                  >
+                    <IoTrash />
+                  </button>
                 )}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    color: currentTrack?.path === track.path ? themeColor : colors.textPrimary,
-                    fontWeight: "bold",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {track.metadata?.title || track.name}
-                </div>
-                <div
-                  title={formatArtists(track.metadata?.artists).full}
-                  style={{
-                    flex: 1,
-                    color: colors.textDim,
-                    fontSize: "14px",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {formatArtists(track.metadata?.artists).display}
-                </div>
-              </div>
-              <div style={{ color: colors.textFaint, fontSize: "13px", padding: "0 20px" }}>
-                {track.metadata?.duration
-                  ? `${Math.floor(track.metadata.duration / 60)}:${Math.floor(
-                      track.metadata.duration % 60,
-                    )
-                      .toString()
-                      .padStart(2, "0")}`
-                  : "-:--"}
-              </div>
-              {!isFixed && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveSong(originalIndex);
-                  }}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: colors.textFaint,
-                    cursor: "pointer",
-                    padding: "5px",
-                  }}
-                >
-                  <IoTrash />
-                </button>
-              )}
-            </div>
-          ))}
+            )}
+          />
         </div>
 
         {isAddingSongs && (
@@ -896,8 +914,8 @@ export function PlaylistView({
                 />
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "10px" }}>
-                {allTracks
-                  .filter(
+                <VirtualGrid
+                  items={allTracks.filter(
                     (t) =>
                       (t.metadata?.title || t.name)
                         .toLowerCase()
@@ -905,12 +923,14 @@ export function PlaylistView({
                       (t.metadata?.artists?.join(", ") || "")
                         .toLowerCase()
                         .includes(addSearchQuery.toLowerCase()),
-                  )
-                  .map((track) => {
+                  )}
+                  gap={0}
+                  estimateRowHeight={58}
+                  getKey={(track) => track.path}
+                  renderItem={(track) => {
                     const isAdded = selectedPlaylist.songs.includes(track.path);
                     return (
                       <div
-                        key={track.path}
                         style={{
                           display: "flex",
                           alignItems: "center",
@@ -960,7 +980,8 @@ export function PlaylistView({
                         </button>
                       </div>
                     );
-                  })}
+                  }}
+                />
               </div>
             </div>
           </div>

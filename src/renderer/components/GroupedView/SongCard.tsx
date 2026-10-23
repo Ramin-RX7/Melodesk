@@ -13,6 +13,9 @@ type Props = {
   onContextMenu?: (e: React.MouseEvent) => void;
 };
 
+// Height of a card of the given width (square cover plus title and artist), for virtual grids.
+export const SONG_CARD_HEIGHT = (width: number) => width + 47;
+
 export function SongCard({
   song,
   currentTrack,
@@ -37,6 +40,8 @@ export function SongCard({
       <div className={styles.songImage}>
         {song.metadata?.picture ? (
           <img
+            loading="lazy"
+            decoding="async"
             src={`media://${encodeURIComponent(song.metadata.picture)}`}
             className={styles.coverImage}
           />

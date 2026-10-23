@@ -163,6 +163,23 @@ const savePlaylist = (playlist: Playlist) => {
   broadcastPlaylistsChanged();
 };
 
+// Rewrites song paths in every playlist (songs that were moved or renamed); saves only the
+// playlists that changed.
+export const replaceSongPaths = (replace: (songPath: string) => string) => {
+  let changed = false;
+  for (const playlist of getAllPlaylists()) {
+    const songs = playlist.songs.map(replace);
+    if (songs.every((song, i) => song === playlist.songs[i])) continue;
+    writeJson(
+      path.join(PLAYLISTS_DIR, `${playlist.id}.json`),
+      { ...playlist, songs },
+      { pretty: true },
+    );
+    changed = true;
+  }
+  if (changed) broadcastPlaylistsChanged();
+};
+
 // Song titles for messages (from the library cache), falling back to the file name.
 const songNames = (paths: string[]): string[] => {
   const cache = getCache();

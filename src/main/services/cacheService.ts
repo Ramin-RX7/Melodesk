@@ -11,7 +11,16 @@ const CACHE_PATH = path.join(app.getPath("userData"), "library_cache.json");
 // (e.g. the play tracker) reference songs by a stable key.
 export type CacheMap = Record<string, FileItem>;
 
+// Read from disk once, then kept in memory and replaced by saveCache. Callers must not modify
+// the returned map; copy it first.
+let memory: CacheMap | null = null;
+
 export const getCache = (): CacheMap => {
+  memory ??= readCache();
+  return memory;
+};
+
+const readCache = (): CacheMap => {
   // The cache is rebuilt by the next scan, so a damaged one is replaced without bothering the user.
   const parsed = readJson<CacheMap | FileItem[] | null>(CACHE_PATH, null, {
     label: "library cache",
@@ -42,15 +51,16 @@ export const getCacheList = (): FileItem[] => {
   return Object.values(getCache());
 };
 
-// Accepts the freshly scanned list, assigns each item its hash (mutating in
-// place so callers can broadcast the hashed items), and writes the hash->item map.
+// Accepts the freshly scanned list, gives new songs their id (mutating in place so callers can
+// broadcast the items) and writes the map. The map is keyed by location (hashPath of the current
+// path); a song's `hash` is its id, which it keeps when the file is moved (see songMoves.ts).
 export const saveCache = (items: FileItem[]) => {
   const map: CacheMap = {};
   for (const item of items) {
-    const hash = hashPath(item.path);
-    item.hash = hash;
-    map[hash] = item;
+    item.hash ??= hashPath(item.path);
+    map[hashPath(item.path)] = item;
   }
+  memory = map;
   // Unformatted to keep it small; no .bak because a lost cache is simply rebuilt by a scan.
   if (writeJson(CACHE_PATH, map, { backup: false })) {
     console.log(`Saved ${items.length} items to cache.`);

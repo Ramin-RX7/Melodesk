@@ -73,6 +73,25 @@ export function usePlaybackController({
     }
   };
 
+  // The loaded song's file was moved or renamed: load it from its new path and carry on from the
+  // same position. The play tracker keeps counting it as the same listen (data-relocating).
+  const relocateCurrent = (fromPath: string, toPath: string) => {
+    const audio = audioRef.current;
+    if (!audio || loadedFilePath() !== fromPath.replace(/\\/g, "/")) return;
+    const position = audio.currentTime;
+    const wasPlaying = !audio.paused;
+    audio.dataset.relocating = "true";
+    audio.src = `media://${encodeURIComponent(toPath.replace(/\\/g, "/"))}`;
+    audio.addEventListener(
+      "loadedmetadata",
+      () => {
+        audio.currentTime = position;
+        if (wasPlaying) startPlayback();
+      },
+      { once: true },
+    );
+  };
+
   // Path of the file the <audio> element is loading, or null when no song is loaded.
   const loadedFilePath = (): string | null => {
     const src = audioRef.current?.getAttribute("src");
@@ -393,5 +412,6 @@ export function usePlaybackController({
     handleAudioError,
     handleAudioPlay,
     handleAudioPlaying,
+    relocateCurrent,
   };
 }

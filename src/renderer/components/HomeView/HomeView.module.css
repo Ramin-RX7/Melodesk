@@ -91,12 +91,6 @@
   padding-bottom: 10px;
 }
 
-.fullGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 18px;
-}
-
 .backButton {
   background: none;
   border: 1px solid var(--border);

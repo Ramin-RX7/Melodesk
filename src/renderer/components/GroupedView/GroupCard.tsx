@@ -16,6 +16,9 @@ type Props = {
 
 // `picture` is resolved by the parent: an artist's custom picture (useArtistPictures) or the
 // cover art of one of the group's songs.
+// Height of a card (fixed-size picture plus name and count), for virtual grids.
+export const GROUP_CARD_HEIGHT = 204;
+
 export function GroupCard({ type, name, count, picture, onClick, onContextMenu }: Props) {
   const displayPicture = picture;
 
@@ -29,6 +32,8 @@ export function GroupCard({ type, name, count, picture, onClick, onContextMenu }
       >
         {displayPicture ? (
           <img
+            loading="lazy"
+            decoding="async"
             src={`media://${encodeURIComponent(displayPicture.replace(/\\/g, "/"))}`}
             className={styles.coverImage}
           />

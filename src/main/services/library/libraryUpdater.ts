@@ -1,11 +1,14 @@
 import { BrowserWindow } from "electron";
 import fs from "fs";
 
+import { getAllArtistPictures } from "../../ipc/artistHandlers";
+import { cleanArtCache, prepareArtCache } from "../artCacheService";
 import { getConfig } from "../configService";
 import { LibraryScanStatus } from "../../../renderer/types";
 import { CacheMap, getCache, saveCache } from "../cacheService";
 import { scanLibrary } from "../library/libraryScanner";
 import { outermostFolders } from "./libraryPaths";
+import { applyMoves, detectMoves } from "./songMoves";
 
 // Only one library update runs at a time: starting a new one aborts the previous run, which
 // then exits without touching the cache.
@@ -44,14 +47,19 @@ export const updateLibrary = async () => {
     );
     const allFiles = await scanLibrary(dirs, {
       signal: controller.signal,
-      previous: (known ??= getCache()),
+      previous: (known ??= { ...getCache() }),
       onProgress: (progress) => {
         if (current === controller) setStatus({ scanning: true, ...progress });
       },
     });
     if (controller.signal.aborted) return;
 
+    await prepareArtCache(allFiles);
+    if (controller.signal.aborted) return;
+    // From here on nothing awaits, so a newer run can't interleave with saving.
+    const moves = detectMoves(getCache(), allFiles);
     saveCache(allFiles);
+    cleanArtCache(allFiles, Object.values(getAllArtistPictures()));
     known = null;
     console.log(
       `Library update complete. Found ${allFiles.length} files in ${Date.now() - startedAt} ms.`,
@@ -59,6 +67,7 @@ export const updateLibrary = async () => {
     BrowserWindow.getAllWindows().forEach((win) => {
       win.webContents.send("library-updated", allFiles);
     });
+    applyMoves(moves);
   } catch (error) {
     if (controller.signal.aborted) {
       console.log("Library update cancelled.");

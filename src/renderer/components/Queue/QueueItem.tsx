@@ -72,6 +72,8 @@ export function QueueItem({
       >
         {track.metadata?.picture ? (
           <img
+            loading="lazy"
+            decoding="async"
             src={`media://${encodeURIComponent(track.metadata.picture)}`}
             style={{
               width: "100%",

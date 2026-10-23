@@ -21,6 +21,18 @@ export const saveSession = (data: Partial<SessionData>): void => {
   writeSession({ ...existing, ...data });
 };
 
+// Rewrites song paths in the saved queue (songs that were moved or renamed).
+export const replaceSessionPaths = (replace: (songPath: string) => string): void => {
+  const existing = getSession();
+  if (!existing?.queue) return;
+  writeSession({
+    ...existing,
+    queue: existing.queue.map(replace),
+    shuffledQueue: (existing.shuffledQueue ?? []).map(replace),
+    currentTrackPath: existing.currentTrackPath && replace(existing.currentTrackPath),
+  });
+};
+
 export const clearSession = (): void => {
   // Only clear playback state; window bounds persist independently of the restore-session setting.
   const existing = getSession();

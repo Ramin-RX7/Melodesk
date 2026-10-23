@@ -200,6 +200,8 @@ export function GlobalSearch({
                       <div className={styles.songThumb}>
                         {song.metadata?.picture ? (
                           <img
+                            loading="lazy"
+                            decoding="async"
                             src={`media://${encodeURIComponent(song.metadata.picture)}`}
                             className={styles.thumbImg}
                           />

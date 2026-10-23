@@ -1,15 +1,13 @@
-import { app } from "electron";
 import fs from "fs";
 import path from "path";
-import crypto from "crypto";
 
-const ART_CACHE_DIR = path.join(app.getPath("userData"), "art_cache");
+import { ART_CACHE_DIR, contentHash } from "./artCacheService";
 
-export const saveArt = (buffer: Buffer, format: string, filePath: string): string | undefined => {
+// Named after the image itself (see artCacheService), so the file is only written once.
+export const saveArt = (buffer: Buffer, format: string): string | undefined => {
   try {
-    const hash = crypto.createHash("md5").update(filePath).digest("hex");
     const ext = format.split("/")[1] || "jpg";
-    const artPath = path.join(ART_CACHE_DIR, `${hash}.${ext}`);
+    const artPath = path.join(ART_CACHE_DIR, `${contentHash(buffer)}.${ext}`);
 
     if (!fs.existsSync(artPath)) {
       fs.writeFileSync(artPath, buffer);

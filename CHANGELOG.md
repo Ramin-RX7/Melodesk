@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Adding songs to a playlist now tells you which ones are already in it, and lets you add them anyway, skip them or cancel.
 - Playlists have a "Remove Duplicates" button (asks first, keeps the first copy of each song).
 - An "Unknown Artist" page on the Artists tab gathers all songs without an artist tag; "Go to Artist" and the song details page lead there for such songs.
+- Moving or renaming song files no longer loses them: their play counts and history are kept, playlists and the queue follow them to the new location, and a song that's playing carries on. This also works for files moved while MeloDesk was closed, and for songs that leave your library and come back later.
 
 ### Changed
 
@@ -34,6 +35,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - If songs from your last session are no longer in your library, you're told how many were removed from the restored queue.
 - Rescanning the library only re-reads songs that were added or changed since the last scan, so refreshes and restarts are much faster.
 - Library folders open instantly, even large ones.
+- Long lists open instantly and scroll smoothly, even with thousands of songs: the queue, playlists, the "Add Songs" list, the Artists, Albums and Genres pages and Home's "Show all" pages. Covers load as they come into view.
+- The Artists, Albums, Genres and Playlists pages respond faster in large libraries.
+- Cover art takes less disk space: songs from the same album share one image, and images that are no longer used are removed automatically.
 
 ### Fixed
 
@@ -59,6 +63,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - "Go to Album" is unavailable for songs without an album, instead of opening an empty page.
 - Search ignores spaces at the start or end of what you type, so artists and albums no longer disappear from the results while you're typing (e.g. "alan ").
 - A quick click on the mini-player can no longer leave the window following the mouse pointer.
+- A song's cover updates when its embedded art is changed in another program.
+- Replacing an artist picture no longer leaves the old image behind on disk.
 
 ## [0.2.0] - 2026-10-23
 

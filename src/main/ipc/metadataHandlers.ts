@@ -3,7 +3,11 @@ import path from "path";
 
 import { isMediaFile } from "../services/library/mediaUtils";
 import { extractMetadata, saveArt } from "../services/metadataService";
+import { getCache } from "../services/cacheService";
 import { hashPath } from "../services/hashUtil";
+
+// A library song keeps its id after being moved, so it's taken from the cache when known.
+const songId = (filePath: string) => getCache()[hashPath(filePath)]?.hash ?? hashPath(filePath);
 
 export function registerMetadataHandlers() {
   let musicMetadataModule: any = null;
@@ -21,7 +25,7 @@ export function registerMetadataHandlers() {
       let artPath = undefined;
       if (metadata.common.picture && metadata.common.picture.length > 0) {
         const pic = metadata.common.picture[0];
-        artPath = saveArt(Buffer.from(pic.data), pic.format, filePath);
+        artPath = saveArt(Buffer.from(pic.data), pic.format);
       }
 
       return {
@@ -29,7 +33,7 @@ export function registerMetadataHandlers() {
         path: filePath,
         isDirectory: false,
         isMedia: true,
-        hash: hashPath(filePath),
+        hash: songId(filePath),
         metadata: extractMetadata(metadata, filePath, artPath),
       };
     } catch (err) {
@@ -39,7 +43,7 @@ export function registerMetadataHandlers() {
         path: filePath,
         isDirectory: false,
         isMedia: true,
-        hash: hashPath(filePath),
+        hash: songId(filePath),
       };
     }
   });

@@ -1,8 +1,8 @@
 import React, { useMemo } from "react";
 import { FileItem } from "../../types";
+import { VirtualGrid } from "../VirtualGrid";
 import { normalizeGenre } from "../../../utils/metadata";
-import styles from "./GroupedView.module.css";
-import { GroupCard } from "./GroupCard";
+import { GROUP_CARD_HEIGHT, GroupCard } from "./GroupCard";
 import { GroupType } from "./types";
 
 type Props = {
@@ -48,10 +48,14 @@ export function GroupList({
   const covers = useMemo(() => buildCoverMap(allTracks, type), [allTracks, type]);
 
   return (
-    <div className={styles.grid}>
-      {entries.map(([name, count]) => (
+    <VirtualGrid
+      items={entries}
+      minItemWidth={180}
+      gap={25}
+      estimateRowHeight={GROUP_CARD_HEIGHT}
+      getKey={([name]) => name}
+      renderItem={([name, count]) => (
         <GroupCard
-          key={name}
           type={type}
           name={name}
           count={count}
@@ -59,7 +63,7 @@ export function GroupList({
           onClick={() => onSelect(name)}
           onContextMenu={onContextMenu ? (e) => onContextMenu(e, name) : undefined}
         />
-      ))}
-    </div>
+      )}
+    />
   );
 }

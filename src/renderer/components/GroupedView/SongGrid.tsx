@@ -1,6 +1,7 @@
 import { FileItem, UserConfig } from "../../types";
+import { VirtualGrid } from "../VirtualGrid";
 import { GroupType } from "./types";
-import { SongCard } from "./SongCard";
+import { SONG_CARD_HEIGHT, SongCard } from "./SongCard";
 import styles from "./GroupedView.module.css";
 
 type Props = {
@@ -30,10 +31,14 @@ export function SongGrid({
 
   return (
     <div className={styles.page}>
-      <div className={styles.grid}>
-        {songs.map((song) => (
+      <VirtualGrid
+        items={songs}
+        minItemWidth={180}
+        gap={25}
+        estimateRowHeight={SONG_CARD_HEIGHT}
+        getKey={(song) => song.path}
+        renderItem={(song) => (
           <SongCard
-            key={song.path}
             song={song}
             currentTrack={currentTrack}
             themeColor={themeColor}
@@ -45,8 +50,8 @@ export function SongGrid({
             }}
             onContextMenu={(e) => onContextMenu?.(e, song)}
           />
-        ))}
-      </div>
+        )}
+      />
     </div>
   );
 }

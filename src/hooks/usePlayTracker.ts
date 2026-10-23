@@ -72,7 +72,12 @@ export function usePlayTracker(
 
     // The same song loaded again (picked again, or repeat-all over a one-song queue) is a new
     // listen: the path doesn't change, so this effect doesn't re-run, but the element reloads.
+    // A song whose file was moved continues where it was (see relocateCurrent): same listen.
     const onLoadStart = () => {
+      if (audio.dataset.relocating) {
+        delete audio.dataset.relocating;
+        return;
+      }
       listenedRef.current = 0;
       lastTimeRef.current = 0;
       countedRef.current = false;
@@ -86,5 +91,6 @@ export function usePlayTracker(
       audio.removeEventListener("seeked", onSeeked);
       audio.removeEventListener("loadstart", onLoadStart);
     };
-  }, [audioRef, currentTrack?.path, currentTrack?.hash, thresholdPercent]);
+    // Keyed on the song id, not the path: a moved song is still the same song.
+  }, [audioRef, currentTrack?.hash ?? currentTrack?.path, thresholdPercent]);
 }

@@ -4,8 +4,9 @@ import { IoShuffle, IoArrowBack } from "react-icons/io5";
 import { FileItem, PlayRecord, UserConfig } from "../../types";
 import { normalizeGenre } from "../../../utils/metadata";
 import { useArtistPictures } from "../../../hooks/useArtistPictures";
-import { SongCard } from "../GroupedView/SongCard";
-import { GroupCard } from "../GroupedView/GroupCard";
+import { SONG_CARD_HEIGHT, SongCard } from "../GroupedView/SongCard";
+import { GROUP_CARD_HEIGHT, GroupCard } from "../GroupedView/GroupCard";
+import { VirtualGrid } from "../VirtualGrid";
 import styles from "./HomeView.module.css";
 
 interface HomeViewProps {
@@ -23,6 +24,18 @@ interface HomeViewProps {
   detail: HomeDetailKey | null;
   onOpenDetail: (key: HomeDetailKey) => void;
   onCloseDetail: () => void;
+}
+
+// Grid of a "Show all" page; only the rows on screen are rendered.
+function FullGrid<T>(props: {
+  items: T[];
+  getKey: (item: T, index: number) => React.Key;
+  renderItem: (item: T) => React.ReactNode;
+  estimateRowHeight?: number;
+}) {
+  return (
+    <VirtualGrid minItemWidth={170} gap={18} estimateRowHeight={SONG_CARD_HEIGHT} {...props} />
+  );
 }
 
 const DEFAULT_PREVIEW_LIMIT = 10;
@@ -241,29 +254,42 @@ export function HomeView({
     recent: {
       title: "Recently Played",
       render: () => (
-        <div className={styles.fullGrid}>
-          {recentlyPlayed.map((s) => renderSongCard(s, recentlyPlayed))}
-        </div>
+        <FullGrid
+          items={recentlyPlayed}
+          getKey={(s, i) => `${s.path}-${i}`}
+          renderItem={(s) => renderSongCard(s, recentlyPlayed)}
+        />
       ),
     },
     "most-played": {
       title: "Most Played",
       render: () => (
-        <div className={styles.fullGrid}>
-          {mostPlayed.map((s) => renderSongCard(s, mostPlayed))}
-        </div>
+        <FullGrid
+          items={mostPlayed}
+          getKey={(s) => s.path}
+          renderItem={(s) => renderSongCard(s, mostPlayed)}
+        />
       ),
     },
     "popular-artists": {
       title: "Most Popular Artists",
-      render: () => <div className={styles.fullGrid}>{popularArtists.map(renderArtistCard)}</div>,
+      render: () => (
+        <FullGrid
+          items={popularArtists}
+          getKey={(a) => a.name}
+          renderItem={renderArtistCard}
+          estimateRowHeight={GROUP_CARD_HEIGHT}
+        />
+      ),
     },
     "never-played": {
       title: "Never Played",
       render: () => (
-        <div className={styles.fullGrid}>
-          {neverPlayed.map((s) => renderSongCard(s, neverPlayed))}
-        </div>
+        <FullGrid
+          items={neverPlayed}
+          getKey={(s) => s.path}
+          renderItem={(s) => renderSongCard(s, neverPlayed)}
+        />
       ),
     },
   };
@@ -280,7 +306,9 @@ export function HomeView({
             <h2 className={styles.title}>{cfg.title}</h2>
           </div>
         </div>
-        <div className={styles.scrollArea}>{cfg.render()}</div>
+        <div className={styles.scrollArea} ref={scrollAreaRef}>
+          {cfg.render()}
+        </div>
       </div>
     );
   }

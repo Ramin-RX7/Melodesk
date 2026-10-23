@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { IoSearch, IoSwapVertical, IoShuffle, IoCreate, IoSave, IoImage } from "react-icons/io5";
 
 import { FileItem, UserConfig, ArtistInfo } from "../../types";
@@ -144,15 +144,42 @@ export function GroupedView({
     }
   };
 
-  if (selectedGroup) {
-    const songs = getFilteredSongs(
+  // Both walk the whole library, so they're only recomputed when their inputs change, not on
+  // every redraw (playback, toasts…). getGroupEntries only reads minSongsForAlbum from config.
+  const minSongsForAlbum = config?.minSongsForAlbum;
+  const songs = useMemo(
+    () =>
+      selectedGroup
+        ? getFilteredSongs(allTracks, selectedGroup.name, type, searchQuery, sortDescending)
+        : [],
+    [allTracks, selectedGroup, type, searchQuery, sortDescending],
+  );
+  const entries = useMemo(
+    () =>
+      selectedGroup
+        ? []
+        : getGroupEntries(
+            allTracks,
+            type,
+            searchQuery,
+            sortBy,
+            sortDescending,
+            normalizeGenre,
+            config,
+          ),
+    [
       allTracks,
-      selectedGroup.name,
+      selectedGroup,
       type,
       searchQuery,
+      sortBy,
       sortDescending,
-    );
+      normalizeGenre,
+      minSongsForAlbum,
+    ],
+  );
 
+  if (selectedGroup) {
     return (
       <div className={styles.container}>
         {/* HEADER */}
@@ -405,16 +432,6 @@ export function GroupedView({
       </div>
     );
   }
-
-  const entries = getGroupEntries(
-    allTracks,
-    type,
-    searchQuery,
-    sortBy,
-    sortDescending,
-    normalizeGenre,
-    config,
-  );
 
   return (
     <div className={styles.container}>

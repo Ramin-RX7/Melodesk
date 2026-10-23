@@ -35,6 +35,7 @@
     "url": "https://github.com/Ramin-RX7/Melodesk.git"
   },
   "devDependencies": {
+    "@tanstack/react-virtual": "^3.14.22",
     "@types/node": "^25.9.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

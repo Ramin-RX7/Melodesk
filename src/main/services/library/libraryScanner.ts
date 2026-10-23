@@ -115,7 +115,7 @@ const readMediaFile = async (fullPath: string, stats: fs.Stats): Promise<FileIte
     let artPath = undefined;
     if (metadata.common.picture && metadata.common.picture.length > 0) {
       const pic = metadata.common.picture[0];
-      artPath = saveArt(Buffer.from(pic.data), pic.format, fullPath);
+      artPath = saveArt(Buffer.from(pic.data), pic.format);
     }
     item.metadata = extractMetadata(metadata, fullPath, artPath);
   } catch (err) {

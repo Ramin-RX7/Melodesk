@@ -17,7 +17,7 @@ Scope today is **audio only** (`.mp3 .wav .ogg .m4a .flac`). Video playback is n
 | Layer | Tech                                                                                                                        |
 | ----- | --------------------------------------------------------------------------------------------------------------------------- |
 | Shell | Electron 29 (frameless `BrowserWindow`, `contextIsolation`, `sandbox: true`)                                                |
-| UI    | React 19 function components, inline styles + some CSS Modules, `react-icons`                                               |
+| UI    | React 19 function components, inline styles + some CSS Modules, `react-icons`, `@tanstack/react-virtual` (long lists)       |
 | Build | `tsc` (main + preload → CommonJS in `dist/`), Vite 8 (renderer → `dist/renderer/`), electron-builder (installers)           |
 | Media | `music-metadata` (read tags), `node-id3` (write tags), `chokidar` (folder watcher), HTML5 `<audio>` + Web Audio (equalizer) |
 | Node  | `^20.19.0 \|\| >=22.12.0` (`engines`, required by Vite 8); `.nvmrc` pins `24.22.1`                                          |
@@ -244,7 +244,31 @@ Path checks use `libraryPaths.ts`: whole path segments, case-insensitive on Wind
 1. **Discovering:** lists every media file (`isMediaFile()`) under the configured folders.
 2. **Reading:** for each file, `stat`s it. If its `mtime` and size match the entry in `previous`, that entry is **reused**. Otherwise the file's tags are parsed with `music-metadata` and its cover art saved to `userData/art_cache/`.
 
-`previous` is the updater's in-memory `known` map: the cache plus every file parsed since the last save. A cancelled run's work is therefore reused by the next run. On success, `saveCache()` assigns hashes and writes the cache, then `library-updated` is broadcast with the full list.
+`previous` is the updater's in-memory `known` map: a copy of the cache plus every file parsed since the last save. A cancelled run's work is therefore reused by the next run. On success, `updateLibrary` (nothing awaits from move detection on, so a newer run can't interleave):
+
+1. `prepareArtCache` converts covers from the old path-named format once (see Cover art below);
+2. `detectMoves(getCache(), allFiles)` (`songMoves.ts`) recognises moved and renamed files (see Song identity below);
+3. `saveCache()` gives new songs their id and writes the cache;
+4. `cleanArtCache` deletes unused art;
+5. `library-updated` is broadcast with the full list;
+6. `applyMoves` points playlists and the session at moved files and shows a toast.
+
+**Song identity (moves and renames).** A song's id is `FileItem.hash`. It is created as `hashPath(path)` when the song first enters the library and then **kept**, so it can differ from `hashPath(song.path)`. The cache map stays keyed by location (`hashPath(path)`), so path lookups keep working. During a scan:
+
+- a song that vanished and a new file with the same size, rounded duration, title, artists and album are taken to be the same file: the new file takes over the old id (prefer the same file name when several match; skip when it's still ambiguous; never give one id out twice);
+- vanished songs that weren't matched go to `removed_songs.json` (`removedSongsService.ts`, kept forever) and are matched the same way when a file comes back later;
+- play counts and history are keyed by id, so they need no change; playlists (`replaceSongPaths`) and the session (`replaceSessionPaths`) are rewritten to the new paths.
+
+A copy is a new song (nothing vanished), and a file that is moved and re-tagged or re-encoded at once can't be recognised. In the renderer, `App.tsx` swaps queue songs by path, then by id; if the playing song moved, `relocateCurrent` reloads it from the new path at the same position (the `data-relocating` flag stops `usePlayTracker` treating it as a new listen).
+
+**Cover art** (`artCacheService.ts`) lives in `art_cache/`, named after a sha1 of the image itself (`saveArt`, artist pictures `artist_<sha1>.<ext>`):
+
+- a changed cover gets a new file, and an album's songs share one;
+- after each scan, files that no cache entry or artist uses are deleted once they're a day old (younger ones may belong to a song played from outside the library, or an artist picture picked but not saved yet);
+- replacing an artist picture deletes the old file right away unless another artist uses it;
+- older versions named covers after the song's path; the first scan converts them (asynchronously) and writes `art_cache/.version`.
+
+`getCache()` reads the file once and then serves an in-memory map that `saveCache` replaces. **Never modify the returned map**; copy it first (as `updateLibrary` does for `known`).
 
 Progress is throttled to about every 150 ms and sent as `library-scan-status` (`LibraryScanStatus`); `get-library-scan-status` returns the current value, since the startup scan begins before the window exists. The renderer reads it with `useLibraryScanStatus`, and `TitleBar/ScanIndicator` shows it.
 
@@ -333,10 +357,8 @@ Shared non-UI code imported by both processes lives in `src/utils/` (`configServ
 
 Songs are identified in two ways:
 
-- by **`hash`**, which the library cache and the play tracker key on;
-- by **`path`**, which playlists, the session and the queue store as absolute file paths.
-
-Both are derived from the file location, so **moving or renaming a file drops it from playlists and resets its play count.**
+- by **`hash`**, the song's id: the play tracker keys on it, and it is **kept when the file is moved or renamed** (§6 → Song identity). Use it for "is this the same song";
+- by **`path`**, the file's current location: playlists, the session and the queue store absolute paths, and the library cache is keyed by `hashPath(path)`. A detected move rewrites the stored paths.
 
 ### Persistence (`app.getPath("userData")`)
 
@@ -348,15 +370,16 @@ The folder is named after `package.json` → `name` (`melodesk`), in both dev an
 
 To test against a throwaway profile without touching the real one, launch with `electron . --user-data-dir=<some folder>`.
 
-| File / dir                                                      | Owner                                       | Contents                                                                                                         |
-| --------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `config.json`                                                   | `services/configService.ts`                 | `UserConfig`. `getConfig()` shallow-merges over `DEFAULT_CONFIG`; `appearance` and `keybindings` are deep-merged |
-| `library_cache.json`                                            | `services/cacheService.ts`                  | `{ [hash]: FileItem }` (migrates the legacy array format)                                                        |
-| `session.json`                                                  | `services/sessionService.ts`                | Queue / shuffle / repeat / current track path and playback `position`, plus normal and mini window bounds        |
-| `tracker/play_counts.json`, `tracker/play_history/YYYY-MM.json` | `services/trackerService.ts`                | Play counts by hash; monthly play logs                                                                           |
-| `playlists/<id>.json`                                           | `ipc/playlistHandlers.ts`                   | One file per playlist                                                                                            |
-| `artists/<md5(name)>.json`                                      | `ipc/artistHandlers.ts`                     | Artist bio + picture                                                                                             |
-| `art_cache/`                                                    | `metadataService.saveArt` / artist handlers | Extracted cover art and artist images                                                                            |
+| File / dir                                                      | Owner                             | Contents                                                                                                                                 |
+| --------------------------------------------------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `config.json`                                                   | `services/configService.ts`       | `UserConfig`. `getConfig()` shallow-merges over `DEFAULT_CONFIG`; `appearance` and `keybindings` are deep-merged                         |
+| `library_cache.json`                                            | `services/cacheService.ts`        | `{ [hashPath(path)]: FileItem }`, each item carrying its id in `hash` (migrates the legacy array format); read once, then kept in memory |
+| `removed_songs.json`                                            | `services/removedSongsService.ts` | Songs that left the library, by id (path, size, duration, title, artists, album), so a returning file gets its id back                   |
+| `session.json`                                                  | `services/sessionService.ts`      | Queue / shuffle / repeat / current track path and playback `position`, plus normal and mini window bounds                                |
+| `tracker/play_counts.json`, `tracker/play_history/YYYY-MM.json` | `services/trackerService.ts`      | Play counts by hash; monthly play logs                                                                                                   |
+| `playlists/<id>.json`                                           | `ipc/playlistHandlers.ts`         | One file per playlist                                                                                                                    |
+| `artists/<md5(name)>.json`                                      | `ipc/artistHandlers.ts`           | Artist bio + picture                                                                                                                     |
+| `art_cache/`                                                    | `services/artCacheService.ts`     | Cover art and artist images, named after their content; unused files are cleaned after scans; `.version` marks the one-time conversion   |
 
 **All JSON persistence goes through `main/services/jsonStore.ts`.** Never `fs.writeFileSync` a data file directly.
 
@@ -410,6 +433,7 @@ src/
 │   ├── useLibrary.ts                # Subscribes to library-updated events; loads directory trees
 │   ├── useLibraryScanStatus.ts      # Live LibraryScanStatus (initial fetch + library-scan-status events)
 │   ├── useToasts.ts                 # Toast list: showToast/dismissToast + main-process "notification" events
+│   ├── useVirtualGrid.ts            # Renders only the visible rows of a long list / card grid (@tanstack/react-virtual)
 │   └── usePlayTracker.ts            # Records a play (window.api.recordPlay) once a configurable % is actually listened to
 │
 ├── types/
@@ -480,6 +504,7 @@ src/
 │       │   ├── types.ts             # GroupType, GroupSortBy, SelectedGroup
 │       │   └── GroupedView.module.css
 │       │
+│       ├── VirtualGrid.tsx          # Virtualized card grid / one-column list (wraps useVirtualGrid)
 │       ├── PlaybackBar.tsx          # Bottom control bar — track info, play controls, progress, volume, repeat/shuffle, lyrics/queue
 │       │
 │       ├── Queue/
@@ -518,10 +543,12 @@ src/
     └── services/
         ├── configService.ts         # Loads/saves userData/config.json; DEFAULT_CONFIG schema lives here
         ├── notifyService.ts         # notify(level, message) — toast in every window; queues early ones
+        ├── artCacheService.ts       # art_cache/: content-named covers, cleanup of unused art, old-format conversion
+        ├── removedSongsService.ts   # userData/removed_songs.json — songs that left the library (kept to recognise returns)
         ├── jsonStore.ts             # readJson/writeJson: atomic writes, .bak backups, .corrupt + restore
-        ├── cacheService.ts          # userData/library_cache.json — hash-keyed FileItem map (migrates legacy array format)
+        ├── cacheService.ts          # userData/library_cache.json — location-keyed FileItem map, kept in memory
         ├── metadataService.ts       # Tag extraction helpers (artists splitting, extractMetadata); saves album art
-        ├── hashUtil.ts              # hashPath() — stable sha1 song id derived from the (normalized) file path
+        ├── hashUtil.ts              # hashPath() — sha1 of the normalized path (cache key; a new song's first id)
         ├── sessionService.ts        # userData/session.json — playback state + window/mini-window bounds
         ├── trackerService.ts        # userData/tracker/ — play_counts.json + monthly play_history
         │
@@ -530,6 +557,8 @@ src/
             ├── libraryUpdater.ts    # updateLibrary(): one scan at a time (aborts the previous), scan status, saves cache
             ├── libraryWatcher.ts    # Chokidar watcher on library paths (audio files + folders only); debounced
             │                        #   (2s) → notifies the user with a summary, then runs updateLibrary()
+            ├── songMoves.ts         # detectMoves() / applyMoves(): moved or renamed files keep their id;
+            │                        #   playlists + session follow them
             ├── libraryPaths.ts      # isSamePath / isSameOrInside (segment-aware, case-insensitive on Windows),
             │                        #   outermostFolders() — library folders never overlap
             └── mediaUtils.ts        # isMediaFile() — supported extensions
@@ -551,6 +580,9 @@ Paths are relative to `src/`.
 | **Play counts / stats / Home page**                   | `components/HomeView/HomeView.tsx`                                                             | `hooks/usePlayTracker.ts`, `main/services/trackerService.ts`, `ipc/trackerHandlers.ts`                                                      |
 | **Library scanning, supported formats, watcher**      | `main/services/library/*`                                                                      | `mediaUtils.ts` (extensions), `protocols/mediaProtocol.ts` (MIME types; add new formats in **both**)                                        |
 | **Library scan progress / cancellation**              | `main/services/library/libraryUpdater.ts`, `libraryScanner.ts`                                 | `hooks/useLibraryScanStatus.ts`, `components/TitleBar/ScanIndicator.tsx`, `LibraryScanStatus` in `types.d.ts`                               |
+| **Moved / renamed files, song ids**                   | `main/services/library/songMoves.ts`                                                           | `removedSongsService.ts`, `cacheService.saveCache`, `App.tsx` `allTracks` effect, `usePlaybackController.relocateCurrent`                   |
+| **Cover art files, art cache size**                   | `main/services/artCacheService.ts`                                                             | `metadataService.saveArt`, `ipc/artistHandlers.ts` (`select-artist-image`, `update-artist-info`)                                            |
+| **Long lists / grids are slow**                       | `hooks/useVirtualGrid.ts`, `components/VirtualGrid.tsx`                                        | Card heights: `SONG_CARD_HEIGHT` (`SongCard.tsx`), `GROUP_CARD_HEIGHT` (`GroupCard.tsx`)                                                    |
 | **Messages to the user (toasts)**                     | `hooks/useToasts.ts`, `components/Toasts/Toasts.tsx`                                           | `main/services/notifyService.ts` (from main), `AppNotification` in `types.d.ts`                                                             |
 | **Missing / unplayable files**                        | `usePlaybackController.ts` (`handleAudioPlay`, `handleAudioError`)                             | `useAudioPlayer.startPlayback`, `file-exists` in `libraryHandlers.ts`                                                                       |
 | **Start page** (empty library → Library tab)          | `App.tsx` `init()`                                                                             | —                                                                                                                                           |
@@ -631,6 +663,7 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 - **State lives in `App.tsx`** and flows down as props; there is no context or store. Hooks return large objects that `App.tsx` destructures. Keep that shape, and don't introduce Redux, Context or a router without asking.
 - `config` is `UserConfig | null` until loaded, so always guard it (`config?.x ?? fallback`). After `updateConfig`, call `setConfig(newConfig)` with the returned value.
 - **Playing songs from lists:** every song list plays on **double-click** when `config.doubleClickToPlay` (default `true`), else on single click: `onClick={() => !doubleClickToPlay && play()}` plus `onDoubleClick={() => doubleClickToPlay && play()}`. Pass the visible list as the queue (`handleFileSelect(song, list)` / `playTrack(song, list)`). The **Queue** page is the one exception: a single click there plays.
+- **Long lists are virtualized:** any list or card grid that can hold the whole library renders through `<VirtualGrid>` (or `useVirtualGrid` when the parent needs `scrollToItem`, like the Queue). It scrolls with the page's own scroll area, so `onScrollRef` and Back keep working. Keep `estimateRowHeight` accurate (a function of the column width for square-cover cards): a wrong estimate makes the scroll position jump and Back land a row off. Card heights live next to the cards (`SONG_CARD_HEIGHT`, `GROUP_CARD_HEIGHT`), so update them when a card's layout changes. List thumbnails use `loading="lazy"`.
 - **Adding songs to a playlist always goes through `window.api.addSongsToPlaylist(id, paths)`**, never `updatePlaylist` with a hand-built list. The main process asks about duplicates (add anyway / skip / cancel) and reports the result with a toast. Playlist changes are broadcast as `playlists-changed`, so open playlist pages reload by themselves.
 - **Artists:** use `artistsOf(song)` from `utils/metadata.ts` (never `metadata.artists` directly) for grouping and navigation. Songs without an artist tag belong to `UNKNOWN_ARTIST`, a special group listed last, without bio or picture editing. Album links are only offered for songs that have an album.
 - **Forms that edit saved data** (e.g. the artist bio) must cancel and reset when the user navigates away or the subject changes, so a draft is never saved onto the wrong item.

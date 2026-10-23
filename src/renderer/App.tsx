@@ -185,6 +185,7 @@ export default function App() {
     handleAudioError,
     handleAudioPlay,
     handleAudioPlaying,
+    relocateCurrent,
   } = usePlaybackController({
     config,
     queueState,
@@ -202,13 +203,19 @@ export default function App() {
     }
   }, [config?.libraryPaths, selectedLibraryPath]);
 
-  // After a library update, swap the queue's song objects for the fresh ones (same path) so
-  // the queue, playback bar and details page show current tags. Songs no longer in the library
-  // stay as they are.
+  // After a library update, swap the queue's song objects for the fresh ones (same path, or same
+  // song id for a file that was moved or renamed) so the queue, playback bar and details page
+  // show current tags and paths. Songs no longer in the library stay as they are.
   useEffect(() => {
     if (allTracks.length === 0) return;
     const byPath = new Map(allTracks.map((t) => [t.path, t]));
-    const refresh = (t: FileItem) => byPath.get(t.path) ?? t;
+    const byId = new Map(allTracks.filter((t) => t.hash).map((t) => [t.hash!, t]));
+    const refresh = (t: FileItem): FileItem =>
+      byPath.get(t.path) ?? (t.hash ? byId.get(t.hash) : undefined) ?? t;
+    if (currentTrack) {
+      const fresh = refresh(currentTrack);
+      if (fresh.path !== currentTrack.path) relocateCurrent(currentTrack.path, fresh.path);
+    }
     setQueue((prev) => prev.map(refresh));
     setShuffledQueue((prev) => prev.map(refresh));
     setCurrentTrack((prev) => (prev ? refresh(prev) : prev));
