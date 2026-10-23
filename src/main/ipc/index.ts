@@ -8,7 +8,6 @@ import { registerShellHandlers } from "./shellHandlers";
 import { setupSessionHandlers } from "./sessionHandlers";
 import { registerTrackerHandlers } from "./trackerHandlers";
 
-
 export function registerIpcHandlers() {
   setupArtistHandlers();
   setupPlaylistHandlers();

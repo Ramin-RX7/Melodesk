@@ -14,7 +14,9 @@
   border-radius: 20px;
   padding: 6px 14px;
   gap: 8px;
-  transition: border-color 0.2s, width 0.2s;
+  transition:
+    border-color 0.2s,
+    width 0.2s;
   width: 200px;
 }
 
@@ -113,7 +115,9 @@
   cursor: pointer;
   padding: 2px 8px;
   border-radius: 10px;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .showMoreBtn:hover {

@@ -25,14 +25,22 @@ import { colors, buildRootCss, DEFAULT_PALETTE, DEFAULT_THEME_COLOR } from "./th
 import { applyPalette } from "./theme/applyTheme";
 import { getTheme, DEFAULT_THEME_ID } from "./theme/themes";
 
-
-type Page = 'home' | 'library' | 'artists' | 'genres' | 'albums' | 'playlists' | 'details' | 'queue' | 'settings';
-type GroupSortBy = 'alphabet' | 'count';
+type Page =
+  | "home"
+  | "library"
+  | "artists"
+  | "genres"
+  | "albums"
+  | "playlists"
+  | "details"
+  | "queue"
+  | "settings";
+type GroupSortBy = "alphabet" | "count";
 
 type NavSnapshot = {
   view: Page;
-  activeTab: Exclude<Page, 'details' | 'queue' | 'settings'>;
-  selectedGroup: { type: 'artist' | 'album' | 'genre', name: string } | null;
+  activeTab: Exclude<Page, "details" | "queue" | "settings">;
+  selectedGroup: { type: "artist" | "album" | "genre"; name: string } | null;
   searchQuery: string;
   sortBy: GroupSortBy;
   sortDescending: boolean;
@@ -43,23 +51,33 @@ type NavSnapshot = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Exclude<Page, 'details' | 'queue' | 'settings'>>('home');
-  const [view, setView] = useState<Page>('home');
+  const [activeTab, setActiveTab] =
+    useState<Exclude<Page, "details" | "queue" | "settings">>("home");
+  const [view, setView] = useState<Page>("home");
   const [config, setConfig] = useState<UserConfig | null>(null);
   const [tree, setTree] = useState<FileItem[]>([]);
   const [allTracks, setAllTracks] = useState<FileItem[]>([]);
   const [selectedLibraryPath, setSelectedLibraryPath] = useState<string | null>(null);
-  const [selectedGroup, setSelectedGroup] = useState<{ type: 'artist' | 'album' | 'genre', name: string } | null>(null);
+  const [selectedGroup, setSelectedGroup] = useState<{
+    type: "artist" | "album" | "genre";
+    name: string;
+  } | null>(null);
   const [currentTrack, setCurrentTrack] = useState<FileItem | null>(null);
   const [openLyricsOnDetails, setOpenLyricsOnDetails] = useState(false);
   const [isMini, setIsMini] = useState(false);
 
-  const enterMini = () => { setIsMini(true); window.api.enterMiniMode(); };
-  const exitMini = () => { setIsMini(false); window.api.exitMiniMode(); };
+  const enterMini = () => {
+    setIsMini(true);
+    window.api.enterMiniMode();
+  };
+  const exitMini = () => {
+    setIsMini(false);
+    window.api.exitMiniMode();
+  };
 
   const handleTrackUpdated = (updatedTrack: FileItem) => {
     setCurrentTrack(updatedTrack);
-    setAllTracks(prev => prev.map(t => t.path === updatedTrack.path ? updatedTrack : t));
+    setAllTracks((prev) => prev.map((t) => (t.path === updatedTrack.path ? updatedTrack : t)));
   };
 
   // Single source of truth for theme color fallback
@@ -67,7 +85,7 @@ export default function App() {
 
   // Search and Sort states
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortBy, setSortBy] = useState<GroupSortBy>('alphabet');
+  const [sortBy, setSortBy] = useState<GroupSortBy>("alphabet");
   const [sortDescending, setSortDescending] = useState(false);
 
   // Navigation history
@@ -114,11 +132,16 @@ export default function App() {
   // Queue and Playback States
   const queueState = useQueue(currentTrack);
   const {
-    queue, setQueue,
-    currentIndex, setCurrentIndex,
-    repeatMode, setRepeatMode,
-    isShuffle, setIsShuffle,
-    shuffledQueue, setShuffledQueue,
+    queue,
+    setQueue,
+    currentIndex,
+    setCurrentIndex,
+    repeatMode,
+    setRepeatMode,
+    isShuffle,
+    setIsShuffle,
+    shuffledQueue,
+    setShuffledQueue,
 
     activeQueue,
     removeFromQueue,
@@ -169,10 +192,9 @@ export default function App() {
     keybindings: config?.keybindings,
   });
 
-
   useEffect(() => {
     // Add global styles to remove margins
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.innerHTML = `
       :root {
         ${buildRootCss(DEFAULT_PALETTE, DEFAULT_THEME_COLOR)}
@@ -216,9 +238,13 @@ export default function App() {
         if (userConfig.restoreSession) {
           const session = await window.api.getSession();
           if (session && session.queue && session.queue.length > 0) {
-            const trackMap = new Map(tracks.map(t => [t.path, t]));
-            const restoredQueue = session.queue.map(p => trackMap.get(p)).filter(Boolean) as FileItem[];
-            const restoredShuffled = session.shuffledQueue.map(p => trackMap.get(p)).filter(Boolean) as FileItem[];
+            const trackMap = new Map(tracks.map((t) => [t.path, t]));
+            const restoredQueue = session.queue
+              .map((p) => trackMap.get(p))
+              .filter(Boolean) as FileItem[];
+            const restoredShuffled = session.shuffledQueue
+              .map((p) => trackMap.get(p))
+              .filter(Boolean) as FileItem[];
             if (restoredQueue.length > 0) {
               setQueue(restoredQueue);
               setShuffledQueue(restoredShuffled.length > 0 ? restoredShuffled : restoredQueue);
@@ -228,10 +254,13 @@ export default function App() {
               const clampedIndex = Math.max(0, Math.min(session.currentIndex, activeLen - 1));
               setCurrentIndex(clampedIndex);
               const activeList = session.isShuffle ? restoredShuffled : restoredQueue;
-              const trackToRestore = (session.currentTrackPath ? trackMap.get(session.currentTrackPath) : null) ?? activeList[clampedIndex];
+              const trackToRestore =
+                (session.currentTrackPath ? trackMap.get(session.currentTrackPath) : null) ??
+                activeList[clampedIndex];
               if (trackToRestore) {
                 setCurrentTrack(trackToRestore);
-                if (trackToRestore.metadata?.duration) setDuration(trackToRestore.metadata.duration);
+                if (trackToRestore.metadata?.duration)
+                  setDuration(trackToRestore.metadata.duration);
                 if (audioRef.current) {
                   const normalizedPath = trackToRestore.path.replace(/\\/g, "/");
                   audioRef.current.src = `media://${encodeURIComponent(normalizedPath)}`;
@@ -254,7 +283,8 @@ export default function App() {
   // Apply the selected theme + per-role overrides to :root whenever they change.
   useEffect(() => {
     if (!config) return;
-    const base = getTheme(config.appearance?.themeId ?? DEFAULT_THEME_ID)?.palette ?? DEFAULT_PALETTE;
+    const base =
+      getTheme(config.appearance?.themeId ?? DEFAULT_THEME_ID)?.palette ?? DEFAULT_PALETTE;
     applyPalette(
       { ...base, ...(config.appearance?.colors ?? {}) },
       config.themeColor || DEFAULT_THEME_COLOR,
@@ -273,21 +303,31 @@ export default function App() {
 
     const data: SessionData = {
       currentTrackPath: currentTrack.path,
-      queue: queue.map(t => t.path),
-      shuffledQueue: shuffledQueue.map(t => t.path),
+      queue: queue.map((t) => t.path),
+      shuffledQueue: shuffledQueue.map((t) => t.path),
       currentIndex,
       isShuffle,
       repeatMode,
     };
     window.api.saveSession(data);
-  }, [currentTrack, queue, shuffledQueue, currentIndex, isShuffle, repeatMode, config?.restoreSession]);
+  }, [
+    currentTrack,
+    queue,
+    shuffledQueue,
+    currentIndex,
+    isShuffle,
+    repeatMode,
+    config?.restoreSession,
+  ]);
 
   const handleScrollRef = (el: HTMLElement | null) => {
     scrollContainerRef.current = el;
     if (el && pendingScrollRestoreRef.current > 0) {
       const pos = pendingScrollRestoreRef.current;
       pendingScrollRestoreRef.current = 0;
-      requestAnimationFrame(() => { el.scrollTop = pos; });
+      requestAnimationFrame(() => {
+        el.scrollTop = pos;
+      });
     }
   };
 
@@ -305,15 +345,20 @@ export default function App() {
       scrollTop: scrollContainerRef.current?.scrollTop ?? 0,
     };
     const limit = config?.navigationHistorySize ?? 20;
-    setNavHistory(prev => [...prev.slice(-(limit - 1)), snap]);
+    setNavHistory((prev) => [...prev.slice(-(limit - 1)), snap]);
   };
 
   const handleGoBack = () => {
-    setNavHistory(prev => {
+    setNavHistory((prev) => {
       if (prev.length === 0) {
-        if (selectedGroup) { setSelectedGroup(null); setSearchQuery(''); }
-        else if (openPlaylistId) { setOpenPlaylistId(null); }
-        else if (view === 'details') { setView(activeTab); }
+        if (selectedGroup) {
+          setSelectedGroup(null);
+          setSearchQuery("");
+        } else if (openPlaylistId) {
+          setOpenPlaylistId(null);
+        } else if (view === "details") {
+          setView(activeTab);
+        }
         return prev;
       }
       const snap = prev[prev.length - 1];
@@ -334,18 +379,18 @@ export default function App() {
   handleGoBackRef.current = handleGoBack;
 
   const toggleQueue = () => {
-    if (view === 'queue') {
+    if (view === "queue") {
       handleGoBack();
     } else {
       pushNav();
-      setView('queue');
+      setView("queue");
     }
   };
 
-  const handleGroupSelect = (group: { type: 'artist' | 'album' | 'genre', name: string }) => {
+  const handleGroupSelect = (group: { type: "artist" | "album" | "genre"; name: string }) => {
     pushNav();
     setSelectedGroup(group);
-    setSearchQuery('');
+    setSearchQuery("");
   };
 
   const handlePlaylistSelect = (id: string) => {
@@ -357,20 +402,20 @@ export default function App() {
 
   const handleGlobalSearchNavigate = (target: GlobalSearchNavTarget) => {
     pushNav();
-    const tabName = target.tab as Exclude<Page, 'details' | 'queue' | 'settings'>;
+    const tabName = target.tab as Exclude<Page, "details" | "queue" | "settings">;
     setActiveTab(tabName);
     setView(tabName);
     setSelectedGroup(null);
 
-    if (target.tab === 'playlists') {
+    if (target.tab === "playlists") {
       if (target.playlistId) setOpenPlaylistId(target.playlistId);
       if (target.query !== undefined) setPlaylistsGlobalSearch(target.query);
     } else {
       if (target.query !== undefined) setSearchQuery(target.query);
       if (target.groupName) {
-        const type = target.tab === 'albums' ? 'album' : 'artist';
-        setSelectedGroup({ type: type as 'album' | 'artist', name: target.groupName });
-        setSearchQuery('');
+        const type = target.tab === "albums" ? "album" : "artist";
+        setSelectedGroup({ type: type as "album" | "artist", name: target.groupName });
+        setSearchQuery("");
       }
     }
   };
@@ -381,16 +426,16 @@ export default function App() {
     const action = await window.api.showGroupContextMenu(_name);
     if (!action) return;
 
-    if (action.type === 'group-play') {
+    if (action.type === "group-play") {
       playTrack(songs[0], songs);
-    } else if (action.type === 'group-play-next') {
+    } else if (action.type === "group-play-next") {
       playNextMultiple(songs);
-    } else if (action.type === 'group-add-to-playlist') {
+    } else if (action.type === "group-add-to-playlist") {
       const playlist = await window.api.getPlaylist(action.playlistId);
       if (playlist) {
-        const newPaths = songs.map(s => s.path).filter(p => !playlist.songs.includes(p));
+        const newPaths = songs.map((s) => s.path).filter((p) => !playlist.songs.includes(p));
         await window.api.updatePlaylist(action.playlistId, {
-          songs: [...playlist.songs, ...newPaths]
+          songs: [...playlist.songs, ...newPaths],
         });
       }
     }
@@ -401,41 +446,41 @@ export default function App() {
     const action = await window.api.showSongContextMenu(song);
     if (!action) return;
 
-    if (action.type === 'play-next') {
-        playNext(song);
-    } else if (action.type === 'go-to-album') {
-        pushNav();
-        setActiveTab('albums');
-        setView('albums');
-        setSearchQuery("");
-        setSelectedGroup({ type: 'album', name: song.metadata?.album || 'Unknown Album' });
-    } else if (action.type === 'go-to-artist') {
-        pushNav();
-        setActiveTab('artists');
-        setView('artists');
-        setSearchQuery("");
-        setSelectedGroup({ type: 'artist', name: action.artist });
-    } else if (action.type === 'open-details') {
-        pushNav();
-        setCurrentTrack(song);
-        setView('details');
-    } else if (action.type === 'add-to-playlist') {
-        const playlist = await window.api.getPlaylist(action.playlistId);
-        if (playlist) {
-            await window.api.updatePlaylist(action.playlistId, {
-                songs: [...playlist.songs, song.path]
-            });
-        }
+    if (action.type === "play-next") {
+      playNext(song);
+    } else if (action.type === "go-to-album") {
+      pushNav();
+      setActiveTab("albums");
+      setView("albums");
+      setSearchQuery("");
+      setSelectedGroup({ type: "album", name: song.metadata?.album || "Unknown Album" });
+    } else if (action.type === "go-to-artist") {
+      pushNav();
+      setActiveTab("artists");
+      setView("artists");
+      setSearchQuery("");
+      setSelectedGroup({ type: "artist", name: action.artist });
+    } else if (action.type === "open-details") {
+      pushNav();
+      setCurrentTrack(song);
+      setView("details");
+    } else if (action.type === "add-to-playlist") {
+      const playlist = await window.api.getPlaylist(action.playlistId);
+      if (playlist) {
+        await window.api.updatePlaylist(action.playlistId, {
+          songs: [...playlist.songs, song.path],
+        });
+      }
     }
   };
 
-  const handleTabChange = (tab: Exclude<Page, 'details' | 'queue' | 'settings'>) => {
+  const handleTabChange = (tab: Exclude<Page, "details" | "queue" | "settings">) => {
     pushNav();
     setActiveTab(tab);
     setView(tab);
     setSelectedGroup(null);
     setSearchQuery("");
-    if (tab !== 'library') {
+    if (tab !== "library") {
       setSelectedLibraryPath(null);
     }
   };
@@ -461,8 +506,9 @@ export default function App() {
         display: "flex",
         flexDirection: "column",
         fontFamily: "Segoe UI, Tahoma, Geneva, Verdana, sans-serif",
-        overflow: "hidden"
-      }}>
+        overflow: "hidden",
+      }}
+    >
       {isMini ? (
         <MiniPlayer
           currentTrack={currentTrack || undefined}
@@ -475,213 +521,206 @@ export default function App() {
         />
       ) : (
         <>
-      <TitleBar onEnterMini={enterMini} themeColor={themeColor} />
-      {view !== "details" && (
-        <Navbar
-          activeTab={activeTab}
-          themeColor={themeColor}
-          onTabChange={handleTabChange}
-          onQueueClick={toggleQueue}
-          onSettingsClick={() => { pushNav(); setView("settings"); }}
-          allTracks={allTracks}
-          config={config}
-          onPlaySong={(song) => playNextAndPlay(song)}
-          onSongContextMenu={showContextMenu}
-          onGroupContextMenu={showGroupContextMenu}
-          onGlobalSearchNavigate={handleGlobalSearchNavigate}
-          canGoBack={navHistory.length > 0}
-          onGoBack={handleGoBack}
-          searchInputRef={searchInputRef}
-        />
-      )}
+          <TitleBar onEnterMini={enterMini} themeColor={themeColor} />
+          {view !== "details" && (
+            <Navbar
+              activeTab={activeTab}
+              themeColor={themeColor}
+              onTabChange={handleTabChange}
+              onQueueClick={toggleQueue}
+              onSettingsClick={() => {
+                pushNav();
+                setView("settings");
+              }}
+              allTracks={allTracks}
+              config={config}
+              onPlaySong={(song) => playNextAndPlay(song)}
+              onSongContextMenu={showContextMenu}
+              onGroupContextMenu={showGroupContextMenu}
+              onGlobalSearchNavigate={handleGlobalSearchNavigate}
+              canGoBack={navHistory.length > 0}
+              onGoBack={handleGoBack}
+              searchInputRef={searchInputRef}
+            />
+          )}
 
-      <main
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column",
-          position: "relative"
-        }}
-      >
-        {(() => {
-          if (view === "home") {
-            return (
-              <HomeView
-                allTracks={allTracks}
-                currentTrack={currentTrack}
-                themeColor={themeColor}
-                config={config}
-                handleFileSelect={handleFileSelect}
-                handleShufflePlay={handleShufflePlay}
-                onContextMenu={showContextMenu}
-                onScrollRef={handleScrollRef}
-                onSelectArtist={(name) => {
-                  pushNav();
-                  setActiveTab('artists');
-                  setView('artists');
-                  setSearchQuery('');
-                  setSelectedGroup({ type: 'artist', name });
-                }}
-                onNavigateTab={handleTabChange}
-              />
-            );
-          }
+          <main
+            style={{
+              flex: 1,
+              minHeight: 0,
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              position: "relative",
+            }}
+          >
+            {(() => {
+              if (view === "home") {
+                return (
+                  <HomeView
+                    allTracks={allTracks}
+                    currentTrack={currentTrack}
+                    themeColor={themeColor}
+                    config={config}
+                    handleFileSelect={handleFileSelect}
+                    handleShufflePlay={handleShufflePlay}
+                    onContextMenu={showContextMenu}
+                    onScrollRef={handleScrollRef}
+                    onSelectArtist={(name) => {
+                      pushNav();
+                      setActiveTab("artists");
+                      setView("artists");
+                      setSearchQuery("");
+                      setSelectedGroup({ type: "artist", name });
+                    }}
+                    onNavigateTab={handleTabChange}
+                  />
+                );
+              }
 
-          if (view === "library") {
-            return (
-              <LibraryView
-                selectedLibraryPath={selectedLibraryPath}
-                tree={tree}
-                config={config}
-                setConfig={setConfig}
-                themeColor={themeColor}
-                setSelectedLibraryPath={setSelectedLibraryPath}
-                handleFileSelect={handleFileSelect}
-                onContextMenu={showContextMenu}
-              />
-            );
-          }
+              if (view === "library") {
+                return (
+                  <LibraryView
+                    selectedLibraryPath={selectedLibraryPath}
+                    tree={tree}
+                    config={config}
+                    setConfig={setConfig}
+                    themeColor={themeColor}
+                    setSelectedLibraryPath={setSelectedLibraryPath}
+                    handleFileSelect={handleFileSelect}
+                    onContextMenu={showContextMenu}
+                  />
+                );
+              }
 
-          if (
-            view === "artists" ||
-            view === "albums" ||
-            view === "genres"
-          ) {
-            const groupedType =
-              view === "artists"
-                ? "artist"
-                : view === "albums"
-                  ? "album"
-                  : "genre";
+              if (view === "artists" || view === "albums" || view === "genres") {
+                const groupedType =
+                  view === "artists" ? "artist" : view === "albums" ? "album" : "genre";
 
-            return (
-              <GroupedView
-                type={groupedType}
-                allTracks={allTracks}
-                selectedGroup={selectedGroup}
-                searchQuery={searchQuery}
-                sortBy={sortBy}
-                sortDescending={sortDescending}
-                currentTrack={currentTrack}
-                config={config}
-                themeColor={themeColor}
-                onGroupSelect={handleGroupSelect}
-                onGoBack={handleGoBack}
-                onScrollRef={handleScrollRef}
-                setSearchQuery={setSearchQuery}
-                setSortBy={setSortBy}
-                setSortDescending={setSortDescending}
-                normalizeGenre={normalizeGenre}
-                handleFileSelect={handleFileSelect}
-                handleShufflePlay={handleShufflePlay}
-                onContextMenu={showContextMenu}
-                onGroupContextMenu={showGroupContextMenu}
-              />
-            );
-          }
+                return (
+                  <GroupedView
+                    type={groupedType}
+                    allTracks={allTracks}
+                    selectedGroup={selectedGroup}
+                    searchQuery={searchQuery}
+                    sortBy={sortBy}
+                    sortDescending={sortDescending}
+                    currentTrack={currentTrack}
+                    config={config}
+                    themeColor={themeColor}
+                    onGroupSelect={handleGroupSelect}
+                    onGoBack={handleGoBack}
+                    onScrollRef={handleScrollRef}
+                    setSearchQuery={setSearchQuery}
+                    setSortBy={setSortBy}
+                    setSortDescending={setSortDescending}
+                    normalizeGenre={normalizeGenre}
+                    handleFileSelect={handleFileSelect}
+                    handleShufflePlay={handleShufflePlay}
+                    onContextMenu={showContextMenu}
+                    onGroupContextMenu={showGroupContextMenu}
+                  />
+                );
+              }
 
-          if (view === "playlists") {
-            return (
-              <PlaylistView
-                allTracks={allTracks}
-                themeColor={themeColor}
-                onPlayTrack={playTrack}
-                currentTrack={currentTrack}
-                configDoubleClickToPlay={config?.doubleClickToPlay ?? true}
-                onContextMenu={showContextMenu}
-                selectedPlaylistId={openPlaylistId}
-                onPlaylistSelect={handlePlaylistSelect}
-                onPlaylistClose={handlePlaylistClose}
-                onPlaylistDeleted={(id) => { if (openPlaylistId === id) setOpenPlaylistId(null); }}
-                onScrollRef={handleScrollRef}
-                initialSearch={playlistsGlobalSearch}
-              />
-            );
-          }
+              if (view === "playlists") {
+                return (
+                  <PlaylistView
+                    allTracks={allTracks}
+                    themeColor={themeColor}
+                    onPlayTrack={playTrack}
+                    currentTrack={currentTrack}
+                    configDoubleClickToPlay={config?.doubleClickToPlay ?? true}
+                    onContextMenu={showContextMenu}
+                    selectedPlaylistId={openPlaylistId}
+                    onPlaylistSelect={handlePlaylistSelect}
+                    onPlaylistClose={handlePlaylistClose}
+                    onPlaylistDeleted={(id) => {
+                      if (openPlaylistId === id) setOpenPlaylistId(null);
+                    }}
+                    onScrollRef={handleScrollRef}
+                    initialSearch={playlistsGlobalSearch}
+                  />
+                );
+              }
 
-          if (view === "queue") {
-            return (
-              <QueueView
-                queue={activeQueue}
-                currentIndex={currentIndex}
-                themeColor={themeColor}
-                onPlayTrack={playTrack}
-                onClearQueue={() => {
-                    const kept = currentTrack ? [currentTrack] : [];
-                    setQueue(kept);
-                    setShuffledQueue(kept);
-                    setCurrentIndex(0);
-                }}
-                onRemoveFromQueue={handleRemoveFromQueue}
-                activeItemRemovable={config?.removeCurrentSongBehavior === "play-next"}
-                onContextMenu={showContextMenu}
-              />
-            );
-          }
+              if (view === "queue") {
+                return (
+                  <QueueView
+                    queue={activeQueue}
+                    currentIndex={currentIndex}
+                    themeColor={themeColor}
+                    onPlayTrack={playTrack}
+                    onClearQueue={() => {
+                      const kept = currentTrack ? [currentTrack] : [];
+                      setQueue(kept);
+                      setShuffledQueue(kept);
+                      setCurrentIndex(0);
+                    }}
+                    onRemoveFromQueue={handleRemoveFromQueue}
+                    activeItemRemovable={config?.removeCurrentSongBehavior === "play-next"}
+                    onContextMenu={showContextMenu}
+                  />
+                );
+              }
 
-          if (view === "settings") {
-            return (
-              <SettingsView
-                config={config}
-                setConfig={setConfig}
-                themeColor={themeColor}
-              />
-            );
-          }
+              if (view === "settings") {
+                return (
+                  <SettingsView config={config} setConfig={setConfig} themeColor={themeColor} />
+                );
+              }
 
-          if (view === "details") {
-            return view === "details" && currentTrack ? (
-              <SongDetailsView
-                currentTrack={currentTrack}
-                themeColor={themeColor}
-                onBack={handleGoBack}
-                onNavigate={(type, name) => {
-                  pushNav();
-                  const tabName = `${type}s` as Exclude<Page, 'details' | 'queue' | 'settings'>;
-                  setActiveTab(tabName);
-                  setView(tabName);
-                  setSearchQuery("");
-                  setSelectedGroup({ type, name });
-                }}
-                onTrackUpdated={handleTrackUpdated}
-                openLyrics={openLyricsOnDetails}
-                onLyricsConsumed={() => setOpenLyricsOnDetails(false)}
-              />
-            ) : null;
-          }
+              if (view === "details") {
+                return view === "details" && currentTrack ? (
+                  <SongDetailsView
+                    currentTrack={currentTrack}
+                    themeColor={themeColor}
+                    onBack={handleGoBack}
+                    onNavigate={(type, name) => {
+                      pushNav();
+                      const tabName = `${type}s` as Exclude<Page, "details" | "queue" | "settings">;
+                      setActiveTab(tabName);
+                      setView(tabName);
+                      setSearchQuery("");
+                      setSelectedGroup({ type, name });
+                    }}
+                    onTrackUpdated={handleTrackUpdated}
+                    openLyrics={openLyricsOnDetails}
+                    onLyricsConsumed={() => setOpenLyricsOnDetails(false)}
+                  />
+                ) : null;
+              }
 
-          return null;
-        })()}
-      </main>
+              return null;
+            })()}
+          </main>
 
-      <PlaybackBar
-        isPlaying={isPlaying}
-        onTogglePlay={togglePlay}
-        currentTrack={currentTrack || undefined}
-        currentTime={currentTime}
-        duration={duration}
-        onSeek={handleSeek}
-        onShowDetails={() => setView('details')}
-        onShowLyrics={() => {
-          if (!currentTrack) return;
-          if (view !== 'details') pushNav();
-          setOpenLyricsOnDetails(true);
-          setView('details');
-        }}
-        onNext={handleNext}
-        onPrevious={handlePrevious}
-        isShuffle={isShuffle}
-        onToggleShuffle={handleShuffleToggle}
-        repeatMode={repeatMode}
-        onToggleRepeat={handleRepeatToggle}
-        onShowQueue={toggleQueue}
-        volume={config?.volume ?? 0.5}
-        onVolumeChange={handleVolumeChange}
-        themeColor={themeColor}
-        onContextMenu={showContextMenu}
-      />
+          <PlaybackBar
+            isPlaying={isPlaying}
+            onTogglePlay={togglePlay}
+            currentTrack={currentTrack || undefined}
+            currentTime={currentTime}
+            duration={duration}
+            onSeek={handleSeek}
+            onShowDetails={() => setView("details")}
+            onShowLyrics={() => {
+              if (!currentTrack) return;
+              if (view !== "details") pushNav();
+              setOpenLyricsOnDetails(true);
+              setView("details");
+            }}
+            onNext={handleNext}
+            onPrevious={handlePrevious}
+            isShuffle={isShuffle}
+            onToggleShuffle={handleShuffleToggle}
+            repeatMode={repeatMode}
+            onToggleRepeat={handleRepeatToggle}
+            onShowQueue={toggleQueue}
+            volume={config?.volume ?? 0.5}
+            onVolumeChange={handleVolumeChange}
+            themeColor={themeColor}
+            onContextMenu={showContextMenu}
+          />
         </>
       )}
 

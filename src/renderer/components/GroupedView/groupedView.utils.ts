@@ -2,142 +2,126 @@ import { FileItem, UserConfig } from "../../types";
 import { GroupSortBy, GroupType } from "./types";
 
 export function getFilteredSongs(
-    allTracks: FileItem[],
-    selectedGroup: string,
-    type: GroupType,
-    searchQuery: string,
-    sortDescending: boolean
+  allTracks: FileItem[],
+  selectedGroup: string,
+  type: GroupType,
+  searchQuery: string,
+  sortDescending: boolean,
 ) {
-    const filteredSongs = allTracks.filter(track => {
-        const meta = track.metadata;
-        if (!meta) return false;
+  const filteredSongs = allTracks.filter((track) => {
+    const meta = track.metadata;
+    if (!meta) return false;
 
-        const isMatch =
-            type === "artist"
-                ? meta.artists?.includes(selectedGroup)
-                : type === "album"
-                    ? meta.album === selectedGroup
-                    : type === "genre"
-                        ? meta.genre?.some(
-                            g => g.toLowerCase() === selectedGroup.toLowerCase()
-                        )
-                        : false;
+    const isMatch =
+      type === "artist"
+        ? meta.artists?.includes(selectedGroup)
+        : type === "album"
+          ? meta.album === selectedGroup
+          : type === "genre"
+            ? meta.genre?.some((g) => g.toLowerCase() === selectedGroup.toLowerCase())
+            : false;
 
-        if (!isMatch) return false;
+    if (!isMatch) return false;
 
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
 
-            const title = (meta.title || track.name).toLowerCase();
-            const artist = (meta.artists?.join(", ") || "").toLowerCase();
-            const album = (meta.album || "").toLowerCase();
+      const title = (meta.title || track.name).toLowerCase();
+      const artist = (meta.artists?.join(", ") || "").toLowerCase();
+      const album = (meta.album || "").toLowerCase();
 
-            return (
-                title.includes(query) ||
-                artist.includes(query) ||
-                album.includes(query)
-            );
-        }
+      return title.includes(query) || artist.includes(query) || album.includes(query);
+    }
 
-        return true;
+    return true;
+  });
+
+  filteredSongs.sort((a, b) => {
+    if (type === "album") {
+      const trackA = a.metadata?.trackNumber ?? Number.MAX_SAFE_INTEGER;
+      const trackB = b.metadata?.trackNumber ?? Number.MAX_SAFE_INTEGER;
+
+      const res = trackA - trackB;
+
+      return sortDescending ? -res : res;
+    }
+
+    const titleA = a.metadata?.title || a.name;
+    const titleB = b.metadata?.title || b.name;
+
+    const res = titleA.localeCompare(titleB, undefined, {
+      sensitivity: "base",
     });
 
-    filteredSongs.sort((a, b) => {
-        if (type === "album") {
-            const trackA = a.metadata?.trackNumber ?? Number.MAX_SAFE_INTEGER;
-            const trackB = b.metadata?.trackNumber ?? Number.MAX_SAFE_INTEGER;
+    return sortDescending ? -res : res;
+  });
 
-            const res = trackA - trackB;
-
-            return sortDescending ? -res : res;
-        }
-
-        const titleA = a.metadata?.title || a.name;
-        const titleB = b.metadata?.title || b.name;
-
-        const res = titleA.localeCompare(titleB, undefined, {
-            sensitivity: "base"
-        });
-
-        return sortDescending ? -res : res;
-    });
-
-    return filteredSongs;
+  return filteredSongs;
 }
 
 export function getGroupEntries(
-    allTracks: FileItem[],
-    type: GroupType,
-    searchQuery: string,
-    sortBy: GroupSortBy,
-    sortDescending: boolean,
-    normalizeGenre: (genre: string) => string,
-    config: UserConfig | null
+  allTracks: FileItem[],
+  type: GroupType,
+  searchQuery: string,
+  sortBy: GroupSortBy,
+  sortDescending: boolean,
+  normalizeGenre: (genre: string) => string,
+  config: UserConfig | null,
 ) {
-    const groups: Record<string, number> = {};
+  const groups: Record<string, number> = {};
 
-    allTracks.forEach(track => {
-        const meta = track.metadata;
+  allTracks.forEach((track) => {
+    const meta = track.metadata;
 
-        if (!meta) return;
+    if (!meta) return;
 
-        if (type === "artist") {
-            const artists = meta.artists || [];
-            artists.forEach(artist => {
-                groups[artist] = (groups[artist] || 0) + 1;
-            });
-        }
+    if (type === "artist") {
+      const artists = meta.artists || [];
+      artists.forEach((artist) => {
+        groups[artist] = (groups[artist] || 0) + 1;
+      });
+    } else if (type === "album" && meta.album) {
+      groups[meta.album] = (groups[meta.album] || 0) + 1;
+    } else if (type === "genre" && meta.genre) {
+      meta.genre.forEach((g) => {
+        const normalized = normalizeGenre(g.trim());
 
-        else if (type === "album" && meta.album) {
-            groups[meta.album] = (groups[meta.album] || 0) + 1;
-        }
+        groups[normalized] = (groups[normalized] || 0) + 1;
+      });
+    }
+  });
 
-        else if (type === "genre" && meta.genre) {
-            meta.genre.forEach(g => {
-                const normalized = normalizeGenre(g.trim());
+  let entries = Object.entries(groups);
 
-                groups[normalized] = (groups[normalized] || 0) + 1;
-            });
-        }
-    });
+  if (type === "album" && config) {
+    entries = entries.filter(([_, count]) => count >= config.minSongsForAlbum);
+  }
 
-    let entries = Object.entries(groups);
+  if (searchQuery) {
+    const query = searchQuery.toLowerCase();
 
-    if (type === "album" && config) {
-        entries = entries.filter(
-            ([_, count]) => count >= config.minSongsForAlbum
-        );
+    entries = entries.filter(([name]) => name.toLowerCase().includes(query));
+  }
+
+  entries.sort((a, b) => {
+    let res = 0;
+
+    if (sortBy === "count") {
+      res = a[1] - b[1];
+
+      if (res === 0) {
+        res = a[0].localeCompare(b[0], undefined, {
+          sensitivity: "base",
+        });
+      }
+    } else {
+      res = a[0].localeCompare(b[0], undefined, {
+        sensitivity: "base",
+      });
     }
 
-    if (searchQuery) {
-        const query = searchQuery.toLowerCase();
+    return sortDescending ? -res : res;
+  });
 
-        entries = entries.filter(([name]) =>
-            name.toLowerCase().includes(query)
-        );
-    }
-
-    entries.sort((a, b) => {
-        let res = 0;
-
-        if (sortBy === "count") {
-            res = a[1] - b[1];
-
-            if (res === 0) {
-                res = a[0].localeCompare(b[0], undefined, {
-                    sensitivity: "base"
-                });
-            }
-        }
-
-        else {
-            res = a[0].localeCompare(b[0], undefined, {
-                sensitivity: "base"
-            });
-        }
-
-        return sortDescending ? -res : res;
-    });
-
-    return entries;
+  return entries;
 }

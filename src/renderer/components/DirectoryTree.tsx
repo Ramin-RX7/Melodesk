@@ -7,7 +7,7 @@ import {
   IoChevronForward,
   IoChevronDown,
   IoCaretUp,
-  IoCaretDown
+  IoCaretDown,
 } from "react-icons/io5";
 import { formatArtists } from "../../utils/metadata";
 import { colors } from "../theme/colors";
@@ -20,8 +20,8 @@ interface DirectoryTreeProps {
   onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 }
 
-type SortColumn = 'name' | 'title' | 'artist' | 'album' | 'duration';
-type SortOrder = 'asc' | 'desc';
+type SortColumn = "name" | "title" | "artist" | "album" | "duration";
+type SortOrder = "asc" | "desc";
 
 const TreeItem: React.FC<{
   item: FileItem;
@@ -31,7 +31,15 @@ const TreeItem: React.FC<{
   themeColor: string;
   allFiles: FileItem[];
   onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
-}> = ({ item, onFileSelect, useDoubleClick, isRoot = false, themeColor, allFiles, onContextMenu }) => {
+}> = ({
+  item,
+  onFileSelect,
+  useDoubleClick,
+  isRoot = false,
+  themeColor,
+  allFiles,
+  onContextMenu,
+}) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleClick = () => {
@@ -75,32 +83,90 @@ const TreeItem: React.FC<{
           gap: "12px",
           opacity: item.isDirectory || item.isMedia ? 1 : 0.5,
           userSelect: "none",
-          borderBottom: `1px solid ${colors.borderFaint}`
+          borderBottom: `1px solid ${colors.borderFaint}`,
         }}
         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = colors.bgHover3)}
         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
       >
-        <div style={{ display: "flex", alignItems: "center", width: "300px", minWidth: "300px", gap: "8px" }}>
-          <span style={{ display: "flex", alignItems: "center", color: item.isDirectory ? themeColor : colors.textDim, width: "20px" }}>
-            {item.isDirectory ? (isOpen ? <IoFolderOpen /> : <IoFolder />) : <IoMusicalNote />}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            width: "300px",
+            minWidth: "300px",
+            gap: "8px",
+          }}
+        >
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              color: item.isDirectory ? themeColor : colors.textDim,
+              width: "20px",
+            }}
+          >
+            {item.isDirectory ? isOpen ? <IoFolderOpen /> : <IoFolder /> : <IoMusicalNote />}
           </span>
-          <span style={{ fontWeight: item.isMedia ? "bold" : "normal", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span
+            style={{
+              fontWeight: item.isMedia ? "bold" : "normal",
+              fontSize: "14px",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {item.name}
           </span>
         </div>
 
         {!item.isDirectory && (
           <>
-            <div style={{ flex: 1, fontSize: "13px", color: colors.textMutedHi, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div
+              style={{
+                flex: 1,
+                fontSize: "13px",
+                color: colors.textMutedHi,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {item.metadata?.title || "-"}
             </div>
-            <div title={formatArtists(item.metadata?.artists).full} style={{ flex: 1, fontSize: "13px", color: colors.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div
+              title={formatArtists(item.metadata?.artists).full}
+              style={{
+                flex: 1,
+                fontSize: "13px",
+                color: colors.textDim,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {formatArtists(item.metadata?.artists).display}
             </div>
-            <div style={{ flex: 1, fontSize: "13px", color: colors.textDim, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div
+              style={{
+                flex: 1,
+                fontSize: "13px",
+                color: colors.textDim,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {item.metadata?.album || "-"}
             </div>
-            <div style={{ width: "60px", fontSize: "13px", color: colors.textFaint, textAlign: "right" }}>
+            <div
+              style={{
+                width: "60px",
+                fontSize: "13px",
+                color: colors.textFaint,
+                textAlign: "right",
+              }}
+            >
               {formatDuration(item.metadata?.duration)}
             </div>
           </>
@@ -132,13 +198,13 @@ export const DirectoryTree: React.FC<DirectoryTreeProps> = ({
   themeColor,
   onContextMenu,
 }) => {
-  const [sortCol, setSortCol] = useState<SortColumn>('name');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [sortCol, setSortCol] = useState<SortColumn>("name");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
   const allMediaFiles = useMemo(() => {
     const extractFiles = (items: FileItem[]): FileItem[] => {
       let files: FileItem[] = [];
-      items.forEach(item => {
+      items.forEach((item) => {
         if (item.isDirectory && item.children) {
           files = files.concat(extractFiles(item.children));
         } else if (item.isMedia) {
@@ -157,25 +223,40 @@ export const DirectoryTree: React.FC<DirectoryTreeProps> = ({
       if (!a.isDirectory && b.isDirectory) return 1;
       if (a.isDirectory && b.isDirectory) return a.name.localeCompare(b.name);
 
-      let valA: any = '';
-      let valB: any = '';
+      let valA: any = "";
+      let valB: any = "";
 
       switch (sortCol) {
-        case 'name': valA = a.name; valB = b.name; break;
-        case 'title': valA = a.metadata?.title || a.name; valB = b.metadata?.title || b.name; break;
-        case 'artist': valA = a.metadata?.artists?.[0] || ''; valB = b.metadata?.artists?.[0] || ''; break;
-        case 'album': valA = a.metadata?.album || ''; valB = b.metadata?.album || ''; break;
-        case 'duration': valA = a.metadata?.duration || 0; valB = b.metadata?.duration || 0; break;
+        case "name":
+          valA = a.name;
+          valB = b.name;
+          break;
+        case "title":
+          valA = a.metadata?.title || a.name;
+          valB = b.metadata?.title || b.name;
+          break;
+        case "artist":
+          valA = a.metadata?.artists?.[0] || "";
+          valB = b.metadata?.artists?.[0] || "";
+          break;
+        case "album":
+          valA = a.metadata?.album || "";
+          valB = b.metadata?.album || "";
+          break;
+        case "duration":
+          valA = a.metadata?.duration || 0;
+          valB = b.metadata?.duration || 0;
+          break;
       }
 
       let res = 0;
-      if (typeof valA === 'string') {
+      if (typeof valA === "string") {
         res = valA.localeCompare(valB);
       } else {
         res = valA - valB;
       }
 
-      return sortOrder === 'asc' ? res : -res;
+      return sortOrder === "asc" ? res : -res;
     };
 
     return [...items].sort(sortFn);
@@ -183,14 +264,24 @@ export const DirectoryTree: React.FC<DirectoryTreeProps> = ({
 
   const toggleSort = (col: SortColumn) => {
     if (sortCol === col) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortCol(col);
-      setSortOrder('asc');
+      setSortOrder("asc");
     }
   };
 
-  const HeaderCol = ({ label, col, width, flex }: { label: string, col: SortColumn, width?: string, flex?: number }) => (
+  const HeaderCol = ({
+    label,
+    col,
+    width,
+    flex,
+  }: {
+    label: string;
+    col: SortColumn;
+    width?: string;
+    flex?: number;
+  }) => (
     <div
       onClick={() => toggleSort(col)}
       style={{
@@ -204,27 +295,29 @@ export const DirectoryTree: React.FC<DirectoryTreeProps> = ({
         fontSize: "12px",
         fontWeight: "bold",
         textTransform: "uppercase",
-        letterSpacing: "0.5px"
+        letterSpacing: "0.5px",
       }}
     >
       {label}
-      {sortCol === col && (sortOrder === 'asc' ? <IoCaretUp /> : <IoCaretDown />)}
+      {sortCol === col && (sortOrder === "asc" ? <IoCaretUp /> : <IoCaretDown />)}
     </div>
   );
 
   return (
     <div style={{ backgroundColor: "transparent" }}>
       {/* Table Header */}
-      <div style={{
-        display: "flex",
-        padding: "10px 18px",
-        borderBottom: `1px solid ${colors.borderSubtle}`,
-        backgroundColor: colors.bgSurface,
-        position: "sticky",
-        top: 0,
-        zIndex: 10,
-        gap: "12px"
-      }}>
+      <div
+        style={{
+          display: "flex",
+          padding: "10px 18px",
+          borderBottom: `1px solid ${colors.borderSubtle}`,
+          backgroundColor: colors.bgSurface,
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          gap: "12px",
+        }}
+      >
         <HeaderCol label="Name" col="name" width="300px" />
         <HeaderCol label="Title" col="title" flex={1} />
         <HeaderCol label="Artist" col="artist" flex={1} />

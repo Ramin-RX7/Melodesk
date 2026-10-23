@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  IoRemove,
-  IoSquareOutline,
-  IoCopyOutline,
-  IoClose,
-  IoContract,
-} from "react-icons/io5";
+import { IoRemove, IoSquareOutline, IoCopyOutline, IoClose, IoContract } from "react-icons/io5";
 import { colors } from "../../theme/colors";
 
 interface TitleBarProps {
@@ -68,7 +62,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onEnterMini, themeColor }) =
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: "12px" }}>
-        <span style={{ fontSize: "12px", fontWeight: 600, color: colors.textBright }}>MeloDesk</span>
+        <span style={{ fontSize: "12px", fontWeight: 600, color: colors.textBright }}>
+          MeloDesk
+        </span>
       </div>
 
       <div style={{ display: "flex", alignItems: "stretch", height: "100%" }}>
@@ -97,7 +93,11 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onEnterMini, themeColor }) =
           onMouseEnter={(e) => hover(e, colors.bgHover, colors.textPrimary)}
           onMouseLeave={reset}
         >
-          {isMaximized ? <IoCopyOutline style={{ fontSize: "13px" }} /> : <IoSquareOutline style={{ fontSize: "13px" }} />}
+          {isMaximized ? (
+            <IoCopyOutline style={{ fontSize: "13px" }} />
+          ) : (
+            <IoSquareOutline style={{ fontSize: "13px" }} />
+          )}
         </button>
         <button
           style={btn}

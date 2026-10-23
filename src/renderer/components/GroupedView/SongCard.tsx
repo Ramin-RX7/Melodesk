@@ -5,61 +5,58 @@ import { colors } from "../../theme/colors";
 import styles from "./GroupedView.module.css";
 
 type Props = {
-    song: FileItem;
-    currentTrack?: FileItem | null;
-    themeColor: string;
-    onClick: () => void;
-    onDoubleClick: () => void;
-    onContextMenu?: (e: React.MouseEvent) => void;
+  song: FileItem;
+  currentTrack?: FileItem | null;
+  themeColor: string;
+  onClick: () => void;
+  onDoubleClick: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
 };
 
 export function SongCard({
-    song,
-    currentTrack,
-    themeColor,
-    onClick,
-    onDoubleClick,
-    onContextMenu
+  song,
+  currentTrack,
+  themeColor,
+  onClick,
+  onDoubleClick,
+  onContextMenu,
 }: Props) {
-    return (
-        <div
-            className={styles.songCard}
-            onClick={onClick}
-            onDoubleClick={onDoubleClick}
-            onContextMenu={onContextMenu}
-            style={{
-                border:
-                    currentTrack?.path === song.path
-                        ? `1px solid ${themeColor}`
-                        : `1px solid ${colors.borderSubtle}`
-            }}
-        >
-            <div className={styles.songImage}>
-                {song.metadata?.picture ? (
-                    <img
-                        src={`media://${encodeURIComponent(song.metadata.picture)}`}
-                        className={styles.coverImage}
-                    />
-                ) : (
-                    <IoMusicalNote style={{ color: colors.textIcon }} />
-                )}
-            </div>
+  return (
+    <div
+      className={styles.songCard}
+      onClick={onClick}
+      onDoubleClick={onDoubleClick}
+      onContextMenu={onContextMenu}
+      style={{
+        border:
+          currentTrack?.path === song.path
+            ? `1px solid ${themeColor}`
+            : `1px solid ${colors.borderSubtle}`,
+      }}
+    >
+      <div className={styles.songImage}>
+        {song.metadata?.picture ? (
+          <img
+            src={`media://${encodeURIComponent(song.metadata.picture)}`}
+            className={styles.coverImage}
+          />
+        ) : (
+          <IoMusicalNote style={{ color: colors.textIcon }} />
+        )}
+      </div>
 
-            <div
-                className={styles.songTitle}
-                style={{
-                    color:
-                        currentTrack?.path === song.path
-                            ? themeColor
-                            : colors.textPrimary
-                }}
-            >
-                {song.metadata?.title || song.name}
-            </div>
+      <div
+        className={styles.songTitle}
+        style={{
+          color: currentTrack?.path === song.path ? themeColor : colors.textPrimary,
+        }}
+      >
+        {song.metadata?.title || song.name}
+      </div>
 
-            <div title={formatArtists(song.metadata?.artists).full} className={styles.songArtist}>
-                {formatArtists(song.metadata?.artists).display}
-            </div>
-        </div>
-    );
+      <div title={formatArtists(song.metadata?.artists).full} className={styles.songArtist}>
+        {formatArtists(song.metadata?.artists).display}
+      </div>
+    </div>
+  );
 }

@@ -1,0 +1,464 @@
+# CLAUDE.md
+
+The single source of truth for working in this repository: rules, terminology, architecture, file map and per-feature entry points. Read it before touching code.
+
+**Keep it current.** When a change adds, removes or renames a file, an IPC channel, a config field or a persisted file, update the matching section here in the same change.
+
+---
+
+## 1. Project overview
+
+**MeloDesk** is a desktop music player built with Electron, React and TypeScript. It plays a local library only: the user adds folders, the app scans them, reads their tags and plays the files. The UI is modern and minimal, dark by default and fully themeable, in a frameless window with a custom title bar and a floating mini-player mode.
+
+Long-term goal: **pages driven by user config**. Today, pages are hard-wired in `App.tsx`, so write components that don't depend on a fixed route (see §2 → UI).
+
+Scope today is **audio only** (`.mp3 .wav .ogg .m4a .flac`). Video playback is not implemented.
+
+| Layer | Tech                                                                                                                        |
+| ----- | --------------------------------------------------------------------------------------------------------------------------- |
+| Shell | Electron 29 (frameless `BrowserWindow`, `contextIsolation`, `sandbox: true`)                                                |
+| UI    | React 19 function components, inline styles + some CSS Modules, `react-icons`                                               |
+| Build | `tsc` (main + preload → CommonJS in `dist/`), Vite 8 (renderer → `dist/renderer/`), electron-builder (installers)           |
+| Media | `music-metadata` (read tags), `node-id3` (write tags), `chokidar` (folder watcher), HTML5 `<audio>` + Web Audio (equalizer) |
+| Node  | `^20.19.0 \|\| >=22.12.0` (`engines`, required by Vite 8); `.nvmrc` pins `20.19.1`                                          |
+
+There are **no tests and no linter**. Formatting is enforced by Prettier (`.prettierrc.json`: 2 spaces, double quotes, semicolons, trailing commas, width 100, LF). `.editorconfig` mirrors it for editors, and `.gitattributes` stores every text file with LF line endings.
+
+---
+
+## 2. Core rules
+
+### Dependencies
+
+- **Never** install packages or modify `package.json` / `package-lock.json` without explicit user approval. That includes scripts, build config and version bumps.
+- If a dependency is needed, explain why, suggest the package, and wait for confirmation.
+- **Where a dependency goes:** `dependencies` is only for packages the **main process** `require`s at runtime (today `chokidar`, `music-metadata`, `node-id3`). Anything used only by the renderer (React, `react-icons`, any UI library) goes in **`devDependencies`**, because Vite already bundles it into `dist/renderer`. electron-builder ships everything in `dependencies` inside `app.asar`; putting React there grew the package from 1.9 MB to 90 MB.
+
+### Scope
+
+- Modify only files directly related to the task.
+- Don't refactor unrelated code or restructure the project unless asked.
+
+### Architecture
+
+- **UI (React) is for presentation.** Components render props and raise callbacks. They don't touch the file system, parse metadata or persist anything.
+- **Backend (Electron / Node) owns logic, the file system and media handling:** scanning, tag reading and writing, caching, and every read or write under `userData`.
+- **All UI ↔ backend interaction goes through IPC** (`window.api`, see the IPC recipe in §10).
+- **Every feature is complete:** UI + IPC + backend wherever the feature needs the backend. No half-implementations.
+- Display-only data derived from data the renderer already has (grouping, filtering, sorting, Home-page stats) is computed in renderer utilities and hooks, e.g. `groupedView.utils.ts`. Keep that kind of logic in hooks and `*.utils.ts` files, **not inside component bodies**.
+
+### UI
+
+- Clean and minimal. **Dark is the default theme, but the app is themeable:** never hard-code colors. Use `colors.*` or `var(--role)` (§6 → Theming).
+- Functional components only. Keep them small and reusable.
+- Components must be modular and not tied to hard-coded routing. Take data and navigation as props or callbacks rather than reaching into `App.tsx` state, because the UI is meant to become config-driven.
+
+### Code style
+
+- Follow existing patterns. No new abstractions unless necessary.
+- No unnecessary comments. No placeholder logic.
+
+### Commits
+
+Messages use a bracketed type prefix: `[feat] …`, `[fix] …`, `[refactor] …`, `[chore] …`, `[config] …`.
+
+---
+
+## 3. Terminology
+
+- **pages**: views of the app. Navbar **tabs** (Home, Library, Artists, Albums, Genres, Playlists) plus **non-tab pages** (Queue, Song Details, Settings). Represented by the `Page` type.
+- **config**: `userData/config.json`, the user-editable settings (`UserConfig`): library paths, accent + theme/appearance colors, volume, playback/home/search options, equalizer, keybindings, etc.
+- **cache**: `userData/library_cache.json`, a hash-keyed map of every scanned library file, so startup is fast. Rebuilt asynchronously in the background.
+- **session**: `userData/session.json`, the playback state (current track, queue, shuffle/repeat) plus normal and mini window bounds, restored on launch.
+- **tracker**: `userData/tracker/`, per-song play counts plus a monthly play history. Powers the Home page stats.
+- **theme**: a complete color palette (one of several built-ins) plus per-role user overrides and an accent color, applied at runtime as CSS custom properties on `:root`.
+- **accent / themeColor**: the user's highlight color (`config.themeColor`), passed around as a hex string.
+- **song hash**: a song's stable id, `sha1(normalized file path)` (`hashUtil.ts`).
+- **mini-player / mini mode**: the same window shrunk to a small, always-on-top widget.
+- **keybindings**: user-rebindable keyboard shortcuts stored in config (`utils/keybindings.ts`).
+- **equalizer (EQ)**: the 10-band Web Audio filter chain between the `<audio>` element and the speakers.
+
+---
+
+## 4. Build, run & release
+
+```bash
+npm ci             # install exactly what package-lock.json pins (use `npm install` when changing deps)
+```
+
+| Script                                  | What it does                                                                                                            | When to use it                                                         |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `npm run dev`                           | Watches `src/` and `assets/`; on every change runs `npm start` again (rebuild + restart Electron)                       | Day-to-day development                                                 |
+| `npm start`                             | `compile`, then launches Electron                                                                                       | One-off run of the current code                                        |
+| `npm run compile`                       | `clean` → `tsc` (main + preload → `dist/`) → copy `assets/` → `dist/assets` → `vite build` (renderer → `dist/renderer`) | Build without launching; every packaging script runs it first          |
+| `npm run clean`                         | Deletes `dist/` (Node `fs.rmSync`, cross-platform)                                                                      | Drop stale output from deleted or renamed files                        |
+| `npm run typecheck`                     | `tsc --noEmit` over all of `src/` (Vite doesn't type-check)                                                             | After any TS change                                                    |
+| `npm run format`                        | Prettier `--write` on the whole repo                                                                                    | Before committing                                                      |
+| `npm run format:check`                  | Prettier `--check`; fails if anything is unformatted                                                                    | CI / pre-commit                                                        |
+| `npm run check`                         | `typecheck` + `format:check`                                                                                            | **Run before every commit**: the fastest "is this mergeable" gate      |
+| `npm run pack`                          | `compile` → `electron-builder --dir`: unpacked app in `release/<platform>-unpacked/`, no installer                      | Test the packaged app quickly (asar contents, icons, production paths) |
+| `npm run build`                         | `compile` → installers for the current OS into `release/`                                                               | Releases                                                               |
+| `npm run build:win` / `:mac` / `:linux` | Same, for a specific OS (build on that OS, see §5)                                                                      | Releases                                                               |
+
+- `tsconfig.json`: `rootDir: src`, `outDir: dist`, CommonJS. `vite.config.ts`: `root: src/renderer`, `base: "./"`, output `dist/renderer`. `tsc` also emits renderer `.js` files into `dist/`; Vite replaces `dist/renderer`, and the extra `dist/hooks` files are harmless.
+- `npm run dev` restarts the whole app on every save (no HMR). That's fine for now; a Vite dev server with HMR is a possible later upgrade.
+- There are no automated tests. To verify a change: `npm run check`, then `npm start` and exercise the feature. Main-process logs (`console.*` in `src/main/`) print to the terminal; renderer logs go to DevTools (`Ctrl+Shift+I`).
+- **Running Electron from Claude Code inside VS Code:** that environment sets `ELECTRON_RUN_AS_NODE=1`, which makes `electron .` run as plain Node and crash with `Cannot read properties of undefined (reading 'getPath')`. Unset it for the command first (PowerShell: `Remove-Item Env:ELECTRON_RUN_AS_NODE`). Normal terminals aren't affected.
+- **Windows packaging needs Developer Mode** (Settings → System → For developers) or an admin shell. electron-builder extracts its code-signing tools archive, which contains symlinks, and Windows only lets you create symlinks with that privilege. Without it, `pack`/`build` fail with `Cannot create symbolic link : A required privilege is not held by the client`, before the exe icon and version info are embedded.
+- `dist/`, `release/` and `node_modules/` are gitignored.
+
+### Versioning
+
+- The app version lives in `package.json` → `version` and must be **valid semver `MAJOR.MINOR.PATCH`** (e.g. `0.2.0`, not `0.2`). electron-builder uses it for artifact names and installer metadata.
+- `package-lock.json` repeats the version (top level and `packages[""]`). Keep both in sync, e.g. with `npm version <x.y.z> --no-git-tag-version`.
+- Bumping the version is a `package.json` change, so it needs user approval (§2).
+
+---
+
+## 5. Platform support
+
+Development and testing happen on **Windows** (installer targets: NSIS + portable). The code is written to be cross-platform. All runtime dependencies are pure JS (no native modules), paths are normalized before hashing or building URLs, and Cmd is treated as Ctrl in shortcuts. So cloning and running `npm start` should work on macOS and Linux, but neither has been tested.
+
+Build installers on the target OS: `.dmg` can only be built on macOS, and unsigned macOS builds trigger Gatekeeper warnings. On Linux, electron-builder's default AppImage target needs nothing extra.
+
+Known platform gaps (not yet fixed):
+
+| Platform              | Issue                                                                                                                                                                                                                                                                                  | Where                       |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| macOS                 | `build.mac.icon` uses the 512×512 `assets/icon.png` (electron-builder converts it to `.icns`). The macOS build itself has never been run.                                                                                                                                              | `package.json`              |
+| macOS                 | After the window closes the app keeps running (normal on macOS), but there is no `activate` handler to reopen the window; the user must Cmd+Q. Window/mini-mode IPC handlers are registered inside `createWindow()`, so creating a second window would throw duplicate-handler errors. | `src/main.ts`               |
+| macOS                 | No native traffic-light buttons (frameless window); the custom `TitleBar` buttons are used instead.                                                                                                                                                                                    | `TitleBar.tsx`              |
+| macOS / Linux         | The font stack starts with Windows-only "Segoe UI", so other systems fall back to Tahoma / Verdana / sans-serif.                                                                                                                                                                       | `App.tsx`                   |
+| Linux (Wayland)       | Wayland doesn't let apps position windows, so mini-player JS dragging, window-position restore and possibly always-on-top may not work. X11 is fine.                                                                                                                                   | `main.ts`, `MiniPlayer.tsx` |
+| Linux (Ubuntu 23.10+) | Unpackaged `electron .` can fail with an Electron "SUID sandbox helper" error caused by AppArmor. Packaged builds usually avoid it; `--no-sandbox` works around it for local dev only.                                                                                                 | —                           |
+
+---
+
+## 6. Architecture
+
+```
+┌──────────────────────── Renderer (React, sandboxed) ────────────────────────┐
+│ App.tsx  ── global state, page routing, nav history, theme, session restore  │
+│   ├─ hooks/  (audio, queue, playback controller, library, tracker, EQ, keys) │
+│   └─ components/  (pages + widgets, presentation only)                        │
+│                     │ window.api.* (Promise-based)   ▲ events               │
+└─────────────────────┼────────────────────────────────┼──────────────────────┘
+                 preload.ts  (contextBridge → ipcRenderer.invoke / .on)
+┌─────────────────────┼────────────────────────────────┼──────────────────────┐
+│ Main process        ▼ ipcMain.handle                  │ webContents.send    │
+│ main.ts ── window creation, window-control + mini-mode IPC, bounds persist  │
+│ main/ipc/*Handlers.ts ── thin handlers, one file per domain                  │
+│ main/services/* ── config, cache, session, tracker, metadata, library scan   │
+│ main/protocols/mediaProtocol.ts ── media:// file streaming (range requests)  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                 userData/  (JSON files on disk, see §7)
+```
+
+### Startup sequence
+
+1. `main.ts` registers the `media://` scheme as privileged with `stream` and `corsEnabled`. CORS is required; without it the Web Audio EQ graph outputs silence.
+2. `app.whenReady` → `registerIpcHandlers()` → `setupWatcher()` → `updateLibrary()` (background rescan) → `registerMediaProtocol()` → `createWindow()`.
+3. The renderer's `App.tsx` `init()`: `getConfig()` → `getLibraryFiles()` (served instantly from the cache) → if `config.restoreSession`, rebuild the queue and current track from `getSession()` (paths mapped back to `FileItem`s).
+4. When the background scan finishes, main broadcasts `library-updated` with the full file list, and `useLibrary` updates `allTracks`.
+
+### Library pipeline
+
+`libraryScanner.getAllMediaFiles(dir)` recursively walks folders, keeps files where `isMediaFile()` matches, parses tags with `music-metadata`, and saves embedded cover art into `userData/art_cache/`. Then `libraryUpdater.updateLibrary()` concatenates all configured paths → `saveCache()` assigns `hash` → broadcasts `library-updated`. `libraryWatcher` (chokidar) re-runs `updateLibrary` after 2 s of filesystem silence, and `update-config` restarts the watcher whenever `libraryPaths` changes.
+
+Every change triggers a **full rescan**, and the whole library is sent to the renderer in one message. That's fine for typical libraries; keep it in mind for very large ones.
+
+### Playback pipeline (renderer)
+
+- A single `<audio>` element lives at the bottom of `App.tsx`. Its `src` is `media://<encodeURIComponent(path with forward slashes)>`.
+- `useAudioPlayer` owns play/pause, time, duration, seek and volume. Volume persists to config.
+- `useQueue` owns `queue`, `shuffledQueue`, `currentIndex`, `isShuffle` and `repeatMode`. `activeQueue` is whichever list is in use.
+- `usePlaybackController` coordinates the two: `playTrack`, next/prev, `handleEnded` (repeat logic), play-next / play-next-multiple, remove-from-queue, shuffle-play, and drag-and-drop of files onto the window.
+- `useEqualizer` builds the Web Audio graph **once per element**: source → 10 peaking biquads → destination. A WeakMap guards it because `createMediaElementSource` throws if called twice. When the EQ is disabled, every band ramps to 0 dB; the graph is never torn down.
+- `usePlayTracker` counts only time actually _listened_ (seeks don't count) and calls `recordPlay(hash)` once `playCountThresholdPercent` is reached.
+- `useKeyboardControls` maps `config.keybindings` plus the built-in media keys to actions. Unmodified keys are ignored while the user is typing in an input. Mouse button 3 triggers "back".
+
+### Routing & navigation (renderer)
+
+There is **no router library**. `App.tsx` holds `view: Page` and `activeTab` and renders the page through an `if (view === …)` chain inside `<main>`. Back navigation uses a `NavSnapshot` stack (`pushNav()` / `handleGoBack()`, capped by `config.navigationHistorySize`), which also restores scroll position through `onScrollRef`. **Call `pushNav()` before every navigation that should be undoable.**
+
+### Context menus
+
+Menus are native Electron menus. The renderer calls `window.api.showSongContextMenu(song)` / `showGroupContextMenu(name)`. `menuHandlers.ts` builds the menu and resolves the Promise with a typed action (`ContextMenuAction` / `GroupContextMenuAction`), or `null` if the user dismissed it. `App.tsx` (`showContextMenu`, `showGroupContextMenu`) carries out the action.
+
+### Theming
+
+- `theme/colors.ts`: `DEFAULT_PALETTE` (role → color), `COLOR_KEYS`, `colors` (each role mapped to the string `"var(--role)"`), accent presets, and the Settings UI metadata (`colorGroups`, `CORE_KEYS`). **Components use `colors.x` (inline styles) or `var(--x)` (CSS Modules), never hex literals.**
+- `theme/themes.ts`: built-in palettes (Dark, Light, Midnight, Dracula, Nord, Ocean, Ember, Forest, Graphite) and `getTheme()`.
+- `theme/applyTheme.ts`: `applyPalette()` writes `{...theme.palette, ...config.appearance.colors}` and `--theme-color` to `:root`. `App.tsx` calls it whenever the config changes.
+- The **accent** (`config.themeColor`) is passed down as a **real hex string prop** (`themeColor`), because components do alpha math with it, e.g. `${themeColor}22`.
+
+### Mini-player
+
+`App.tsx` `isMini` swaps the whole UI for `<MiniPlayer>` and calls `enterMiniMode` / `exitMiniMode`. `main.ts` resizes the same window, makes it always-on-top, and saves separate bounds for normal and mini mode. Dragging is done in JS: `getWindowBounds` + `setWindowPosition`, which calls `setBounds` with a fixed size to avoid DPI drift. Don't switch it to `-webkit-app-region: drag`, which suppresses the hover events the mini-player needs. (The main `TitleBar` does use `WebkitAppRegion: "drag"`.)
+
+---
+
+## 7. Data
+
+### Key types (`src/renderer/types.d.ts`)
+
+This file is the **shared contract**; the main process imports it too.
+
+- `UserConfig`: every user setting. Defaults are in `main/services/configService.ts` → `DEFAULT_CONFIG`.
+- `FileItem`: a file or folder node. Songs carry `isMedia`, `hash` and `metadata` (title, artists[], album, genre[], duration, picture path, year, trackNumber, bitrate, bpm, lyrics …).
+- `Playlist`, `ArtistInfo`, `SessionData`, `WindowBounds`, `PlayRecord`, `Appearance`.
+- `ContextMenuAction`, `GroupContextMenuAction`.
+- `declare global { interface Window { api: {...} } }`: **the typed surface of every IPC call.**
+
+Shared non-UI code imported by both processes lives in `src/utils/` (`configService` imports `keybindings.ts`, for example). `src/types/queue.ts` holds `RepeatMode`.
+
+Songs are identified in two ways:
+
+- by **`hash`**, which the library cache and the play tracker key on;
+- by **`path`**, which playlists, the session and the queue store as absolute file paths.
+
+Both are derived from the file location, so **moving or renaming a file drops it from playlists and resets its play count.**
+
+### Persistence (`app.getPath("userData")`)
+
+| File / dir                                                      | Owner                                       | Contents                                                                                                         |
+| --------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `config.json`                                                   | `services/configService.ts`                 | `UserConfig`. `getConfig()` shallow-merges over `DEFAULT_CONFIG`; `appearance` and `keybindings` are deep-merged |
+| `library_cache.json`                                            | `services/cacheService.ts`                  | `{ [hash]: FileItem }` (migrates the legacy array format)                                                        |
+| `session.json`                                                  | `services/sessionService.ts`                | Queue / shuffle / repeat / current track path, plus normal and mini window bounds                                |
+| `tracker/play_counts.json`, `tracker/play_history/YYYY-MM.json` | `services/trackerService.ts`                | Play counts by hash; monthly play logs                                                                           |
+| `playlists/<id>.json`                                           | `ipc/playlistHandlers.ts`                   | One file per playlist                                                                                            |
+| `artists/<md5(name)>.json`                                      | `ipc/artistHandlers.ts`                     | Artist bio + picture                                                                                             |
+| `art_cache/`                                                    | `metadataService.saveArt` / artist handlers | Extracted cover art and artist images                                                                            |
+
+All persistence uses synchronous `fs` + JSON with `try/catch` + `console.error`. Follow that pattern.
+
+---
+
+## 8. File structure
+
+```text
+assets/                              # icon.ico (Windows), icon.png (512×512, macOS/Linux/window icon); copied to dist/assets
+.todo                                # Backlog (issues + feature ideas)
+package.json                         # Scripts (§4), deps, electron-builder config under "build"
+tsconfig.json / vite.config.ts       # Main+preload compile (tsc → dist/) / renderer bundle (vite → dist/renderer/)
+.prettierrc.json / .prettierignore   # Formatting rules (enforced by `npm run check`)
+.editorconfig / .gitattributes       # Editor defaults / LF line endings for all text files
+.nvmrc                               # Pinned Node version
+src/
+├── main.ts                          # Electron entry — frameless BrowserWindow; registers IPC + protocol + watcher;
+│                                    #   window-control + mini-player-mode IPC; persists/restores window bounds (session)
+├── preload.ts                       # Exposes window.api to renderer via contextBridge (library, config, playlists,
+│                                    #   metadata, artists, shell, session, tracker, window controls, mini-mode)
+│
+├── hooks/                           # React hooks (state + lifecycle only, no UI)
+│   ├── useAudioPlayer.ts            # HTML5 audio element state (play/pause, seek, duration, volume → config)
+│   ├── useQueue.ts                  # Playback queue state, shuffle, repeat mode, current index
+│   ├── usePlaybackController.ts     # Coordinates audio + queue; next/prev, end-of-track, queue mutations, file drop
+│   ├── useEqualizer.ts              # Web Audio 10-band EQ graph on the <audio> element; applies config gains
+│   ├── useKeyboardControls.ts       # Global key/mouse-back handler driven by config.keybindings
+│   ├── useLibrary.ts                # Subscribes to library-updated events; loads directory trees
+│   └── usePlayTracker.ts            # Records a play (window.api.recordPlay) once a configurable % is actually listened to
+│
+├── types/
+│   └── queue.ts                     # RepeatMode type ("none" | "all" | "one")
+│
+├── utils/                           # Pure helpers, shared by renderer and (some) main
+│   ├── array.ts                     # shuffleArray() — Fisher-Yates
+│   ├── equalizer.ts                 # EQ_FREQUENCIES, gain limits, EQ_PRESETS, normalizeBands(), formatFrequency()
+│   ├── keybindings.ts               # Keybinding types, DEFAULT_KEYBINDINGS, BUILTIN_KEYBINDINGS (media keys),
+│   │                                #   KEYBOARD_ACTIONS (settings labels/order), matchesKeybinding(), formatKeybinding()
+│   ├── metadata.ts                  # normalizeGenre(), formatArtists()
+│   └── time.ts                      # formatDuration() — seconds → MM:SS
+│
+├── renderer/                        # React frontend
+│   ├── main.tsx                     # Mounts <App /> to #root
+│   ├── index.html                   # HTML entry point
+│   ├── App.tsx                      # Root component — global state, page routing, nav history, hooks wiring,
+│   │                                #   context-menu actions, theme application, session restore/save, mini-player toggle
+│   ├── types.d.ts                   # Shared interfaces (UserConfig, FileItem, Playlist, SessionData, …); declares window.api
+│   ├── css-modules.d.ts             # CSS Modules type shim
+│   │
+│   ├── theme/                       # Runtime theming (CSS custom properties on :root)
+│   │   ├── colors.ts                # DEFAULT_PALETTE + color-role keys; `colors` (var(--x) refs); accent presets;
+│   │   │                            #   Settings UI metadata (colorGroups, CORE_KEYS); buildRootCss()
+│   │   ├── themes.ts                # Built-in themes (Dark, Light, Midnight, Dracula, Nord, Ocean, Ember, Forest, Graphite)
+│   │   └── applyTheme.ts            # applyPalette() — writes resolved palette + accent to :root style
+│   │
+│   └── components/
+│       ├── Navbar/
+│       │   ├── Navbar.tsx           # Tab bar + back button + queue/settings buttons; hosts GlobalSearch
+│       │   ├── navConfig.ts         # Tab config array (Home, Library, Artists, Albums, Genres, Playlists)
+│       │   ├── types.ts             # Page and NavTab types (Page is duplicated in App.tsx — keep in sync)
+│       │   └── Navbar.module.css
+│       │
+│       ├── TitleBar/
+│       │   └── TitleBar.tsx         # Custom frameless window chrome — title, mini-player/minimize/maximize/close buttons
+│       │
+│       ├── MiniPlayer/
+│       │   └── MiniPlayer.tsx       # Floating always-on-top mini widget — cover art + transport controls; JS window dragging
+│       │
+│       ├── GlobalSearch/
+│       │   ├── GlobalSearch.tsx     # Library-wide search dropdown — songs/albums/artists/playlists with navigation
+│       │   └── GlobalSearch.module.css
+│       │
+│       ├── HomeView/
+│       │   ├── HomeView.tsx         # Home page — recently played, most played, popular artists, never played, library stats
+│       │   └── HomeView.module.css
+│       │
+│       ├── LibraryView.tsx          # Switches between folder list and directory tree
+│       ├── LibraryFoldersView.tsx   # Shows library paths with Add/Remove/Refresh
+│       ├── LibraryFolderView.tsx    # Directory tree for a selected library path
+│       ├── DirectoryTree.tsx        # Recursive folder/file tree with expand/collapse and sorting
+│       │
+│       ├── GroupedView/
+│       │   ├── GroupedView.tsx      # Container for Artists/Albums/Genres views; search + sort; artist header (bio/picture)
+│       │   ├── GroupList.tsx        # Grid of group cards
+│       │   ├── SongGrid.tsx         # Grid of song cards filtered to selected group
+│       │   ├── GroupCard.tsx        # Card: group name, count, picture; right-click group context menu
+│       │   ├── SongCard.tsx         # Card: song artwork, title, artist
+│       │   ├── GroupedViewHeader.tsx # Empty placeholder file (header lives inside GroupedView.tsx)
+│       │   ├── groupedView.utils.ts # getFilteredSongs(), getGroupEntries()
+│       │   ├── types.ts             # GroupType, GroupSortBy, SelectedGroup
+│       │   └── GroupedView.module.css
+│       │
+│       ├── PlaybackBar.tsx          # Bottom control bar — track info, play controls, progress, volume, repeat/shuffle, lyrics/queue
+│       │
+│       ├── Queue/
+│       │   ├── QueueView.tsx        # Full queue list with header and clear button
+│       │   ├── QueueItem.tsx        # Single queue row — number, title, artist, duration, remove button
+│       │   └── QueueHeader.tsx      # Queue stats (count, total duration) and controls
+│       │
+│       ├── PlaylistView.tsx         # Playlist page — create, view, edit, add/remove songs, drag-reorder, sort
+│       ├── SongDetailsView.tsx      # Full-screen detail — metadata, editable tags (MP3), album art, lyrics, add-to-playlist
+│       └── SettingsView.tsx         # Settings page — sections: Appearance, Playback, Equalizer, Startup, Home,
+│                                    #   Library & Browsing, Keyboard Shortcuts, Library Folders
+│
+└── main/                            # Electron main process
+    ├── ipc/
+    │   ├── index.ts                 # Registers all IPC handler modules
+    │   ├── libraryHandlers.ts       # get-library-files, get-directory-tree, select-directory, refresh-library
+    │   ├── configHandlers.ts        # get-config, update-config (re-inits watcher when libraryPaths change)
+    │   ├── metadataHandlers.ts      # get-metadata (incl. hash), write-metadata (node-id3 tag writing)
+    │   ├── playlistHandlers.ts      # get-playlists, get-playlist, create-playlist, update-playlist, delete-playlist
+    │   ├── artistHandlers.ts        # get-artist-info, update-artist-info, select-artist-image
+    │   ├── menuHandlers.ts          # show-song-context-menu + show-group-context-menu
+    │   ├── shellHandlers.ts         # show-file-in-folder, open-external-url
+    │   ├── sessionHandlers.ts       # get-session, save-session, clear-session
+    │   └── trackerHandlers.ts       # record-play, get-play-counts, get-recent-plays
+    │                                # (window-*, get-window-bounds, set-window-position, enter/exit-mini-mode live in main.ts)
+    │
+    ├── protocols/
+    │   └── mediaProtocol.ts         # media:// protocol — streams audio/images, range requests, CORS header, MIME types
+    │
+    └── services/
+        ├── configService.ts         # Loads/saves userData/config.json; DEFAULT_CONFIG schema lives here
+        ├── cacheService.ts          # userData/library_cache.json — hash-keyed FileItem map (migrates legacy array format)
+        ├── metadataService.ts       # Tag extraction helpers (artists splitting, extractMetadata); saves album art
+        ├── hashUtil.ts              # hashPath() — stable sha1 song id derived from the (normalized) file path
+        ├── sessionService.ts        # userData/session.json — playback state + window/mini-window bounds
+        ├── trackerService.ts        # userData/tracker/ — play_counts.json + monthly play_history
+        │
+        └── library/
+            ├── libraryScanner.ts    # Recursive directory scan; builds FileItem tree; extracts metadata
+            ├── libraryUpdater.ts    # Scans all configured paths; updates cache; broadcasts library-updated
+            ├── libraryWatcher.ts    # Chokidar watcher on library paths; debounced (2s) change detection
+            └── mediaUtils.ts        # isMediaFile() — supported extensions
+```
+
+---
+
+## 9. Where to look — by feature area
+
+Paths are relative to `src/`.
+
+| Request is about…                                     | Start here                                                                                     | Also likely touches                                                                                                                         |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Play / pause / seek / volume**                      | `hooks/useAudioPlayer.ts`                                                                      | `components/PlaybackBar.tsx`, `MiniPlayer/MiniPlayer.tsx`                                                                                   |
+| **Next / prev, repeat, shuffle, end-of-track**        | `hooks/usePlaybackController.ts`, `hooks/useQueue.ts`                                          | `PlaybackBar.tsx`, `types/queue.ts`                                                                                                         |
+| **Queue page** (reorder, remove, clear)               | `components/Queue/QueueView.tsx`, `QueueItem.tsx`, `QueueHeader.tsx`                           | `usePlaybackController.ts` (`handleRemoveFromQueue`), `App.tsx` (`onClearQueue`)                                                            |
+| **Equalizer**                                         | `hooks/useEqualizer.ts`, `utils/equalizer.ts` (bands, presets)                                 | `SettingsView.tsx` "Equalizer" section, `UserConfig.equalizer*`                                                                             |
+| **Keyboard shortcuts**                                | `utils/keybindings.ts` (action ids, defaults, labels)                                          | `hooks/useKeyboardControls.ts` (action → handler map), `App.tsx` (passes handlers), `SettingsView.tsx` "Keyboard Shortcuts"                 |
+| **Play counts / stats / Home page**                   | `components/HomeView/HomeView.tsx`                                                             | `hooks/usePlayTracker.ts`, `main/services/trackerService.ts`, `ipc/trackerHandlers.ts`                                                      |
+| **Library scanning, supported formats, watcher**      | `main/services/library/*`                                                                      | `mediaUtils.ts` (extensions), `protocols/mediaProtocol.ts` (MIME types; add new formats in **both**)                                        |
+| **Library page / folder tree**                        | `LibraryView.tsx` → `LibraryFoldersView.tsx` / `LibraryFolderView.tsx` → `DirectoryTree.tsx`   | `ipc/libraryHandlers.ts` (`get-directory-tree`, `select-directory`)                                                                         |
+| **Artists / Albums / Genres pages**                   | `components/GroupedView/GroupedView.tsx`                                                       | `groupedView.utils.ts` (grouping/filter/sort, `minSongsForAlbum`), `GroupList` / `GroupCard` / `SongGrid` / `SongCard`, `utils/metadata.ts` |
+| **Artist bio / picture**                              | `ipc/artistHandlers.ts`                                                                        | `GroupedView.tsx` (artist header)                                                                                                           |
+| **Artist splitting** ("A feat. B", "A & B")           | `main/services/metadataService.ts` (`splitArtists`, `getArtists`)                              | `utils/metadata.ts` (`formatArtists`)                                                                                                       |
+| **Playlists**                                         | `components/PlaylistView.tsx` (one large file: list, detail, editing, drag-reorder, sort)      | `ipc/playlistHandlers.ts`                                                                                                                   |
+| **Song details, tag editing, lyrics, cover art**      | `components/SongDetailsView.tsx`                                                               | `ipc/metadataHandlers.ts` (`get-metadata`, `write-metadata` via node-id3, **MP3/ID3 only**), `metadataService.ts`                           |
+| **Global search**                                     | `components/GlobalSearch/GlobalSearch.tsx` (rendered inside Navbar)                            | `App.tsx` `handleGlobalSearchNavigate`, `config.searchResultsPerCategory`                                                                   |
+| **Navbar / tabs / back button**                       | `Navbar/Navbar.tsx`, `Navbar/navConfig.ts`, `Navbar/types.ts`                                  | `App.tsx` `handleTabChange`, `pushNav`, `handleGoBack`                                                                                      |
+| **Right-click menus**                                 | `main/ipc/menuHandlers.ts`                                                                     | `types.d.ts` action unions, `App.tsx` `showContextMenu` / `showGroupContextMenu`                                                            |
+| **Settings page**                                     | `components/SettingsView.tsx` (`<Section title=…>` blocks; `update(partial)` → `updateConfig`) | `UserConfig`, `DEFAULT_CONFIG`                                                                                                              |
+| **Theme, colors, accent**                             | `theme/colors.ts`, `theme/themes.ts`, `theme/applyTheme.ts`                                    | `SettingsView.tsx` "Appearance", `App.tsx` theme effect                                                                                     |
+| **Window chrome, min/max/close**                      | `components/TitleBar/TitleBar.tsx`                                                             | `main.ts` window IPC                                                                                                                        |
+| **Mini-player**                                       | `components/MiniPlayer/MiniPlayer.tsx`                                                         | `main.ts` (`enter-/exit-mini-mode`, bounds), `App.tsx` `isMini`                                                                             |
+| **Session restore / window size memory**              | `main/services/sessionService.ts`                                                              | `App.tsx` `init()` + session-save effect, `main.ts` `sanitizeBounds` / `flushBounds`                                                        |
+| **Opening files in Explorer / external links**        | `ipc/shellHandlers.ts`                                                                         | —                                                                                                                                           |
+| **Audio streaming problems** (seeking, CORS, silence) | `protocols/mediaProtocol.ts`                                                                   | `main.ts` `registerSchemesAsPrivileged`, `<audio crossOrigin="anonymous">` in `App.tsx`                                                     |
+| **App lifecycle, platform behavior**                  | `src/main.ts`                                                                                  | §5 Platform support                                                                                                                         |
+| **Packaging, icons, version**                         | `package.json` → `build`, `version` (needs approval)                                           | `assets/`, §4 Versioning                                                                                                                    |
+
+---
+
+## 10. Recipes
+
+### Add a new IPC call (most features need one)
+
+1. **Backend:** put the logic in a service under `main/services/`, or in the handler file if the domain already works that way (as playlists and artists do). Register `ipcMain.handle("kebab-case-name", …)` in the matching `main/ipc/<domain>Handlers.ts`. For a new domain, create `<domain>Handlers.ts` exporting `register<Domain>Handlers()` and call it from `main/ipc/index.ts`.
+2. **Preload:** add a camelCase method to `src/preload.ts` → `ipcRenderer.invoke("kebab-case-name", …)`. For main→renderer events, copy the `onLibraryUpdated` pattern, which returns an unsubscribe function.
+3. **Types:** add the signature to `Window.api` in `renderer/types.d.ts`.
+4. **UI:** call `window.api.x()` from a hook or from `App.tsx`. Keep components presentational and pass data and callbacks in as props.
+5. **Docs:** add the channel to the file tree in §8.
+
+### Add a new user setting
+
+1. Add the field to `UserConfig` (`types.d.ts`).
+2. Add its default to `DEFAULT_CONFIG` (`configService.ts`). If it's a nested object, deep-merge it in `getConfig()` like `appearance` / `keybindings` so older configs still load.
+3. Add a control to the relevant `<Section>` in `SettingsView.tsx` and save it with the existing `update({...})` helper.
+4. Read it wherever it's used through the `config` prop or state (`config?.field ?? default`).
+
+### Add a new page
+
+1. Add it to the `Page` union, which is **duplicated** in `App.tsx` and `Navbar/types.ts`. Update both, plus the `Exclude<…>` used for `activeTab` / `NavTab` if it isn't a tab.
+2. For a navbar tab, add it to `Navbar/navConfig.ts`.
+3. Add an `if (view === "…")` branch in `App.tsx`'s `<main>` and pass props and callbacks. Navigate with `pushNav(); setView(…)`.
+4. Pass `onScrollRef={handleScrollRef}` from the scroll container so that "back" restores the scroll position.
+5. Add it to Terminology (§3) and the file tree (§8).
+
+### Add a context-menu action
+
+Add a variant to `ContextMenuAction` / `GroupContextMenuAction` in `types.d.ts` → add the menu item in `menuHandlers.ts` → handle the action in `App.tsx`.
+
+### Add a keyboard shortcut
+
+Add the id to `KeyboardActionId`, plus entries in `DEFAULT_KEYBINDINGS` and `KEYBOARD_ACTIONS` (`utils/keybindings.ts`) → add `{ id, run }` and a param in `useKeyboardControls.ts` → pass the handler from `App.tsx`. The config deep-merge adds the default for existing users automatically.
+
+### Add a color role or a theme
+
+Add the role to `DEFAULT_PALETTE` (`colors.ts`), give it a value **in every theme** in `themes.ts`, and add it to `colorGroups` in `colors.ts` if it should be user-editable. For a new theme, add one entry to `THEMES` in `themes.ts`.
+
+### Support a new audio format
+
+Add the extension to `mediaUtils.ts` **and** its MIME type to `getMimeType` in `mediaProtocol.ts`.
+
+### Persist a new kind of data
+
+Add a service in `main/services/` that reads and writes a JSON file under `app.getPath("userData")` (sync `fs`, `try/catch`, safe fallback), expose it through IPC, and add a row to the persistence table in §7.
+
+---
+
+## 11. Conventions & gotchas
+
+- **ESM-only packages** (`chokidar`, `music-metadata`, `node-id3`) are loaded with `await eval('import("pkg")')` and cached in a module variable. The `eval` stops `tsc` (CommonJS output) from rewriting the import into `require`. Keep the pattern for any ESM-only dependency.
+- **Styling:** most components use inline `style={{}}` objects with `colors.*`. Larger widgets (Navbar, GroupedView, GlobalSearch, HomeView) use `*.module.css`. Match the style of the file you're editing. Global base CSS (scrollbars, body) is injected in the first effect of `App.tsx`.
+- **Formatting** is Prettier's job. Don't hand-align code; run `npm run format` before committing, and make sure `npm run check` passes.
+- **State lives in `App.tsx`** and flows down as props; there is no context or store. Hooks return large objects that `App.tsx` destructures. Keep that shape, and don't introduce Redux, Context or a router without asking.
+- `config` is `UserConfig | null` until loaded, so always guard it (`config?.x ?? fallback`). After `updateConfig`, call `setConfig(newConfig)` with the returned value.
+- Some types are re-declared locally on the main side (`Playlist` in `playlistHandlers.ts`, `ArtistInfo` in `artistHandlers.ts`). If you change a shape, update those copies too.
+- `media://` paths: convert backslashes to `/`, then `encodeURIComponent`. The protocol strips a leading `/` before a drive letter on Windows.
+- `write-metadata` uses node-id3, so tag writing works for **MP3 only**; other formats fail and return `false`. `SongDetailsView` disables editing for non-MP3 files.
+- Keep path handling cross-platform: use `path.join`, and normalize separators before hashing or comparing paths (see §5).
+- Errors: main-process code logs with `console.error` and returns a safe fallback (`null`, `[]`, `false`). It doesn't throw across IPC.
+- Backlog ideas live in `.todo` (synced lyrics, cover-art writing, picture-in-picture).

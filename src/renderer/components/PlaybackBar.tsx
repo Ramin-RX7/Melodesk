@@ -14,7 +14,7 @@ import {
   IoVolumeHigh,
   IoVolumeMedium,
   IoVolumeLow,
-  IoVolumeMute
+  IoVolumeMute,
 } from "react-icons/io5";
 
 interface PlaybackBarProps {
@@ -30,7 +30,7 @@ interface PlaybackBarProps {
   onPrevious: () => void;
   isShuffle: boolean;
   onToggleShuffle: () => void;
-  repeatMode: 'none' | 'one' | 'all';
+  repeatMode: "none" | "one" | "all";
   onToggleRepeat: () => void;
   onShowQueue: () => void;
   volume: number;
@@ -71,7 +71,8 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
   }, [currentTime]);
 
   const formatTime = (seconds: number) => {
-    if (typeof seconds !== 'number' || isNaN(seconds) || seconds === Infinity || seconds < 0) return "0:00";
+    if (typeof seconds !== "number" || isNaN(seconds) || seconds === Infinity || seconds < 0)
+      return "0:00";
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
@@ -106,7 +107,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
     const { title, artists } = currentTrack.metadata || {};
     return {
       title: title || currentTrack.name,
-      artists: (Array.isArray(artists) ? artists.join(", ") : artists) || "Unknown Artist"
+      artists: (Array.isArray(artists) ? artists.join(", ") : artists) || "Unknown Artist",
     };
   };
 
@@ -130,8 +131,20 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
       }}
     >
       {/* Progress Bar Section */}
-      <div style={{ width: "100%", display: "flex", alignItems: "center", gap: "10px", padding: "10px 0 5px" }}>
-        <span style={{ fontSize: "11px", color: colors.textDim, width: "45px", textAlign: "right" }}>{formatTime(localTime)}</span>
+      <div
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          padding: "10px 0 5px",
+        }}
+      >
+        <span
+          style={{ fontSize: "11px", color: colors.textDim, width: "45px", textAlign: "right" }}
+        >
+          {formatTime(localTime)}
+        </span>
         <input
           type="range"
           min={0}
@@ -177,10 +190,20 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
             height: "4px",
           }}
         />
-        <span style={{ fontSize: "11px", color: colors.textDim, width: "45px" }}>{formatTime(duration)}</span>
+        <span style={{ fontSize: "11px", color: colors.textDim, width: "45px" }}>
+          {formatTime(duration)}
+        </span>
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: 1, minHeight: 0 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
         {/* Track Info (Play Now) */}
         <div
           onContextMenu={handleContextMenu}
@@ -188,7 +211,18 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
         >
           <div
             onClick={onShowDetails}
-            style={{ width: "48px", height: "48px", backgroundColor: colors.bgControl, borderRadius: "4px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", cursor: "pointer" }}
+            style={{
+              width: "48px",
+              height: "48px",
+              backgroundColor: colors.bgControl,
+              borderRadius: "4px",
+              flexShrink: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              overflow: "hidden",
+              cursor: "pointer",
+            }}
           >
             {currentTrack?.metadata?.picture ? (
               <img
@@ -212,14 +246,28 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
             </div> */}
             <div
               onClick={onShowDetails}
-              style={{ fontSize: "14px", fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+              style={{
+                fontSize: "14px",
+                fontWeight: "bold",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                cursor: "pointer",
+              }}
             >
               {title}
             </div>
             {currentTrack && (
               <div
                 onClick={onShowDetails}
-                style={{ fontSize: "12px", color: colors.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+                style={{
+                  fontSize: "12px",
+                  color: colors.textMuted,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  cursor: "pointer",
+                }}
               >
                 {artists}
               </div>
@@ -228,7 +276,15 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
         </div>
 
         {/* Controls */}
-        <div style={{ display: "flex", alignItems: "center", gap: "15px", flex: 1, justifyContent: "center" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "15px",
+            flex: 1,
+            justifyContent: "center",
+          }}
+        >
           <button
             style={{ ...buttonStyle, color: isShuffle ? themeColor : colors.textPrimary }}
             onClick={onToggleShuffle}
@@ -236,32 +292,81 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
           >
             <IoShuffle />
           </button>
-          <button style={buttonStyle} onClick={onPrevious} title="Previous"><IoPlaySkipBack /></button>
+          <button style={buttonStyle} onClick={onPrevious} title="Previous">
+            <IoPlaySkipBack />
+          </button>
           <button
-            style={{ ...buttonStyle, fontSize: "32px", backgroundColor: colors.textPrimary, color: colors.bgBlack, borderRadius: "50%", padding: "6px" }}
+            style={{
+              ...buttonStyle,
+              fontSize: "32px",
+              backgroundColor: colors.textPrimary,
+              color: colors.bgBlack,
+              borderRadius: "50%",
+              padding: "6px",
+            }}
             onClick={onTogglePlay}
             title={isPlaying ? "Pause" : "Play"}
           >
             {isPlaying ? <IoPause /> : <IoPlay />}
           </button>
-          <button style={buttonStyle} onClick={onNext} title="Next"><IoPlaySkipForward /></button>
+          <button style={buttonStyle} onClick={onNext} title="Next">
+            <IoPlaySkipForward />
+          </button>
           <button
-            style={{ ...buttonStyle, color: repeatMode !== 'none' ? themeColor : colors.textPrimary, position: "relative" }}
+            style={{
+              ...buttonStyle,
+              color: repeatMode !== "none" ? themeColor : colors.textPrimary,
+              position: "relative",
+            }}
             onClick={onToggleRepeat}
             title={`Repeat: ${repeatMode}`}
           >
             <IoRepeat />
-            {repeatMode === 'one' && (
-              <span style={{ position: "absolute", fontSize: "10px", top: "50%", left: "50%", transform: "translate(-50%, -50%)", fontWeight: "bold" }}>1</span>
+            {repeatMode === "one" && (
+              <span
+                style={{
+                  position: "absolute",
+                  fontSize: "10px",
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  fontWeight: "bold",
+                }}
+              >
+                1
+              </span>
             )}
           </button>
         </div>
 
         {/* Extra Actions */}
-        <div style={{ flex: 1, display: "flex", justifyContent: "flex-end", gap: "15px", alignItems: "center" }}>
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: "15px",
+            alignItems: "center",
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: "8px", width: "150px" }}>
-            <span style={{ color: colors.textDim, fontSize: "18px", display: "flex", alignItems: "center" }}>
-              {volume === 0 ? <IoVolumeMute /> : volume < 0.3 ? <IoVolumeLow /> : volume < 0.7 ? <IoVolumeMedium /> : <IoVolumeHigh />}
+            <span
+              style={{
+                color: colors.textDim,
+                fontSize: "18px",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              {volume === 0 ? (
+                <IoVolumeMute />
+              ) : volume < 0.3 ? (
+                <IoVolumeLow />
+              ) : volume < 0.7 ? (
+                <IoVolumeMedium />
+              ) : (
+                <IoVolumeHigh />
+              )}
             </span>
             <input
               type="range"
@@ -278,8 +383,12 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
               }}
             />
           </div>
-          <button style={buttonStyle} onClick={onShowQueue} title="Queue"><IoList /></button>
-          <button style={buttonStyle} onClick={onShowLyrics} title="Lyrics"><IoDocumentTextOutline /></button>
+          <button style={buttonStyle} onClick={onShowQueue} title="Queue">
+            <IoList />
+          </button>
+          <button style={buttonStyle} onClick={onShowLyrics} title="Lyrics">
+            <IoDocumentTextOutline />
+          </button>
         </div>
       </div>
     </div>

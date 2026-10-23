@@ -4,10 +4,7 @@
 
 import { COLOR_KEYS, ColorKey, DEFAULT_PALETTE } from "./colors";
 
-export function applyPalette(
-  palette: Partial<Record<ColorKey, string>>,
-  themeColor: string,
-): void {
+export function applyPalette(palette: Partial<Record<ColorKey, string>>, themeColor: string): void {
   const root = document.documentElement;
   for (const key of COLOR_KEYS) {
     root.style.setProperty(`--${key}`, palette[key] ?? DEFAULT_PALETTE[key]);

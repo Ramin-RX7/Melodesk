@@ -64,9 +64,10 @@ export const COLOR_KEYS = Object.keys(DEFAULT_PALETTE) as ColorKey[];
 // What components import. Each value is a CSS variable reference, so inline
 // styles, template literals (`1px solid ${colors.borderSubtle}`) and dynamic
 // `el.style.background = colors.bgHover` all resolve against the live :root vars.
-export const colors = Object.fromEntries(
-  COLOR_KEYS.map((key) => [key, `var(--${key})`]),
-) as Record<ColorKey, string>;
+export const colors = Object.fromEntries(COLOR_KEYS.map((key) => [key, `var(--${key})`])) as Record<
+  ColorKey,
+  string
+>;
 
 // Default accent + the accent presets offered in Settings. The live accent is
 // the per-user `themeColor` (UserConfig), threaded through the app as a real hex
@@ -173,8 +174,7 @@ export function buildRootCss(
   themeColor: string,
 ): string {
   return (
-    COLOR_KEYS.map((key) => `--${key}: ${palette[key] ?? DEFAULT_PALETTE[key]};`).join(
-      "\n  ",
-    ) + `\n  --theme-color: ${themeColor};`
+    COLOR_KEYS.map((key) => `--${key}: ${palette[key] ?? DEFAULT_PALETTE[key]};`).join("\n  ") +
+    `\n  --theme-color: ${themeColor};`
   );
 }

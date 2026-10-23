@@ -9,5 +9,5 @@ export const navItems: {
   { label: "Artists", tab: "artists" },
   { label: "Albums", tab: "albums" },
   { label: "Genres", tab: "genres" },
-  { label: "Playlists", tab: "playlists" }
+  { label: "Playlists", tab: "playlists" },
 ];

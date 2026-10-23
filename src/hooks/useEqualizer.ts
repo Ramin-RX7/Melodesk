@@ -17,8 +17,7 @@ function buildGraph(el: HTMLMediaElement): EqGraph {
   const existing = graphs.get(el);
   if (existing) return existing;
 
-  const Ctor: typeof AudioContext =
-    window.AudioContext || (window as any).webkitAudioContext;
+  const Ctor: typeof AudioContext = window.AudioContext || (window as any).webkitAudioContext;
   const ctx = new Ctor();
   const source = ctx.createMediaElementSource(el);
 
@@ -52,7 +51,7 @@ function buildGraph(el: HTMLMediaElement): EqGraph {
  */
 export function useEqualizer(
   audioRef: React.RefObject<HTMLAudioElement | null>,
-  config: UserConfig | null
+  config: UserConfig | null,
 ) {
   const enabled = !!config?.equalizerEnabled;
   const bands = config?.equalizerBands;

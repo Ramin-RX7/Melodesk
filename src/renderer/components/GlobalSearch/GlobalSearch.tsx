@@ -25,7 +25,16 @@ type Props = {
   inputRef?: React.RefObject<HTMLInputElement | null>;
 };
 
-export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSongContextMenu, onGroupContextMenu, onNavigate, inputRef: externalInputRef }: Props) {
+export function GlobalSearch({
+  allTracks,
+  config,
+  themeColor,
+  onPlaySong,
+  onSongContextMenu,
+  onGroupContextMenu,
+  onNavigate,
+  inputRef: externalInputRef,
+}: Props) {
   const [query, setQuery] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
@@ -72,7 +81,7 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSong
   const results = useMemo(() => {
     if (!q) return null;
 
-    const songs = allTracks.filter(t => {
+    const songs = allTracks.filter((t) => {
       const meta = t.metadata;
       if (!meta) return false;
       const title = (meta.title || t.name).toLowerCase();
@@ -82,9 +91,17 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSong
     });
 
     // normalizeGenre is only called for 'genre' type — pass identity fn for album/artist
-    const albums = getGroupEntries(allTracks, "album", query, "alphabet", false, s => s, config);
-    const artists = getGroupEntries(allTracks, "artist", query, "alphabet", false, s => s, config);
-    const matchedPlaylists = playlists.filter(p => p.name.toLowerCase().includes(q));
+    const albums = getGroupEntries(allTracks, "album", query, "alphabet", false, (s) => s, config);
+    const artists = getGroupEntries(
+      allTracks,
+      "artist",
+      query,
+      "alphabet",
+      false,
+      (s) => s,
+      config,
+    );
+    const matchedPlaylists = playlists.filter((p) => p.name.toLowerCase().includes(q));
 
     return { songs, albums, artists, playlists: matchedPlaylists };
   }, [q, allTracks, playlists, config]);
@@ -95,12 +112,12 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSong
     setQuery("");
   };
 
-  const hasAnyResult = results && (
-    results.songs.length > 0 ||
-    results.albums.length > 0 ||
-    results.artists.length > 0 ||
-    results.playlists.length > 0
-  );
+  const hasAnyResult =
+    results &&
+    (results.songs.length > 0 ||
+      results.albums.length > 0 ||
+      results.artists.length > 0 ||
+      results.playlists.length > 0);
 
   return (
     <div ref={wrapperRef} className={styles.wrapper}>
@@ -111,14 +128,20 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSong
           type="text"
           placeholder="Search library..."
           value={query}
-          onChange={e => { setQuery(e.target.value); setIsOpen(true); }}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setIsOpen(true);
+          }}
           onFocus={() => setIsOpen(true)}
           className={styles.input}
         />
         {query && (
           <button
             className={styles.clearBtn}
-            onClick={() => { setQuery(""); inputRef.current?.focus(); }}
+            onClick={() => {
+              setQuery("");
+              inputRef.current?.focus();
+            }}
           >
             <IoClose />
           </button>
@@ -146,25 +169,41 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSong
                       </button>
                     )}
                   </div>
-                  {(showAllSongs ? results!.songs : results!.songs.slice(0, limit)).map(song => (
+                  {(showAllSongs ? results!.songs : results!.songs.slice(0, limit)).map((song) => (
                     <div
                       key={song.path}
                       className={styles.resultItem}
-                      onClick={() => { onPlaySong(song, results!.songs); setIsOpen(false); setQuery(""); }}
-                      onContextMenu={onSongContextMenu ? (e) => onSongContextMenu(e, song) : undefined}
+                      onClick={() => {
+                        onPlaySong(song, results!.songs);
+                        setIsOpen(false);
+                        setQuery("");
+                      }}
+                      onContextMenu={
+                        onSongContextMenu ? (e) => onSongContextMenu(e, song) : undefined
+                      }
                     >
                       <div className={styles.songThumb}>
-                        {song.metadata?.picture
-                          ? <img src={`media://${encodeURIComponent(song.metadata.picture)}`} className={styles.thumbImg} />
-                          : <IoMusicalNote className={styles.thumbIcon} />
-                        }
+                        {song.metadata?.picture ? (
+                          <img
+                            src={`media://${encodeURIComponent(song.metadata.picture)}`}
+                            className={styles.thumbImg}
+                          />
+                        ) : (
+                          <IoMusicalNote className={styles.thumbIcon} />
+                        )}
                       </div>
                       <div className={styles.resultText}>
-                        <div className={styles.resultPrimary}>{song.metadata?.title || song.name}</div>
-                        <div className={styles.resultSecondary}>{song.metadata?.artists?.join(", ") || "Unknown Artist"}</div>
+                        <div className={styles.resultPrimary}>
+                          {song.metadata?.title || song.name}
+                        </div>
+                        <div className={styles.resultSecondary}>
+                          {song.metadata?.artists?.join(", ") || "Unknown Artist"}
+                        </div>
                       </div>
                       {song.metadata?.duration != null && (
-                        <div className={styles.resultMeta}>{formatDuration(song.metadata.duration)}</div>
+                        <div className={styles.resultMeta}>
+                          {formatDuration(song.metadata.duration)}
+                        </div>
                       )}
                     </div>
                   ))}
@@ -176,7 +215,11 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSong
                   <div className={styles.sectionHeader}>
                     <span className={styles.sectionTitle}>Albums</span>
                     {results!.albums.length > limit && (
-                      <button className={styles.showMoreBtn} style={{ color: themeColor }} onClick={() => navigate({ tab: "albums", query })}>
+                      <button
+                        className={styles.showMoreBtn}
+                        style={{ color: themeColor }}
+                        onClick={() => navigate({ tab: "albums", query })}
+                      >
                         Show more
                       </button>
                     )}
@@ -186,7 +229,16 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSong
                       key={name}
                       className={styles.resultItem}
                       onClick={() => navigate({ tab: "albums", groupName: name })}
-                      onContextMenu={onGroupContextMenu ? (e) => onGroupContextMenu(e, name, getFilteredSongs(allTracks, name, "album", "", false)) : undefined}
+                      onContextMenu={
+                        onGroupContextMenu
+                          ? (e) =>
+                              onGroupContextMenu(
+                                e,
+                                name,
+                                getFilteredSongs(allTracks, name, "album", "", false),
+                              )
+                          : undefined
+                      }
                     >
                       <div className={styles.resultText}>
                         <div className={styles.resultPrimary}>{name}</div>
@@ -202,7 +254,11 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSong
                   <div className={styles.sectionHeader}>
                     <span className={styles.sectionTitle}>Artists</span>
                     {results!.artists.length > limit && (
-                      <button className={styles.showMoreBtn} style={{ color: themeColor }} onClick={() => navigate({ tab: "artists", query })}>
+                      <button
+                        className={styles.showMoreBtn}
+                        style={{ color: themeColor }}
+                        onClick={() => navigate({ tab: "artists", query })}
+                      >
                         Show more
                       </button>
                     )}
@@ -212,7 +268,16 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSong
                       key={name}
                       className={styles.resultItem}
                       onClick={() => navigate({ tab: "artists", groupName: name })}
-                      onContextMenu={onGroupContextMenu ? (e) => onGroupContextMenu(e, name, getFilteredSongs(allTracks, name, "artist", "", false)) : undefined}
+                      onContextMenu={
+                        onGroupContextMenu
+                          ? (e) =>
+                              onGroupContextMenu(
+                                e,
+                                name,
+                                getFilteredSongs(allTracks, name, "artist", "", false),
+                              )
+                          : undefined
+                      }
                     >
                       <div className={styles.resultText}>
                         <div className={styles.resultPrimary}>{name}</div>
@@ -228,12 +293,16 @@ export function GlobalSearch({ allTracks, config, themeColor, onPlaySong, onSong
                   <div className={styles.sectionHeader}>
                     <span className={styles.sectionTitle}>Playlists</span>
                     {results!.playlists.length > limit && (
-                      <button className={styles.showMoreBtn} style={{ color: themeColor }} onClick={() => navigate({ tab: "playlists", query })}>
+                      <button
+                        className={styles.showMoreBtn}
+                        style={{ color: themeColor }}
+                        onClick={() => navigate({ tab: "playlists", query })}
+                      >
                         Show more
                       </button>
                     )}
                   </div>
-                  {results!.playlists.slice(0, limit).map(pl => (
+                  {results!.playlists.slice(0, limit).map((pl) => (
                     <div
                       key={pl.id}
                       className={styles.resultItem}

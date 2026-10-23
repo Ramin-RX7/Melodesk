@@ -5,18 +5,25 @@ import path from "path";
 const getMimeType = (filePath: string): string => {
   const ext = path.extname(filePath).toLowerCase();
   switch (ext) {
-    case ".mp3": return "audio/mpeg";
-    case ".wav": return "audio/wav";
-    case ".ogg": return "audio/ogg";
-    case ".m4a": return "audio/mp4";
-    case ".flac": return "audio/flac";
+    case ".mp3":
+      return "audio/mpeg";
+    case ".wav":
+      return "audio/wav";
+    case ".ogg":
+      return "audio/ogg";
+    case ".m4a":
+      return "audio/mp4";
+    case ".flac":
+      return "audio/flac";
     case ".jpg":
-    case ".jpeg": return "image/jpeg";
-    case ".png": return "image/png";
-    default: return "application/octet-stream";
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    default:
+      return "application/octet-stream";
   }
 };
-
 
 export function registerMediaProtocol() {
   protocol.handle("media", (request) => {
@@ -44,7 +51,7 @@ export function registerMediaProtocol() {
         const parts = range.replace(/bytes=/, "").split("-");
         const start = parseInt(parts[0], 10);
         const end = parts[1] ? parseInt(parts[1], 10) : stats.size - 1;
-        const chunksize = (end - start) + 1;
+        const chunksize = end - start + 1;
 
         const file = fs.createReadStream(decodedPath, { start, end });
         const head = {
@@ -79,5 +86,4 @@ export function registerMediaProtocol() {
       return new Response("Invalid media URL", { status: 400 });
     }
   });
-
 }

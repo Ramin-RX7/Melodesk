@@ -6,7 +6,6 @@ import { FileItem } from "../../../renderer/types";
 import { saveCache } from "../cacheService";
 import { getAllMediaFiles } from "../library/libraryScanner";
 
-
 export const updateLibrary = async () => {
   console.log("Starting library update...");
   const config = getConfig();
@@ -19,8 +18,7 @@ export const updateLibrary = async () => {
   }
   saveCache(allFiles);
   console.log(`Library update complete. Found ${allFiles.length} files.`);
-  BrowserWindow.getAllWindows().forEach(win => {
+  BrowserWindow.getAllWindows().forEach((win) => {
     win.webContents.send("library-updated", allFiles);
   });
 };
-

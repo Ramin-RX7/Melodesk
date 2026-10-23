@@ -1,16 +1,25 @@
 {
   "name": "melodesk",
-  "version": "0.2",
+  "version": "0.2.0",
   "description": "Music Player App",
   "main": "dist/main.js",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
   "scripts": {
+    "clean": "node -e \"require('fs').rmSync('dist', { recursive: true, force: true })\"",
+    "compile": "npm run clean && tsc && copyfiles -u 1 \"assets/**/*\" dist/assets && vite build",
+    "start": "npm run compile && electron .",
+    "dev": "nodemon --watch src --watch assets --ext ts,tsx,css,html,png,ico --exec \"npm start\"",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
-    "dev": "nodemon --watch src --ext ts,tsx,css,html --exec \"npm run build && electron .\"",
-    "start": "tsc && copyfiles -u 1 \"assets/**/*\" dist/assets && vite build && electron .",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux"
+    "format:check": "prettier --check .",
+    "check": "npm run typecheck && npm run format:check",
+    "pack": "npm run compile && electron-builder --dir",
+    "build": "npm run compile && electron-builder",
+    "build:win": "npm run compile && electron-builder --win",
+    "build:mac": "npm run compile && electron-builder --mac",
+    "build:linux": "npm run compile && electron-builder --linux"
   },
   "keywords": [],
   "author": "RaminRX7",
@@ -25,17 +34,16 @@
     "electron-builder": "^26.8.1",
     "nodemon": "^3.1.14",
     "prettier": "^3.8.3",
-    "ts-node": "^10.9.2",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-icons": "^5.6.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.13"
   },
   "dependencies": {
     "chokidar": "^5.0.0",
     "music-metadata": "^11.12.3",
-    "node-id3": "^0.2.9",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "react-icons": "^5.6.0"
+    "node-id3": "^0.2.9"
   },
   "build": {
     "appId": "com.raminrx7.melodesk",
@@ -49,12 +57,6 @@
       "dist/**/*",
       "node_modules/**/*",
       "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": "assets",
-        "to": "assets"
-      }
     ],
     "win": {
       "target": [
@@ -71,7 +73,7 @@
       "installerHeaderIcon": "assets/icon.ico"
     },
     "mac": {
-      "icon": "assets/icon.icns"
+      "icon": "assets/icon.png"
     },
     "linux": {
       "icon": "assets/icon.png"

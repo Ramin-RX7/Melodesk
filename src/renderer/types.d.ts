@@ -40,7 +40,7 @@ export interface SessionData {
   shuffledQueue: string[];
   currentIndex: number;
   isShuffle: boolean;
-  repeatMode: 'none' | 'one' | 'all';
+  repeatMode: "none" | "one" | "all";
   windowBounds?: WindowBounds;
   miniWindowBounds?: WindowBounds;
 }
@@ -80,7 +80,7 @@ export interface Playlist {
   name: string;
   description?: string;
   songs: string[];
-  sortBy?: 'custom' | 'title' | 'artist' | 'duration';
+  sortBy?: "custom" | "title" | "artist" | "duration";
   sortDescending?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -93,16 +93,16 @@ export interface PlayRecord {
 }
 
 export type ContextMenuAction =
-  | { type: 'play-next' }
-  | { type: 'go-to-album' }
-  | { type: 'go-to-artist', artist: string }
-  | { type: 'open-details' }
-  | { type: 'add-to-playlist', playlistId: string };
+  | { type: "play-next" }
+  | { type: "go-to-album" }
+  | { type: "go-to-artist"; artist: string }
+  | { type: "open-details" }
+  | { type: "add-to-playlist"; playlistId: string };
 
 export type GroupContextMenuAction =
-  | { type: 'group-play' }
-  | { type: 'group-play-next' }
-  | { type: 'group-add-to-playlist', playlistId: string };
+  | { type: "group-play" }
+  | { type: "group-play-next" }
+  | { type: "group-add-to-playlist"; playlistId: string };
 
 declare global {
   interface Window {
@@ -120,7 +120,12 @@ declare global {
       getPlaylists: () => Promise<Playlist[]>;
       getPlaylist: (id: string) => Promise<Playlist | null>;
       createPlaylist: (name: string) => Promise<Playlist>;
-      updatePlaylist: (id: string, data: Partial<Pick<Playlist, 'name' | 'songs' | 'description' | 'sortBy' | 'sortDescending'>>) => Promise<Playlist>;
+      updatePlaylist: (
+        id: string,
+        data: Partial<
+          Pick<Playlist, "name" | "songs" | "description" | "sortBy" | "sortDescending">
+        >,
+      ) => Promise<Playlist>;
       deletePlaylist: (id: string) => Promise<void>;
       writeMetadata: (filePath: string, tags: any) => Promise<boolean>;
       getArtistInfo: (name: string) => Promise<ArtistInfo | null>;

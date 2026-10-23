@@ -15,13 +15,8 @@ type Props = {
 };
 
 export function LibraryView(props: Props) {
-  const {
-    selectedLibraryPath,
-    config,
-    setConfig,
-    setSelectedLibraryPath,
-    handleFileSelect,
-  } = props;
+  const { selectedLibraryPath, config, setConfig, setSelectedLibraryPath, handleFileSelect } =
+    props;
 
   const handleAddFolder = async () => {
     const path = await window.api.selectDirectory();
@@ -37,17 +32,12 @@ export function LibraryView(props: Props) {
     }
   };
 
-  const handleRemoveFolder = async (
-    e: React.MouseEvent,
-    path: string
-  ) => {
+  const handleRemoveFolder = async (e: React.MouseEvent, path: string) => {
     e.stopPropagation();
 
     if (config) {
       const newConfig = await window.api.updateConfig({
-        libraryPaths: config.libraryPaths.filter(
-          (p: string) => p !== path
-        ),
+        libraryPaths: config.libraryPaths.filter((p: string) => p !== path),
       });
 
       setConfig(newConfig);
@@ -81,5 +71,4 @@ export function LibraryView(props: Props) {
       handleRemoveFolder={handleRemoveFolder}
     />
   );
-
 }

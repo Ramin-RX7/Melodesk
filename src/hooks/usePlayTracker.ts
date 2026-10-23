@@ -23,7 +23,7 @@ const BEGINNING_THRESHOLD = 1.0;
 export function usePlayTracker(
   audioRef: RefObject<HTMLAudioElement | null>,
   currentTrack: FileItem | null,
-  thresholdPercent: number
+  thresholdPercent: number,
 ) {
   const listenedRef = useRef(0);
   const lastTimeRef = useRef(0);

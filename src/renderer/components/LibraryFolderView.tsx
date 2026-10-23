@@ -5,64 +5,67 @@ import { DirectoryTree } from "./DirectoryTree";
 import { colors } from "../theme/colors";
 
 export function LibraryFolderView({
-    selectedLibraryPath,
-    setSelectedLibraryPath,
-    tree,
-    config,
-    themeColor,
-    handleFileSelect,
-    onContextMenu,
+  selectedLibraryPath,
+  setSelectedLibraryPath,
+  tree,
+  config,
+  themeColor,
+  handleFileSelect,
+  onContextMenu,
 }: any) {
-    return (
-        <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      <div
+        style={{
+          padding: "10px 20px",
+          display: "flex",
+          alignItems: "center",
+          gap: "15px",
+          borderBottom: `1px solid ${colors.borderSubtle}`,
+          backgroundColor: colors.bgSurface,
+          flexShrink: 0,
+        }}
+      >
+        <button
+          onClick={() => setSelectedLibraryPath(null)}
+          style={{
+            background: "none",
+            border: `1px solid ${colors.border}`,
+            color: colors.textPrimary,
+            padding: "4px 12px",
+            borderRadius: "4px",
+            cursor: "pointer",
+            fontSize: "12px",
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+          }}
+        >
+          <IoArrowBack /> Back
+        </button>
 
-            <div style={{
-                padding: "10px 20px",
-                display: "flex",
-                alignItems: "center",
-                gap: "15px",
-                borderBottom: `1px solid ${colors.borderSubtle}`,
-                backgroundColor: colors.bgSurface,
-                flexShrink: 0
-            }}>
-                <button
-                    onClick={() => setSelectedLibraryPath(null)}
-                    style={{
-                        background: "none",
-                        border: `1px solid ${colors.border}`,
-                        color: colors.textPrimary,
-                        padding: "4px 12px",
-                        borderRadius: "4px",
-                        cursor: "pointer",
-                        fontSize: "12px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "4px"
-                    }}
-                >
-                    <IoArrowBack /> Back
-                </button>
+        <span
+          style={{
+            fontSize: "13px",
+            color: colors.textMuted,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {selectedLibraryPath}
+        </span>
+      </div>
 
-                <span style={{
-                    fontSize: "13px",
-                    color: colors.textMuted,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap"
-                }}>
-                    {selectedLibraryPath}
-                </span>
-            </div>
-
-            <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: "120px" }}>
-                <DirectoryTree
-                    items={tree}
-                    onFileSelect={handleFileSelect}
-                    useDoubleClick={config?.doubleClickToPlay ?? true}
-                    themeColor={themeColor}
-                    onContextMenu={onContextMenu}
-                />
-            </div>
-        </div>
-    );
+      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: "120px" }}>
+        <DirectoryTree
+          items={tree}
+          onFileSelect={handleFileSelect}
+          useDoubleClick={config?.doubleClickToPlay ?? true}
+          themeColor={themeColor}
+          onContextMenu={onContextMenu}
+        />
+      </div>
+    </div>
+  );
 }

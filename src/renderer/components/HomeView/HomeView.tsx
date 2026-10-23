@@ -53,9 +53,12 @@ export function HomeView({
   const [recentPlays, setRecentPlays] = useState<PlayRecord[]>([]);
   const [detail, setDetail] = useState<DetailKey | null>(null);
 
-  const scrollAreaRef = useCallback((el: HTMLElement | null) => {
-    onScrollRef?.(el);
-  }, [onScrollRef]);
+  const scrollAreaRef = useCallback(
+    (el: HTMLElement | null) => {
+      onScrollRef?.(el);
+    },
+    [onScrollRef],
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -73,7 +76,7 @@ export function HomeView({
     load();
   }, []);
 
-  const mediaTracks = useMemo(() => allTracks.filter(t => t.isMedia), [allTracks]);
+  const mediaTracks = useMemo(() => allTracks.filter((t) => t.isMedia), [allTracks]);
 
   const hashToTrack = useMemo(() => {
     const map = new Map<string, FileItem>();
@@ -125,12 +128,12 @@ export function HomeView({
 
   const popularArtists = useMemo<ArtistEntry[]>(() => {
     return Array.from(artistStats.entries())
-      .sort((a, b) => (b[1].plays - a[1].plays) || (b[1].songCount - a[1].songCount))
+      .sort((a, b) => b[1].plays - a[1].plays || b[1].songCount - a[1].songCount)
       .map(([name, stats]) => ({ name, ...stats }));
   }, [artistStats]);
 
   const neverPlayed = useMemo(() => {
-    return mediaTracks.filter(t => !(t.hash && playCounts[t.hash] > 0));
+    return mediaTracks.filter((t) => !(t.hash && playCounts[t.hash] > 0));
   }, [mediaTracks, playCounts]);
 
   const stats = useMemo(() => {
@@ -141,9 +144,15 @@ export function HomeView({
     let totalPlays = 0;
 
     for (const track of mediaTracks) {
-      track.metadata?.artists?.forEach(a => { const n = a.trim(); if (n) artistSet.add(n); });
+      track.metadata?.artists?.forEach((a) => {
+        const n = a.trim();
+        if (n) artistSet.add(n);
+      });
       if (track.metadata?.album) albumSet.add(track.metadata.album.trim());
-      track.metadata?.genre?.forEach(g => { const n = g.trim(); if (n) genreSet.add(normalizeGenre(n)); });
+      track.metadata?.genre?.forEach((g) => {
+        const n = g.trim();
+        if (n) genreSet.add(normalizeGenre(n));
+      });
       const plays = track.hash ? (playCounts[track.hash] ?? 0) : 0;
       totalPlays += plays;
       listeningSeconds += plays * (track.metadata?.duration ?? 0);
@@ -158,7 +167,7 @@ export function HomeView({
       }
     }
 
-    const topArtist = popularArtists.find(a => a.plays > 0) ?? null;
+    const topArtist = popularArtists.find((a) => a.plays > 0) ?? null;
 
     return {
       songCount: mediaTracks.length,
@@ -182,8 +191,12 @@ export function HomeView({
       song={song}
       currentTrack={currentTrack}
       themeColor={themeColor}
-      onClick={() => { if (!doubleClickToPlay) handleFileSelect(song, contextQueue); }}
-      onDoubleClick={() => { if (doubleClickToPlay) handleFileSelect(song, contextQueue); }}
+      onClick={() => {
+        if (!doubleClickToPlay) handleFileSelect(song, contextQueue);
+      }}
+      onDoubleClick={() => {
+        if (doubleClickToPlay) handleFileSelect(song, contextQueue);
+      }}
       onContextMenu={(e) => onContextMenu(e, song)}
     />
   );
@@ -200,28 +213,32 @@ export function HomeView({
 
   // ----- Full-result detail page -----
   const detailConfig: Record<DetailKey, { title: string; render: () => React.ReactNode }> = {
-    "recent": {
+    recent: {
       title: "Recently Played",
       render: () => (
-        <div className={styles.fullGrid}>{recentlyPlayed.map(s => renderSongCard(s, recentlyPlayed))}</div>
+        <div className={styles.fullGrid}>
+          {recentlyPlayed.map((s) => renderSongCard(s, recentlyPlayed))}
+        </div>
       ),
     },
     "most-played": {
       title: "Most Played",
       render: () => (
-        <div className={styles.fullGrid}>{mostPlayed.map(s => renderSongCard(s, mostPlayed))}</div>
+        <div className={styles.fullGrid}>
+          {mostPlayed.map((s) => renderSongCard(s, mostPlayed))}
+        </div>
       ),
     },
     "popular-artists": {
       title: "Most Popular Artists",
-      render: () => (
-        <div className={styles.fullGrid}>{popularArtists.map(renderArtistCard)}</div>
-      ),
+      render: () => <div className={styles.fullGrid}>{popularArtists.map(renderArtistCard)}</div>,
     },
     "never-played": {
       title: "Never Played",
       render: () => (
-        <div className={styles.fullGrid}>{neverPlayed.map(s => renderSongCard(s, neverPlayed))}</div>
+        <div className={styles.fullGrid}>
+          {neverPlayed.map((s) => renderSongCard(s, neverPlayed))}
+        </div>
       ),
     },
   };
@@ -238,27 +255,32 @@ export function HomeView({
             <h2 className={styles.title}>{cfg.title}</h2>
           </div>
         </div>
-        <div className={styles.scrollArea}>
-          {cfg.render()}
-        </div>
+        <div className={styles.scrollArea}>{cfg.render()}</div>
       </div>
     );
   }
 
   // ----- Home overview -----
-  const renderSongRow = (songs: FileItem[], emptyText: string, detailKey: DetailKey, title: string) => (
+  const renderSongRow = (
+    songs: FileItem[],
+    emptyText: string,
+    detailKey: DetailKey,
+    title: string,
+  ) => (
     <section className={styles.section}>
       <div className={styles.sectionHeader}>
         <h3 className={styles.sectionTitle}>{title}</h3>
         {songs.length > previewLimit && (
-          <button className={styles.showAllButton} onClick={() => setDetail(detailKey)}>Show all</button>
+          <button className={styles.showAllButton} onClick={() => setDetail(detailKey)}>
+            Show all
+          </button>
         )}
       </div>
       {songs.length === 0 ? (
         <div className={styles.emptyState}>{emptyText}</div>
       ) : (
         <div className={styles.row}>
-          {songs.slice(0, previewLimit).map(song => (
+          {songs.slice(0, previewLimit).map((song) => (
             <div className={styles.cardWrap} key={song.path}>
               {renderSongCard(song, songs)}
             </div>
@@ -284,21 +306,28 @@ export function HomeView({
       </div>
 
       <div className={styles.scrollArea} ref={scrollAreaRef}>
-        {renderSongRow(recentlyPlayed, "Nothing played yet. Start listening!", "recent", "Recently Played")}
+        {renderSongRow(
+          recentlyPlayed,
+          "Nothing played yet. Start listening!",
+          "recent",
+          "Recently Played",
+        )}
         {renderSongRow(mostPlayed, "No play history yet.", "most-played", "Most Played")}
 
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>Most Popular Artists</h3>
             {popularArtists.length > previewLimit && (
-              <button className={styles.showAllButton} onClick={() => setDetail("popular-artists")}>Show all</button>
+              <button className={styles.showAllButton} onClick={() => setDetail("popular-artists")}>
+                Show all
+              </button>
             )}
           </div>
           {popularArtists.length === 0 ? (
             <div className={styles.emptyState}>No artists in your library yet.</div>
           ) : (
             <div className={styles.row}>
-              {popularArtists.slice(0, previewLimit).map(artist => (
+              {popularArtists.slice(0, previewLimit).map((artist) => (
                 <div className={styles.artistWrap} key={artist.name}>
                   {renderArtistCard(artist)}
                 </div>
@@ -307,17 +336,38 @@ export function HomeView({
           )}
         </section>
 
-        {renderSongRow(neverPlayed, "Every song has been played. Nice!", "never-played", "Never Played")}
+        {renderSongRow(
+          neverPlayed,
+          "Every song has been played. Nice!",
+          "never-played",
+          "Never Played",
+        )}
 
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h3 className={styles.sectionTitle}>Statistics</h3>
           </div>
           <div className={styles.statsGrid}>
-            <StatCard label="Songs" value={stats.songCount.toLocaleString()} onClick={() => onNavigateTab("library")} />
-            <StatCard label="Artists" value={stats.artistCount.toLocaleString()} onClick={() => onNavigateTab("artists")} />
-            <StatCard label="Albums" value={stats.albumCount.toLocaleString()} onClick={() => onNavigateTab("albums")} />
-            <StatCard label="Genres" value={stats.genreCount.toLocaleString()} onClick={() => onNavigateTab("genres")} />
+            <StatCard
+              label="Songs"
+              value={stats.songCount.toLocaleString()}
+              onClick={() => onNavigateTab("library")}
+            />
+            <StatCard
+              label="Artists"
+              value={stats.artistCount.toLocaleString()}
+              onClick={() => onNavigateTab("artists")}
+            />
+            <StatCard
+              label="Albums"
+              value={stats.albumCount.toLocaleString()}
+              onClick={() => onNavigateTab("albums")}
+            />
+            <StatCard
+              label="Genres"
+              value={stats.genreCount.toLocaleString()}
+              onClick={() => onNavigateTab("genres")}
+            />
             <StatCard label="Total Plays" value={stats.totalPlays.toLocaleString()} />
             <StatCard label="Listening Time" value={formatListeningTime(stats.listeningSeconds)} />
             <StatCard
@@ -327,7 +377,7 @@ export function HomeView({
             />
             <StatCard
               label="Top Song"
-              value={stats.topSong ? (stats.topSong.metadata?.title || stats.topSong.name) : "—"}
+              value={stats.topSong ? stats.topSong.metadata?.title || stats.topSong.name : "—"}
               sub={stats.topSong ? `${stats.topSongPlays.toLocaleString()} plays` : undefined}
               onClick={stats.topSong ? () => setDetail("most-played") : undefined}
             />
@@ -344,14 +394,26 @@ export function HomeView({
   );
 }
 
-function StatCard({ label, value, sub, onClick }: { label: string; value: string; sub?: string; onClick?: () => void }) {
+function StatCard({
+  label,
+  value,
+  sub,
+  onClick,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  onClick?: () => void;
+}) {
   return (
     <div
       className={`${styles.statCard} ${onClick ? styles.statCardClickable : ""}`}
       onClick={onClick}
     >
       <div className={styles.statLabel}>{label}</div>
-      <div className={styles.statValue} title={value}>{value}</div>
+      <div className={styles.statValue} title={value}>
+        {value}
+      </div>
       {sub && <div className={styles.statSub}>{sub}</div>}
     </div>
   );

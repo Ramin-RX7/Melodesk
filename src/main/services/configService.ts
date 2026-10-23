@@ -5,7 +5,6 @@ import path from "path";
 import { UserConfig } from "../../renderer/types";
 import { DEFAULT_KEYBINDINGS } from "../../utils/keybindings";
 
-
 const CONFIG_PATH = path.join(app.getPath("userData"), "config.json");
 
 const DEFAULT_CONFIG: UserConfig = {

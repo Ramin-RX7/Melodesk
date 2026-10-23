@@ -14,12 +14,11 @@ import {
   saveMiniWindowBounds,
 } from "./main/services/sessionService";
 
-
 // Register the custom protocol before the app is ready
 protocol.registerSchemesAsPrivileged([
   // corsEnabled lets Web Audio's createMediaElementSource read the stream
   // without tainting it (a tainted source plays as silence through the graph).
-  { scheme: "media", privileges: { bypassCSP: true, stream: true, corsEnabled: true } }
+  { scheme: "media", privileges: { bypassCSP: true, stream: true, corsEnabled: true } },
 ]);
 
 const MIN_WIDTH = 600;
@@ -39,7 +38,7 @@ const MINI_DEFAULT_HEIGHT = 260;
 function sanitizeBounds(
   b: WindowBounds | null,
   minW: number = MIN_WIDTH,
-  minH: number = MIN_HEIGHT
+  minH: number = MIN_HEIGHT,
 ): { width: number; height: number; x?: number; y?: number } {
   if (!b) return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
 
@@ -186,7 +185,7 @@ function createWindow() {
     const mini = sanitizeBounds(
       getMiniWindowBounds() ?? { width: MINI_DEFAULT_WIDTH, height: MINI_DEFAULT_HEIGHT },
       MINI_MIN_WIDTH,
-      MINI_MIN_HEIGHT
+      MINI_MIN_HEIGHT,
     );
     win.setBounds(mini);
     // Highest level so nothing (even other always-on-top windows) covers it.
@@ -216,7 +215,7 @@ app.whenReady().then(async () => {
   registerIpcHandlers();
   // Setup file watcher
   await setupWatcher();
-  updateLibrary();  // Also run a background update on startup
+  updateLibrary(); // Also run a background update on startup
   // Handle media:// protocol
   registerMediaProtocol();
   // Create the main application window

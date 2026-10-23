@@ -79,8 +79,7 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
     save({ appearance: { themeId: appearance.themeId, colors: next } });
   };
 
-  const resetAllColors = () =>
-    save({ appearance: { themeId: appearance.themeId, colors: {} } });
+  const resetAllColors = () => save({ appearance: { themeId: appearance.themeId, colors: {} } });
 
   const keybindings = config.keybindings ?? DEFAULT_KEYBINDINGS;
 
@@ -128,20 +127,29 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
                 }}
               >
                 <div style={{ display: "flex", gap: "4px" }}>
-                  {[t.palette.bgBase, t.palette.bgSurface, t.palette.textPrimary, t.accent].map((c, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        width: "20px",
-                        height: "20px",
-                        borderRadius: "4px",
-                        backgroundColor: c,
-                        border: `1px solid ${colors.borderFaint}`,
-                      }}
-                    />
-                  ))}
+                  {[t.palette.bgBase, t.palette.bgSurface, t.palette.textPrimary, t.accent].map(
+                    (c, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          width: "20px",
+                          height: "20px",
+                          borderRadius: "4px",
+                          backgroundColor: c,
+                          border: `1px solid ${colors.borderFaint}`,
+                        }}
+                      />
+                    ),
+                  )}
                 </div>
-                <span style={{ color: colors.textSecondary, fontSize: "13px", fontWeight: 500, textAlign: "left" }}>
+                <span
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    textAlign: "left",
+                  }}
+                >
                   {t.name}
                 </span>
               </button>
@@ -162,7 +170,10 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
                   borderRadius: "50%",
                   backgroundColor: c,
                   cursor: "pointer",
-                  border: config.themeColor === c ? `2px solid ${colors.textPrimary}` : "2px solid transparent",
+                  border:
+                    config.themeColor === c
+                      ? `2px solid ${colors.textPrimary}`
+                      : "2px solid transparent",
                   outline: config.themeColor === c ? `2px solid ${c}` : "none",
                 }}
               />
@@ -287,7 +298,9 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
             ]}
             value={config.removeCurrentSongBehavior}
             themeColor={themeColor}
-            onChange={(v) => save({ removeCurrentSongBehavior: v as UserConfig["removeCurrentSongBehavior"] })}
+            onChange={(v) =>
+              save({ removeCurrentSongBehavior: v as UserConfig["removeCurrentSongBehavior"] })
+            }
           />
         </Row>
         <NumberRow
@@ -309,10 +322,7 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
           themeColor={themeColor}
           onChange={(v) => save({ equalizerEnabled: v })}
         />
-        <Row
-          label="Preset"
-          description="Pick a genre preset, or fine-tune the bands below"
-        >
+        <Row label="Preset" description="Pick a genre preset, or fine-tune the bands below">
           <select
             value={config.equalizerPreset}
             disabled={!config.equalizerEnabled}
@@ -334,7 +344,9 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
             }}
           >
             {EQ_PRESETS.map((p) => (
-              <option key={p.id} value={p.id}>{p.label}</option>
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
             ))}
             <option value={CUSTOM_PRESET_ID}>Custom</option>
           </select>
@@ -439,10 +451,25 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
                   <IoFolder />
                 </span>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div
+                    style={{
+                      fontWeight: 500,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {path.split(/[\\/]/).pop()}
                   </div>
-                  <div style={{ fontSize: "12px", color: colors.textFaint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: colors.textFaint,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
                     {path}
                   </div>
                 </div>
@@ -450,7 +477,15 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
               <button
                 onClick={() => handleRemoveFolder(path)}
                 title="Remove folder"
-                style={{ background: "none", border: "none", color: colors.textFaint, cursor: "pointer", fontSize: "18px", flexShrink: 0, marginLeft: "12px" }}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: colors.textFaint,
+                  cursor: "pointer",
+                  fontSize: "18px",
+                  flexShrink: 0,
+                  marginLeft: "12px",
+                }}
               >
                 <IoClose />
               </button>
@@ -458,7 +493,9 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
           ))}
 
           {config.libraryPaths.length === 0 && (
-            <div style={{ color: colors.textFaint, fontSize: "13px" }}>No folders added to library yet.</div>
+            <div style={{ color: colors.textFaint, fontSize: "13px" }}>
+              No folders added to library yet.
+            </div>
           )}
 
           <button
@@ -486,7 +523,15 @@ export function SettingsView({ config, setConfig, themeColor }: Props) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: "36px", maxWidth: "640px" }}>
-      <h3 style={{ margin: "0 0 16px 0", color: colors.textMuted, fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+      <h3
+        style={{
+          margin: "0 0 16px 0",
+          color: colors.textMuted,
+          fontSize: "13px",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}
+      >
         {title}
       </h3>
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>{children}</div>
@@ -494,7 +539,15 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Row({ label, description, children }: { label: string; description?: string; children: React.ReactNode }) {
+function Row({
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
   return (
     <div
       style={{
@@ -510,7 +563,9 @@ function Row({ label, description, children }: { label: string; description?: st
     >
       <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 500, marginBottom: description ? "3px" : 0 }}>{label}</div>
-        {description && <div style={{ fontSize: "12px", color: colors.textFaint }}>{description}</div>}
+        {description && (
+          <div style={{ fontSize: "12px", color: colors.textFaint }}>{description}</div>
+        )}
       </div>
       <div style={{ flexShrink: 0 }}>{children}</div>
     </div>
@@ -586,7 +641,9 @@ function SliderRow({
           onChange={(e) => onChange(parseFloat(e.target.value))}
           style={{ width: "140px", accentColor: themeColor, cursor: "pointer" }}
         />
-        <span style={{ width: "36px", textAlign: "right", color: colors.textMuted, fontSize: "13px" }}>
+        <span
+          style={{ width: "36px", textAlign: "right", color: colors.textMuted, fontSize: "13px" }}
+        >
           {Math.round(value * 100)}%
         </span>
       </div>
@@ -618,11 +675,24 @@ function EqualizerBands({
         pointerEvents: enabled ? "auto" : "none",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: "8px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-end",
+          gap: "8px",
+        }}
+      >
         {bands.map((gain, i) => (
           <div
             key={EQ_FREQUENCIES[i]}
-            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", flex: 1 }}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "6px",
+              flex: 1,
+            }}
           >
             <span style={{ fontSize: "11px", color: colors.textMuted, minHeight: "14px" }}>
               {gain > 0 ? `+${gain}` : gain}
@@ -634,16 +704,18 @@ function EqualizerBands({
               step={1}
               value={gain}
               onChange={(e) => onChange(i, parseInt(e.target.value, 10))}
-              style={{
-                // Vertical range slider (Chromium / Electron).
-                WebkitAppearance: "slider-vertical",
-                appearance: "slider-vertical",
-                writingMode: "vertical-lr",
-                width: "8px",
-                height: "110px",
-                accentColor: themeColor,
-                cursor: "pointer",
-              } as unknown as React.CSSProperties}
+              style={
+                {
+                  // Vertical range slider (Chromium / Electron).
+                  WebkitAppearance: "slider-vertical",
+                  appearance: "slider-vertical",
+                  writingMode: "vertical-lr",
+                  width: "8px",
+                  height: "110px",
+                  accentColor: themeColor,
+                  cursor: "pointer",
+                } as unknown as React.CSSProperties
+              }
             />
             <span style={{ fontSize: "10px", color: colors.textFaint }}>
               {formatFrequency(EQ_FREQUENCIES[i])}
@@ -651,8 +723,17 @@ function EqualizerBands({
           </div>
         ))}
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "14px" }}>
-        <span style={{ fontSize: "11px", color: colors.textFaint }}>Gain (dB) per frequency band</span>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginTop: "14px",
+        }}
+      >
+        <span style={{ fontSize: "11px", color: colors.textFaint }}>
+          Gain (dB) per frequency band
+        </span>
         <button
           onClick={onReset}
           style={{
@@ -744,7 +825,15 @@ function Segmented({
   onChange: (v: string) => void;
 }) {
   return (
-    <div style={{ display: "flex", backgroundColor: colors.bgBase, borderRadius: "8px", padding: "3px", border: `1px solid ${colors.borderSubtle}` }}>
+    <div
+      style={{
+        display: "flex",
+        backgroundColor: colors.bgBase,
+        borderRadius: "8px",
+        padding: "3px",
+        border: `1px solid ${colors.borderSubtle}`,
+      }}
+    >
       {options.map((opt) => {
         const active = opt.value === value;
         return (
@@ -913,7 +1002,14 @@ function ColorPickerRow({
                 cursor: "pointer",
               }}
             />
-            <span style={{ color: colors.textMuted, fontSize: "12px", fontFamily: "monospace", minWidth: "62px" }}>
+            <span
+              style={{
+                color: colors.textMuted,
+                fontSize: "12px",
+                fontFamily: "monospace",
+                minWidth: "62px",
+              }}
+            >
               {value}
             </span>
           </>
@@ -942,7 +1038,14 @@ function ColorPickerRow({
 // back to black for anything non-hex (e.g. rgba, which uses the text input).
 function toColorInputValue(v: string): string {
   if (/^#[0-9a-fA-F]{3}$/.test(v)) {
-    return "#" + v.slice(1).split("").map((c) => c + c).join("");
+    return (
+      "#" +
+      v
+        .slice(1)
+        .split("")
+        .map((c) => c + c)
+        .join("")
+    );
   }
   if (/^#[0-9a-fA-F]{6}$/.test(v)) return v;
   return "#000000";

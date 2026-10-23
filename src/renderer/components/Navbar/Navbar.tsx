@@ -64,7 +64,7 @@ export function Navbar({
             style={{
               borderBottomColor: isActive ? themeColor : "transparent",
               color: isActive ? colors.textPrimary : colors.textDim,
-              fontWeight: isActive ? "bold" : "normal"
+              fontWeight: isActive ? "bold" : "normal",
             }}
           >
             {label}
@@ -87,8 +87,7 @@ export function Navbar({
         className={`${styles.navItem} ${styles.queueItem}`}
         onClick={onQueueClick}
         style={{
-          borderBottomColor:
-            activeTab === "queue" ? themeColor : "transparent"
+          borderBottomColor: activeTab === "queue" ? themeColor : "transparent",
         }}
       >
         Queue

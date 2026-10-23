@@ -4,7 +4,6 @@ import path from "path";
 
 import { PlayRecord } from "../../renderer/types";
 
-
 // Play tracking lives outside the library cache so counts/history survive cache
 // rebuilds and can be read/written directly.
 //

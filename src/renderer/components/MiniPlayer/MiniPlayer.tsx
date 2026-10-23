@@ -38,15 +38,29 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
   // ww/wh = the window size captured when the drag started. We pass it on every
   // move so the window is repositioned with a constant size; otherwise the
   // size drifts (grows) on high-DPI displays due to setBounds DIP rounding.
-  const dragRef = React.useRef<{ mx: number; my: number; wx: number; wy: number; ww: number; wh: number } | null>(null);
+  const dragRef = React.useRef<{
+    mx: number;
+    my: number;
+    wx: number;
+    wy: number;
+    ww: number;
+    wh: number;
+  } | null>(null);
 
   React.useEffect(() => {
     const onMove = (e: MouseEvent) => {
       const d = dragRef.current;
       if (!d) return;
-      window.api.setWindowPosition(d.wx + (e.screenX - d.mx), d.wy + (e.screenY - d.my), d.ww, d.wh);
+      window.api.setWindowPosition(
+        d.wx + (e.screenX - d.mx),
+        d.wy + (e.screenY - d.my),
+        d.ww,
+        d.wh,
+      );
     };
-    const onUp = () => { dragRef.current = null; };
+    const onUp = () => {
+      dragRef.current = null;
+    };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
     return () => {
@@ -134,7 +148,9 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
         title="Back to full window"
         onClick={onExitMini}
         onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = themeColor)}
-        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.backgroundColor = "rgba(0,0,0,0.45)")}
+        onMouseLeave={(e) =>
+          ((e.currentTarget as HTMLElement).style.backgroundColor = "rgba(0,0,0,0.45)")
+        }
       >
         <IoExpand />
       </button>
@@ -185,7 +201,9 @@ export const MiniPlayer: React.FC<MiniPlayerProps> = ({
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px" }}>
+        <div
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px" }}
+        >
           <button
             style={{ ...ctrlBtn, width: "34px", height: "34px", fontSize: "16px" }}
             title="Previous"

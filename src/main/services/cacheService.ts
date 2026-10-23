@@ -4,7 +4,6 @@ import path from "path";
 import { FileItem } from "../../renderer/types";
 import { hashPath } from "./hashUtil";
 
-
 const CACHE_PATH = path.join(app.getPath("userData"), "library_cache.json");
 
 // On disk the cache is an object keyed by each song's hash, the value being the
