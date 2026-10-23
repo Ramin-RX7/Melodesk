@@ -21,6 +21,7 @@ import { GroupedView } from "./components/GroupedView/GroupedView";
 import { useQueue } from "../hooks/useQueue";
 import { usePlaybackController } from "../hooks/usePlaybackController";
 import { usePlayTracker } from "../hooks/usePlayTracker";
+import { useLibraryScanStatus } from "../hooks/useLibraryScanStatus";
 import { colors, buildRootCss, DEFAULT_PALETTE, DEFAULT_THEME_COLOR } from "./theme/colors";
 import { applyPalette } from "./theme/applyTheme";
 import { getTheme, DEFAULT_THEME_ID } from "./theme/themes";
@@ -151,6 +152,7 @@ export default function App() {
 
   // Use library
   useLibrary(setAllTracks, setTree, selectedLibraryPath);
+  const scanStatus = useLibraryScanStatus();
 
   // Utilities that use both Playback and Queue
   const {
@@ -234,6 +236,13 @@ export default function App() {
         // Load initial library tracks from cache immediately
         const tracks = await window.api.getLibraryFiles();
         setAllTracks(tracks);
+
+        // Nothing to show on Home yet: start on Library, where folders are added (and the
+        // first scan's progress is visible in the navbar).
+        if (tracks.length === 0) {
+          setActiveTab("library");
+          setView("library");
+        }
 
         if (userConfig.restoreSession) {
           const session = await window.api.getSession();
@@ -521,7 +530,12 @@ export default function App() {
         />
       ) : (
         <>
-          <TitleBar onEnterMini={enterMini} themeColor={themeColor} />
+          <TitleBar
+            onEnterMini={enterMini}
+            themeColor={themeColor}
+            scanStatus={scanStatus}
+            onScanIndicatorClick={() => handleTabChange("library")}
+          />
           {view !== "details" && (
             <Navbar
               activeTab={activeTab}

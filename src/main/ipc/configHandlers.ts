@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 
 import { getConfig, saveConfig } from "../services/configService";
+import { updateLibrary } from "../services/library/libraryUpdater";
 import { setupWatcher } from "../services/library/libraryWatcher";
 import { UserConfig } from "../../renderer/types";
 
@@ -14,9 +15,11 @@ export function registerConfigHandlers() {
     const newConfig = { ...currentConfig, ...partialConfig };
     saveConfig(newConfig);
 
-    // Re-setup watcher if library paths changed
+    // Library paths changed: watch the new set and rescan (the watcher ignores files that
+    // already exist, so added folders would otherwise not be scanned until a refresh).
     if (partialConfig.libraryPaths) {
       await setupWatcher();
+      updateLibrary();
     }
 
     return newConfig;

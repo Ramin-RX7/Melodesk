@@ -1,15 +1,24 @@
 import React from "react";
 import { IoRemove, IoSquareOutline, IoCopyOutline, IoClose, IoContract } from "react-icons/io5";
 import { colors } from "../../theme/colors";
+import { LibraryScanStatus } from "../../types";
+import { ScanIndicator } from "./ScanIndicator";
 
 interface TitleBarProps {
   onEnterMini: () => void;
   themeColor: string;
+  scanStatus: LibraryScanStatus;
+  onScanIndicatorClick: () => void;
 }
 
 // Custom window chrome. The app runs frameless (see main.ts `frame: false`), so
 // this bar provides the OS drag region and the window-control buttons.
-export const TitleBar: React.FC<TitleBarProps> = ({ onEnterMini, themeColor }) => {
+export const TitleBar: React.FC<TitleBarProps> = ({
+  onEnterMini,
+  themeColor,
+  scanStatus,
+  onScanIndicatorClick,
+}) => {
   const [isMaximized, setIsMaximized] = React.useState(false);
 
   React.useEffect(() => {
@@ -61,10 +70,19 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onEnterMini, themeColor }) =
         color: colors.textPrimary,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", paddingLeft: "12px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          paddingLeft: "12px",
+          minWidth: 0,
+        }}
+      >
         <span style={{ fontSize: "12px", fontWeight: 600, color: colors.textBright }}>
           MeloDesk
         </span>
+        <ScanIndicator status={scanStatus} themeColor={themeColor} onClick={onScanIndicatorClick} />
       </div>
 
       <div style={{ display: "flex", alignItems: "stretch", height: "100%" }}>

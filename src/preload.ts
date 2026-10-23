@@ -15,6 +15,12 @@ contextBridge.exposeInMainWorld("api", {
     return () => ipcRenderer.removeListener("library-updated", listener);
   },
   refreshLibrary: () => ipcRenderer.invoke("refresh-library"),
+  getLibraryScanStatus: () => ipcRenderer.invoke("get-library-scan-status"),
+  onLibraryScanStatus: (callback: (status: any) => void) => {
+    const listener = (_event: any, status: any) => callback(status);
+    ipcRenderer.on("library-scan-status", listener);
+    return () => ipcRenderer.removeListener("library-scan-status", listener);
+  },
   getMetadata: (filePath: string) => ipcRenderer.invoke("get-metadata", filePath),
   getPlaylists: () => ipcRenderer.invoke("get-playlists"),
   getPlaylist: (id: string) => ipcRenderer.invoke("get-playlist", id),

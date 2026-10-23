@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Library scans now show their progress in the title bar ("Scanning library… 329 / 666"); hover to see the file being read, click to open the Library page.
+
+### Changed
+
+- When your library is empty, MeloDesk opens on the Library page so you can add a folder right away.
+- Rescanning the library only re-reads songs that were added or changed since the last scan, so refreshes and restarts are much faster.
+- Library folders open instantly, even large ones.
+
+### Fixed
+
+- Adding or removing a library folder now updates your library right away, instead of waiting for a refresh or restart.
+- Starting a new library scan (refresh, folder change or files changing on disk) now replaces the scan in progress instead of running alongside it.
+
 ## [0.2.0] - 2026-10-23
 
 ### Added

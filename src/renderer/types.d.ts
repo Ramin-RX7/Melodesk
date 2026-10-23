@@ -56,6 +56,8 @@ export interface FileItem {
   isDirectory: boolean;
   isMedia: boolean;
   hash?: string;
+  /** File modification time (ms) when it was last scanned; unchanged files skip re-parsing. */
+  mtime?: number;
   children?: FileItem[];
   metadata?: {
     title?: string;
@@ -73,6 +75,15 @@ export interface FileItem {
     bpm?: number;
     lyrics?: string;
   };
+}
+
+export interface LibraryScanStatus {
+  scanning: boolean;
+  /** "discovering": listing folders (total = files found so far); "reading": reading tags. */
+  phase?: "discovering" | "reading";
+  processed: number;
+  total: number;
+  currentPath?: string;
 }
 
 export interface Playlist {
@@ -116,6 +127,8 @@ declare global {
       getLibraryFiles: () => Promise<FileItem[]>;
       onLibraryUpdated: (callback: (files: FileItem[]) => void) => () => void;
       refreshLibrary: () => Promise<void>;
+      getLibraryScanStatus: () => Promise<LibraryScanStatus>;
+      onLibraryScanStatus: (callback: (status: LibraryScanStatus) => void) => () => void;
       getMetadata: (filePath: string) => Promise<FileItem>;
       getPlaylists: () => Promise<Playlist[]>;
       getPlaylist: (id: string) => Promise<Playlist | null>;

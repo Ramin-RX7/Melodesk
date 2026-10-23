@@ -221,9 +221,28 @@ Known platform gaps (not yet fixed):
 
 ### Library pipeline
 
-`libraryScanner.getAllMediaFiles(dir)` recursively walks folders, keeps files where `isMediaFile()` matches, parses tags with `music-metadata`, and saves embedded cover art into `userData/art_cache/`. Then `libraryUpdater.updateLibrary()` concatenates all configured paths → `saveCache()` assigns `hash` → broadcasts `library-updated`. `libraryWatcher` (chokidar) re-runs `updateLibrary` after 2 s of filesystem silence, and `update-config` restarts the watcher whenever `libraryPaths` changes.
+`libraryUpdater.updateLibrary()` is the only entry point for a scan. It's called:
 
-Every change triggers a **full rescan**, and the whole library is sent to the renderer in one message. That's fine for typical libraries; keep it in mind for very large ones.
+- at startup (`main.ts`);
+- by `refresh-library`;
+- by `update-config` when `libraryPaths` changes (after restarting the watcher);
+- by `libraryWatcher` (chokidar) after 2 s of filesystem silence;
+- by `get-library-files` when the cache is empty or stale, but only if no scan is running.
+
+**Only one scan runs at a time.** Each call aborts the previous run through its `AbortController`; an aborted run exits without saving or broadcasting.
+
+`libraryScanner.scanLibrary(dirs, { signal, previous, onProgress })` works in two phases:
+
+1. **Discovering:** lists every media file (`isMediaFile()`) under the configured folders.
+2. **Reading:** for each file, `stat`s it. If its `mtime` and size match the entry in `previous`, that entry is **reused**. Otherwise the file's tags are parsed with `music-metadata` and its cover art saved to `userData/art_cache/`.
+
+`previous` is the updater's in-memory `known` map: the cache plus every file parsed since the last save. A cancelled run's work is therefore reused by the next run. On success, `saveCache()` assigns hashes and writes the cache, then `library-updated` is broadcast with the full list.
+
+Progress is throttled to about every 150 ms and sent as `library-scan-status` (`LibraryScanStatus`); `get-library-scan-status` returns the current value, since the startup scan begins before the window exists. The renderer reads it with `useLibraryScanStatus`, and `TitleBar/ScanIndicator` shows it.
+
+The Library tab's folder view (`get-directory-tree` → `getDirectoryTree`) lists the folder with `readdir` and takes song details **from the cache**; it never parses tags.
+
+The whole library is sent to the renderer in one message after each scan. That's fine for typical libraries; keep it in mind for very large ones.
 
 ### Playback pipeline (renderer)
 
@@ -279,6 +298,14 @@ Both are derived from the file location, so **moving or renaming a file drops it
 
 ### Persistence (`app.getPath("userData")`)
 
+The folder is named after `package.json` → `name` (`melodesk`), in both dev and packaged builds:
+
+- Windows: `%APPDATA%\melodesk` (e.g. `C:\Users\<user>\AppData\Roaming\melodesk`);
+- macOS: `~/Library/Application Support/melodesk`;
+- Linux: `~/.config/melodesk`.
+
+To test against a throwaway profile without touching the real one, launch with `electron . --user-data-dir=<some folder>`.
+
 | File / dir                                                      | Owner                                       | Contents                                                                                                         |
 | --------------------------------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `config.json`                                                   | `services/configService.ts`                 | `UserConfig`. `getConfig()` shallow-merges over `DEFAULT_CONFIG`; `appearance` and `keybindings` are deep-merged |
@@ -325,6 +352,7 @@ src/
 │   ├── useEqualizer.ts              # Web Audio 10-band EQ graph on the <audio> element; applies config gains
 │   ├── useKeyboardControls.ts       # Global key/mouse-back handler driven by config.keybindings
 │   ├── useLibrary.ts                # Subscribes to library-updated events; loads directory trees
+│   ├── useLibraryScanStatus.ts      # Live LibraryScanStatus (initial fetch + library-scan-status events)
 │   └── usePlayTracker.ts            # Records a play (window.api.recordPlay) once a configurable % is actually listened to
 │
 ├── types/
@@ -360,7 +388,9 @@ src/
 │       │   └── Navbar.module.css
 │       │
 │       ├── TitleBar/
-│       │   └── TitleBar.tsx         # Custom frameless window chrome — title, mini-player/minimize/maximize/close buttons
+│       │   ├── TitleBar.tsx         # Custom frameless window chrome — title, scan indicator, mini-player/min/max/close
+│       │   ├── ScanIndicator.tsx    # "Scanning library… n / total" pill while a library scan runs; click → Library
+│       │   └── ScanIndicator.module.css
 │       │
 │       ├── MiniPlayer/
 │       │   └── MiniPlayer.tsx       # Floating always-on-top mini widget — cover art + transport controls; JS window dragging
@@ -404,7 +434,8 @@ src/
 └── main/                            # Electron main process
     ├── ipc/
     │   ├── index.ts                 # Registers all IPC handler modules
-    │   ├── libraryHandlers.ts       # get-library-files, get-directory-tree, select-directory, refresh-library
+    │   ├── libraryHandlers.ts       # get-library-files, get-library-scan-status, get-directory-tree,
+    │   │                            #   select-directory, refresh-library (event: library-scan-status, library-updated)
     │   ├── configHandlers.ts        # get-config, update-config (re-inits watcher when libraryPaths change)
     │   ├── metadataHandlers.ts      # get-metadata (incl. hash), write-metadata (node-id3 tag writing)
     │   ├── playlistHandlers.ts      # get-playlists, get-playlist, create-playlist, update-playlist, delete-playlist
@@ -427,8 +458,8 @@ src/
         ├── trackerService.ts        # userData/tracker/ — play_counts.json + monthly play_history
         │
         └── library/
-            ├── libraryScanner.ts    # Recursive directory scan; builds FileItem tree; extracts metadata
-            ├── libraryUpdater.ts    # Scans all configured paths; updates cache; broadcasts library-updated
+            ├── libraryScanner.ts    # scanLibrary() (cancellable, reuses unchanged files); getDirectoryTree() from cache
+            ├── libraryUpdater.ts    # updateLibrary(): one scan at a time (aborts the previous), scan status, saves cache
             ├── libraryWatcher.ts    # Chokidar watcher on library paths; debounced (2s) change detection
             └── mediaUtils.ts        # isMediaFile() — supported extensions
 ```
@@ -448,6 +479,8 @@ Paths are relative to `src/`.
 | **Keyboard shortcuts**                                | `utils/keybindings.ts` (action ids, defaults, labels)                                          | `hooks/useKeyboardControls.ts` (action → handler map), `App.tsx` (passes handlers), `SettingsView.tsx` "Keyboard Shortcuts"                 |
 | **Play counts / stats / Home page**                   | `components/HomeView/HomeView.tsx`                                                             | `hooks/usePlayTracker.ts`, `main/services/trackerService.ts`, `ipc/trackerHandlers.ts`                                                      |
 | **Library scanning, supported formats, watcher**      | `main/services/library/*`                                                                      | `mediaUtils.ts` (extensions), `protocols/mediaProtocol.ts` (MIME types; add new formats in **both**)                                        |
+| **Library scan progress / cancellation**              | `main/services/library/libraryUpdater.ts`, `libraryScanner.ts`                                 | `hooks/useLibraryScanStatus.ts`, `components/TitleBar/ScanIndicator.tsx`, `LibraryScanStatus` in `types.d.ts`                               |
+| **Start page** (empty library → Library tab)          | `App.tsx` `init()`                                                                             | —                                                                                                                                           |
 | **Library page / folder tree**                        | `LibraryView.tsx` → `LibraryFoldersView.tsx` / `LibraryFolderView.tsx` → `DirectoryTree.tsx`   | `ipc/libraryHandlers.ts` (`get-directory-tree`, `select-directory`)                                                                         |
 | **Artists / Albums / Genres pages**                   | `components/GroupedView/GroupedView.tsx`                                                       | `groupedView.utils.ts` (grouping/filter/sort, `minSongsForAlbum`), `GroupList` / `GroupCard` / `SongGrid` / `SongCard`, `utils/metadata.ts` |
 | **Artist bio / picture**                              | `ipc/artistHandlers.ts`                                                                        | `GroupedView.tsx` (artist header)                                                                                                           |
