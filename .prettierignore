@@ -3,7 +3,4 @@ release/
 node_modules/
 package-lock.json
 coverage/
-test-results/
-playwright-report/
 tests/fixtures/generated/
-tests/e2e/__screenshots__/

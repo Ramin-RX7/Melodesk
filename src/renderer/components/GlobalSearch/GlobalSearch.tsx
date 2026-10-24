@@ -156,6 +156,7 @@ export function GlobalSearch({
         {query && (
           <button
             className={styles.clearBtn}
+            aria-label="Clear search"
             onClick={() => {
               setQuery("");
               inputRef.current?.focus();

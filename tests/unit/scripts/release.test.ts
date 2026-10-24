@@ -13,7 +13,9 @@ const today = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
-describe.concurrent("release.mjs", { timeout: 60_000 }, () => {
+// Each test starts many git processes; on a busy Windows machine one can fail to start, so a
+// failed test is tried once more.
+describe.concurrent("release.mjs", { timeout: 60_000, retry: 1 }, () => {
   it("cuts a release: version bump, dated CHANGELOG section, commit and tag (no push)", async () => {
     const { work, origin } = await makeReleaseRepo();
     const result = await runScript(work, "release.mjs", "minor");

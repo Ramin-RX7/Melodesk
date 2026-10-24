@@ -48,6 +48,7 @@ export function Navbar({
         onClick={onGoBack}
         disabled={!canGoBack}
         title="Go back"
+        aria-label="Go back"
         style={{ color: canGoBack ? themeColor : colors.border }}
       >
         ‹

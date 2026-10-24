@@ -272,6 +272,7 @@ export function SongDetailsView({
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
                 <div>
                   <label
+                    htmlFor="tag-title"
                     style={{
                       display: "block",
                       color: colors.textDim,
@@ -282,6 +283,7 @@ export function SongDetailsView({
                     Title
                   </label>
                   <input
+                    id="tag-title"
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
@@ -298,6 +300,7 @@ export function SongDetailsView({
                 </div>
                 <div>
                   <label
+                    htmlFor="tag-artist"
                     style={{
                       display: "block",
                       color: colors.textDim,
@@ -308,6 +311,7 @@ export function SongDetailsView({
                     Artists (comma separated)
                   </label>
                   <input
+                    id="tag-artist"
                     type="text"
                     value={formData.artist}
                     onChange={(e) => setFormData({ ...formData, artist: e.target.value })}
@@ -324,6 +328,7 @@ export function SongDetailsView({
                 </div>
                 <div>
                   <label
+                    htmlFor="tag-album"
                     style={{
                       display: "block",
                       color: colors.textDim,
@@ -334,6 +339,7 @@ export function SongDetailsView({
                     Album
                   </label>
                   <input
+                    id="tag-album"
                     type="text"
                     value={formData.album}
                     onChange={(e) => setFormData({ ...formData, album: e.target.value })}
@@ -350,6 +356,7 @@ export function SongDetailsView({
                 </div>
                 <div>
                   <label
+                    htmlFor="tag-genre"
                     style={{
                       display: "block",
                       color: colors.textDim,
@@ -360,6 +367,7 @@ export function SongDetailsView({
                     Genre (comma separated)
                   </label>
                   <input
+                    id="tag-genre"
                     type="text"
                     value={formData.genre}
                     onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
@@ -376,6 +384,7 @@ export function SongDetailsView({
                 </div>
                 <div>
                   <label
+                    htmlFor="tag-year"
                     style={{
                       display: "block",
                       color: colors.textDim,
@@ -386,6 +395,7 @@ export function SongDetailsView({
                     Year
                   </label>
                   <input
+                    id="tag-year"
                     type="number"
                     value={formData.year}
                     onChange={(e) => setFormData({ ...formData, year: e.target.value })}
@@ -793,6 +803,7 @@ export function SongDetailsView({
               <h3 style={{ margin: 0 }}>Add to Playlist</h3>
               <button
                 onClick={() => setShowPlaylistModal(false)}
+                aria-label="Close"
                 style={{
                   background: "none",
                   border: "none",
@@ -879,7 +890,9 @@ export function SongDetailsView({
 
               <button
                 onClick={() => {
-                  const query = `${meta.artist} ${meta.title} lyrics`;
+                  const title = meta.title || currentTrack.name.replace(/\.[^.]+$/, "");
+                  const artists = meta.artists?.join(" ") || meta.artist;
+                  const query = [artists, title, "lyrics"].filter(Boolean).join(" ");
                   const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
                   window.api.openExternalUrl(url);
                 }}
@@ -900,6 +913,7 @@ export function SongDetailsView({
 
               <button
                 onClick={() => setShowLyricsModal(false)}
+                aria-label="Close"
                 style={{
                   background: "none",
                   border: "none",

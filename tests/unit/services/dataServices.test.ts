@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { DEFAULT_KEYBINDINGS } from "../../../src/utils/keybindings";
 import { freshMain, profilePath, seedUserData } from "../../helpers/main";
+import { TEST_DEFAULT_CONFIG } from "../../helpers/songs";
 import { readJsonFile } from "../../helpers/tempdir";
 
 let electron: Awaited<ReturnType<typeof freshMain>>;
@@ -19,6 +20,11 @@ describe("configService", () => {
     expect(config.libraryPaths).toEqual([]);
     expect(config.doubleClickToPlay).toBe(true);
     expect(config.keybindings).toEqual(DEFAULT_KEYBINDINGS);
+  });
+
+  it("has the defaults the renderer tests use (tests/helpers/songs.ts)", async () => {
+    const { getConfig } = await import("../../../src/main/services/configService");
+    expect(getConfig()).toEqual(TEST_DEFAULT_CONFIG);
   });
 
   it("merges a saved file over the defaults, deep-merging appearance and keybindings", async () => {

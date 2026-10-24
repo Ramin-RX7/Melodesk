@@ -10,6 +10,8 @@ export default defineConfig({
         test: {
           name: "main",
           environment: "node",
+          // Real file scans and git processes; slow when the renderer tests run alongside.
+          testTimeout: 20_000,
           include: ["tests/unit/**/*.test.ts"],
           setupFiles: ["tests/helpers/main-setup.ts"],
         },
@@ -19,6 +21,9 @@ export default defineConfig({
         test: {
           name: "renderer",
           environment: "jsdom",
+          // CSS Modules are applied (scroll areas, hidden elements…), scoped as in the app but with
+          // stable names, so tests can use them: import the module and use styles.x.
+          css: { include: [/\.module\.css$/], modules: { classNameStrategy: "stable" } },
           include: ["tests/renderer/**/*.test.{ts,tsx}"],
           setupFiles: ["tests/helpers/renderer-setup.ts"],
         },

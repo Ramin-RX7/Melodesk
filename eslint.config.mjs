@@ -7,14 +7,7 @@ import tseslint from "typescript-eslint";
 // TypeScript checks, it enforces the hook rules and a few project rules from CLAUDE.md.
 export default tseslint.config(
   {
-    ignores: [
-      "dist/",
-      "release/",
-      "coverage/",
-      "playwright-report/",
-      "test-results/",
-      "tests/fixtures/generated/",
-    ],
+    ignores: ["dist/", "release/", "coverage/", "tests/fixtures/generated/"],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

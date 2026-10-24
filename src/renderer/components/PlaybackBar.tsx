@@ -158,6 +158,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
         </span>
         <input
           type="range"
+          aria-label="Seek"
           min={0}
           max={isFinite(duration) && duration > 0 ? duration : 100}
           step={0.1}
@@ -381,6 +382,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
             </span>
             <input
               type="range"
+              aria-label="Volume"
               min={0}
               max={1}
               step={0.01}

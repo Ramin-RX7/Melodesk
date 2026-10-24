@@ -22,7 +22,7 @@ Scope today is **audio only** (`.mp3 .wav .ogg .m4a .flac`). Video playback is n
 | Media | `music-metadata` (read tags), `node-id3` (write tags), `chokidar` (folder watcher), HTML5 `<audio>` + Web Audio (equalizer) |
 | Node  | `^20.19.0 \|\| >=22.12.0` (`engines`, required by Vite 8); `.nvmrc` pins `24.22.1`                                          |
 
-Tests and lint are described in §12 (Vitest, ESLint; Playwright end-to-end tests are being added). Formatting is enforced by Prettier (`.prettierrc.json`: 2 spaces, double quotes, semicolons, trailing commas, width 100, LF). `.editorconfig` mirrors it for editors, and `.gitattributes` stores every text file with LF line endings.
+Tests and lint are described in §12 (Vitest, ESLint). Formatting is enforced by Prettier (`.prettierrc.json`: 2 spaces, double quotes, semicolons, trailing commas, width 100, LF). `.editorconfig` mirrors it for editors, and `.gitattributes` stores every text file with LF line endings.
 
 ---
 
@@ -67,7 +67,7 @@ Tests and lint are described in §12 (Vitest, ESLint; Playwright end-to-end test
 
 ### Tests
 
-- **Every feature and every fix adds or updates tests in the same change** (§12 says where each kind goes). A bug fix starts with a test that fails without the fix.
+- **Tests cover logic and functionality, not the UI.** A change to logic (queue, playback, library, data files, IPC, security, what a page computes or saves) adds or updates tests in the same change; a bug fix in logic starts with a test that fails without the fix. Pure UI changes (layout, styling, wording, which icon or label a button has) need no tests. Keep tests few and focused on behaviour, so changing the UI doesn't mean rewriting tests (§12 → What to test).
 - `npm run check` (types, lint, format, changelog, Vitest) must pass before a change is done.
 - Never point a test at the real profile or the real music library: main-process tests get a temporary userData folder automatically, and audio comes from the generated fixture library (`tests/fixtures/generate.mjs`).
 
@@ -451,10 +451,11 @@ eslint.config.mjs                    # Lint rules (TypeScript, React hooks, proj
 vitest.config.mts                     # Vitest projects: "main" (Node) and "renderer" (jsdom); coverage settings
 tests/                               # All tests (§12)
 ├── tsconfig.json                    # Type-checks the tests (never emits)
-├── helpers/                         # Fake electron, freshMain/useLibrary (main.ts), temp folders, git repos, setup
+├── helpers/                         # Main: fake electron, freshMain/useLibrary (main.ts), temp folders, git repos;
+│                                    #   renderer: fake window.api, media/Web Audio, layout, songs, renderApp; setup files
 ├── fixtures/generate.mjs            # Builds the test music library (output in fixtures/generated/, git-ignored)
 ├── unit/                            # Vitest (Node): main process, scripts, shared + pure renderer utils
-└── renderer/                        # Vitest (jsdom): hooks and components
+└── renderer/                        # Vitest (jsdom): hooks/, components/, app/ (the whole App with a fake window.api)
 .editorconfig / .gitattributes       # Editor defaults / LF line endings for all text files
 .nvmrc                               # Pinned Node version
 src/
@@ -742,10 +743,16 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 | Layer                                                                      | Tool                            | Where                          | Run            |
 | -------------------------------------------------------------------------- | ------------------------------- | ------------------------------ | -------------- |
 | Unit + integration (main process, scripts, shared and pure renderer utils) | Vitest, Node                    | `tests/unit/**/*.test.ts`      | `npm test`     |
-| Hooks + components                                                         | Vitest, jsdom + Testing Library | `tests/renderer/**/*.test.tsx` | `npm test`     |
+| Hooks, components and the whole app (fake `window.api`)                    | Vitest, jsdom + Testing Library | `tests/renderer/**/*.test.tsx` | `npm test`     |
 | Lint                                                                       | ESLint                          | whole repo                     | `npm run lint` |
 
-`vitest.config.mts` defines the two Vitest projects (`main`, `renderer`). Tests are type-checked by `tests/tsconfig.json` (part of `npm run typecheck`) and never compiled into `dist/`.
+`vitest.config.mts` defines the two Vitest projects (`main`, `renderer`). Tests are type-checked by `tests/tsconfig.json` (part of `npm run typecheck`) and never compiled into `dist/`. There are no end-to-end, screenshot or accessibility-scan tests, on purpose.
+
+**What to test:**
+
+- **Do test** behaviour that can silently break: main-process services and IPC handlers, the library pipeline, data files, security rules, the scripts, the playback/queue hooks, and logic inside components (what a page computes, saves, sends to the main process or plays, e.g. playlist reorder, settings saving, Home statistics, search trimming).
+- **Don't test** presentation: texts, labels, styling, layout, which element shows what, or a component simply rendering. Don't add a test only because a component exists.
+- Prefer one test of a behaviour over many small ones, and assert outcomes (what was saved, played or sent), not how the screen looks.
 
 **Helpers** (`tests/helpers/`):
 
@@ -766,6 +773,32 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 - `gitRepo.ts`: throwaway git repos (empty git config, test identity, a local bare "origin") for the release-script tests. Its helpers are async so those tests can run with `describe.concurrent`.
 
 - `tempdir.ts`: `makeTempDir()` (deleted after the file), `writeFile` / `writeJsonFile` / `readJsonFile`.
-- `renderer-setup.ts`: jest-dom matchers and cleanup for the `renderer` project.
+
+**Renderer tests** (`tests/renderer/`: `hooks/`, `components/`, `app/`). jsdom has no layout, doesn't play media and has no Web Audio, so `renderer-setup.ts` installs these before every test (plus jest-dom matchers and cleanup):
+
+- `api.ts`: a complete fake `window.api`. Every method is a `vi.fn` with a safe default: empty library, default settings, no session. Playlists are remembered: what `getPlaylists` returned is what `updatePlaylist` updates.
+  - `installApi({ getLibraryFiles: async () => songs })` overrides methods for a test; `fakeApi()` returns the installed fake.
+  - Events from the main process: `api.emit.libraryUpdated(files)`, `.notification(n)`, `.confirmRequest(q)`, `.libraryScanStatus(s)`, `.playlistsChanged()`, `.maximizedChanged(b)`. `api.emit.count(event)` checks that a component unsubscribed.
+  - It's typed against `Window.api`, so a new IPC call that isn't in the fake fails `typecheck`.
+- `audio.ts`: `<audio>` elements work.
+  - `play()` resolves (`rejectNextPlay("AbortError")` makes the next one fail), and `pause()`/`load()` record calls.
+  - `setMedia(el, { duration, currentTime, paused })` sets what the element reports; `fire(el, "loadedmetadata")` and `playTo(el, seconds, event?)` fire media events.
+  - `FakeAudioContext` (the equalizer) records sources, filters and gains.
+  - `stubMediaSession()` adds `navigator.mediaSession`, for tests that need it.
+- `layout.ts`: fake sizes, so virtual lists render real rows.
+  - Defaults: widths come from the nearest sized ancestor or a 1000 px window; scroll areas (`overflow-y: auto`) are 800 px tall; virtual list rows are 60 px.
+  - `setSize(el, {...})` overrides a size and `resizeAll()` notifies the ResizeObservers. `scrollTop`/`scrollTo` work and fire `scroll`.
+  - `renderInScroller(ui)` renders inside a sized scroll area.
+- `songs.ts`: `song({ title, artists, … })` builds a library song (unique path, id and length), and `makeConfig(partial)` builds settings over the app's defaults. A main test checks that `TEST_DEFAULT_CONFIG` equals `DEFAULT_CONFIG`; update both together.
+- `app.tsx`: `await renderApp({ library, config, session, api })` starts the real `App` and waits for its first page. `playbackBar()` scopes queries to the playback bar.
+
+**Writing renderer tests:**
+
+- **Hooks:** use `renderHook`. Put the `<audio>` element in the ref before the hook runs (`{ current: audio }`). Re-read `result.current` after every `act`, because handlers see the state of the render they came from. Compose hooks the way `App.tsx` does, as `usePlaybackController.test.ts` does.
+- **Components:** only for their logic (see What to test). Render them with plain props and `vi.fn` callbacks, and assert what they save, send or play.
+- **App:** flows across pages that involve logic (session restore, Back history, library updates, moved songs) go in `tests/renderer/app/`.
+- **Queries:** find elements by role and accessible name (`getByRole("button", { name: "Remove from playlist" })`) or visible text; don't add test ids. An icon-only button needs an `aria-label` anyway.
+- **CSS Modules** are applied, so `display`, `overflow` and `pointer-events` from them take effect. Their class names are scoped but stable, so a test imports the module and uses `styles.x`; never write a raw class name.
+- **Timing:** use `vi.useFakeTimers()` for timers (toasts, the 10 s position save). Real timers come back after each test.
 
 **Test music** (`tests/fixtures/generate.mjs`): about ten small, silent but valid songs with known tags, plus a WAV, untagged files, covers and non-audio files, laid out as two library folders ("Library A", "Library B"). `copyLibrary(target)` copies it into a test's temp folder; never modify the cached original. Every song has a different length, so move detection never confuses two of them. Add songs to `SONGS` when a test needs a new case; the cache rebuilds itself when the generator changes.

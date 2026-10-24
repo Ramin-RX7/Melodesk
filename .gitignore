@@ -2,6 +2,5 @@ dist/
 node_modules/
 release/
 coverage/
-test-results/
-playwright-report/
 tests/fixtures/generated/
+.vscode/settings.json

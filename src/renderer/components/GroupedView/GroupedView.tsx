@@ -454,6 +454,8 @@ export function GroupedView({
             <button
               onClick={() => setSortDescending(!sortDescending)}
               className={styles.sortButton}
+              aria-label="Reverse sort order"
+              aria-pressed={sortDescending}
               style={{
                 color: sortDescending ? themeColor : colors.textDim,
               }}

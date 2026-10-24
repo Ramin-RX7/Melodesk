@@ -117,6 +117,7 @@ export function LibraryFoldersView({
 
             <button
               onClick={(e) => handleRemoveFolder(e, path)}
+              aria-label={`Remove ${path} from the library`}
               style={{
                 position: "absolute",
                 top: "10px",

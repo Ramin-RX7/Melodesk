@@ -333,6 +333,7 @@ export function SettingsView({ config, setConfig, themeColor, confirm }: Props) 
         />
         <Row label="Preset" description="Pick a genre preset, or fine-tune the bands below">
           <select
+            aria-label="Equalizer preset"
             value={config.equalizerPreset}
             disabled={!config.equalizerEnabled}
             onChange={(e) => {
@@ -596,11 +597,17 @@ function ToggleRow({
 }) {
   return (
     <Row label={label} description={description}>
-      <div
+      <button
+        role="switch"
+        aria-checked={value}
+        aria-label={label}
         onClick={() => onChange(!value)}
         style={{
+          display: "block",
           width: "38px",
           height: "22px",
+          padding: 0,
+          border: "none",
           borderRadius: "11px",
           backgroundColor: value ? themeColor : colors.border,
           position: "relative",
@@ -620,7 +627,7 @@ function ToggleRow({
             transition: "left 0.2s",
           }}
         />
-      </div>
+      </button>
     </Row>
   );
 }
@@ -643,6 +650,7 @@ function SliderRow({
       <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
         <input
           type="range"
+          aria-label={label}
           min={0}
           max={1}
           step={0.01}
@@ -708,6 +716,7 @@ function EqualizerBands({
             </span>
             <input
               type="range"
+              aria-label={`${formatFrequency(EQ_FREQUENCIES[i])} band`}
               min={EQ_MIN_GAIN}
               max={EQ_MAX_GAIN}
               step={1}
@@ -798,6 +807,7 @@ function NumberRow({
     <Row label={label} description={description}>
       <input
         type="number"
+        aria-label={label}
         min={min}
         max={max}
         value={draft}

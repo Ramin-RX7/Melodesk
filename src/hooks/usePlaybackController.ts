@@ -199,7 +199,7 @@ export function usePlaybackController({
         return; // End of queue
       }
     }
-    playTrack(activeQueue[nextIdx]);
+    playTrack(activeQueue[nextIdx], undefined, nextIdx);
   };
 
   const handlePrevious = () => {
@@ -219,7 +219,7 @@ export function usePlaybackController({
         return; // Start of queue
       }
     }
-    playTrack(activeQueue[prevIdx]);
+    playTrack(activeQueue[prevIdx], undefined, prevIdx);
   };
 
   const handleEnded = () => {
@@ -311,7 +311,7 @@ export function usePlaybackController({
   }, [currentTrack]);
   const playNext = (track: FileItem) => {
     if (activeQueue.length === 0) {
-      playTrack(track);
+      playTrack(track, [track]);
       return;
     }
 

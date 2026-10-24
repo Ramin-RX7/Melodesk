@@ -386,7 +386,12 @@ export function PlaylistView({
       .filter(Boolean) as FileItem[];
     const totalDuration = tracks.reduce((sum, t) => sum + (t.metadata?.duration || 0), 0);
 
-    let filteredTracks = tracks.map((track, originalIndex) => ({ track, originalIndex }));
+    // originalIndex is the song's position in the saved playlist, which can also hold songs that
+    // are no longer in the library; removing and reordering use it.
+    let filteredTracks = selectedPlaylist.songs.flatMap((path, originalIndex) => {
+      const track = pathToTrack.get(path);
+      return track ? [{ track, originalIndex }] : [];
+    });
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -523,6 +528,7 @@ export function PlaylistView({
                 />
                 <button
                   onClick={handleSaveDescription}
+                  aria-label="Save description"
                   style={{
                     background: "none",
                     border: "none",
@@ -536,6 +542,7 @@ export function PlaylistView({
                 </button>
                 <button
                   onClick={handleCancelDescription}
+                  aria-label="Cancel"
                   style={{
                     background: "none",
                     border: "none",
@@ -711,6 +718,8 @@ export function PlaylistView({
               {sortBy !== "custom" && (
                 <button
                   onClick={handleSortDirectionToggle}
+                  aria-label="Reverse sort order"
+                  aria-pressed={sortDescending}
                   style={{
                     background: "none",
                     border: "none",
@@ -845,6 +854,7 @@ export function PlaylistView({
                       e.stopPropagation();
                       handleRemoveSong(originalIndex);
                     }}
+                    aria-label="Remove from playlist"
                     style={{
                       background: "none",
                       border: "none",
@@ -900,6 +910,7 @@ export function PlaylistView({
                 <h3 style={{ margin: 0 }}>Add Songs</h3>
                 <button
                   onClick={() => setIsAddingSongs(false)}
+                  aria-label="Close"
                   style={{
                     background: "none",
                     border: "none",
@@ -1139,6 +1150,7 @@ export function PlaylistView({
               {!playlist.isFixed && (
                 <button
                   onClick={(e) => handleDeletePlaylist(playlist.id, e)}
+                  aria-label={`Delete playlist "${playlist.name}"`}
                   style={{
                     position: "absolute",
                     top: "10px",

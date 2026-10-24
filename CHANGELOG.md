@@ -71,6 +71,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - A song's cover updates when its embedded art is changed in another program.
 - Replacing an artist picture no longer leaves the old image behind on disk.
 - The mini-player no longer slowly grows when it's dragged around on displays with scaling (e.g. 125%).
+- Next and Previous now go through a queue that has the same song more than once in order, instead of jumping back to that song's first copy.
+- "Play Next" with an empty queue now also puts the song in the queue, not just plays it.
+- Removing or reordering songs in a playlist that contains a song no longer in your library now affects the song you chose.
+- "Find Lyrics" now searches for all of a song's artists, and no longer searches for "undefined" when a song has no artist or title tag.
+- The on/off switches in Settings can now be used with the keyboard, and screen readers can name them, the sliders and number fields in Settings, the tag editor's fields, and several icon-only buttons.
 
 ### Security
 
