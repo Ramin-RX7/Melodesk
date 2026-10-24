@@ -13,6 +13,7 @@ export default defineConfig({
           // Real file scans and git processes; slow when the renderer tests run alongside.
           testTimeout: 20_000,
           include: ["tests/unit/**/*.test.ts"],
+          globalSetup: ["tests/helpers/fixtures-setup.ts"],
           setupFiles: ["tests/helpers/main-setup.ts"],
         },
       },

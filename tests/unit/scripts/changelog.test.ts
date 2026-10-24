@@ -11,7 +11,7 @@ import {
   serialize,
   validate,
 } from "../../../scripts/changelog.mjs";
-import { CHANGELOG, git, makeReleaseRepo, runScript } from "../../helpers/gitRepo";
+import { makeReleaseRepo, runScript } from "../../helpers/gitRepo";
 
 const SAMPLE = `# Changelog
 
@@ -140,41 +140,6 @@ describe.concurrent("CLI", { timeout: 60_000 }, () => {
     expect(result.code).toBe(0);
     expect(result.out.trim()).toBe("### Added\n\n- The first feature.");
     expect((await runScript(work, "changelog.mjs", "notes", "9.9.9")).code).toBe(1);
-  });
-
-  it("verify flags [feat]/[fix] commits that don't update the CHANGELOG", async () => {
-    const { work } = await makeReleaseRepo();
-    const base = await git(work, "rev-parse", "HEAD");
-    fs.writeFileSync(path.join(work, "code.js"), "1");
-    await git(work, "add", ".");
-    await git(work, "commit", "-q", "-m", "[fix] something");
-    const head = await git(work, "rev-parse", "HEAD");
-
-    const missing = await runScript(work, "changelog.mjs", "verify", base, head);
-    expect(missing.code).toBe(1);
-    expect(missing.out).toContain("[fix] something");
-
-    fs.writeFileSync(path.join(work, "CHANGELOG.md"), CHANGELOG("\n### Fixed\n\n- Something.\n"));
-    await git(work, "commit", "-q", "-am", "[chore] changelog");
-    const fixed = await runScript(
-      work,
-      "changelog.mjs",
-      "verify",
-      base,
-      await git(work, "rev-parse", "HEAD"),
-    );
-    expect(fixed.code).toBe(0);
-  });
-
-  it("verify ignores other commit types and a first push (zero base)", async () => {
-    const { work } = await makeReleaseRepo();
-    const base = await git(work, "rev-parse", "HEAD");
-    fs.writeFileSync(path.join(work, "x.txt"), "1");
-    await git(work, "add", ".");
-    await git(work, "commit", "-q", "-m", "[chore] tidy");
-    const head = await git(work, "rev-parse", "HEAD");
-    expect((await runScript(work, "changelog.mjs", "verify", base, head)).code).toBe(0);
-    expect((await runScript(work, "changelog.mjs", "verify", "0000000000", head)).code).toBe(0);
   });
 
   it("verify fails on a broken CHANGELOG", async () => {

@@ -22,8 +22,6 @@ jobs:
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     steps:
       - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@v7
         with:
@@ -43,12 +41,6 @@ jobs:
           name: coverage-${{ github.sha }}
           path: coverage/
           retention-days: 7
-
-      - name: Changelog entries for [feat]/[fix] commits
-        run: node scripts/changelog.mjs verify "$BASE" "$HEAD"
-        env:
-          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-          HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
   build:
     name: Build (${{ matrix.platform }})

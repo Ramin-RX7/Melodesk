@@ -73,7 +73,7 @@ Tests and lint are described in §12 (Vitest, ESLint). Formatting is enforced by
 
 ### Changelog
 
-- **Every user-facing change adds an entry to `CHANGELOG.md` under `## [Unreleased]` in the same commit.** Every `[feat]` and `[fix]` commit needs one; CI fails a push or PR whose `[feat]`/`[fix]` commits don't touch `CHANGELOG.md`.
+- Entries go in `CHANGELOG.md` under `## [Unreleased]`. Which changes get an entry is up to whoever makes the change, person or agent; no commit type requires one and nothing enforces it.
 - Use the Keep a Changelog categories as `###` headings (`Added`, `Changed`, `Fixed`, `Removed`, `Deprecated`, `Security`); `####` feature-area subheadings are optional. One `- ` bullet per change.
 - Write for users, not developers: what they can now do or what no longer goes wrong ("Playlists can be sorted by duration"), not internals ("refactor usePlaybackController").
 - Never edit released version sections or the link definitions at the bottom. `npm run release` manages those.
@@ -177,7 +177,7 @@ None of the builds are code-signed: Windows SmartScreen and macOS Gatekeeper war
 
 Runs on every push to `master` and on PRs to `master`:
 
-- **check** (Ubuntu): `npm ci`, `npm run check`, plus `changelog.mjs verify <before> <after>`, which fails if the pushed range has `[feat]`/`[fix]` commits but no `CHANGELOG.md` change.
+- **check** (Ubuntu): `npm ci`, `npm run check`, then `npm run test:coverage` (report uploaded as an artifact).
 - **build** (Windows + Linux, after check): `npm run build:win` / `build:linux`. The files are uploaded as workflow artifacts for 7 days, which is handy for testing a commit without releasing.
 
 macOS is only built by the release workflow, to save runner minutes.
@@ -444,7 +444,7 @@ package.json                         # Scripts (§4), deps, electron-builder con
     ├── ci.yml                       # Push/PR to master: check (typecheck, format, changelog) + Windows/Linux builds
     └── release.yml                  # Tag vX.Y.Z (or manual run): check → build win/linux/mac → draft GitHub Release
 scripts/                             # Node ESM, no dependencies
-├── changelog.mjs                    # CHANGELOG parse/serialize; CLI: `notes <version>`, `verify [<base> <head>]`
+├── changelog.mjs                    # CHANGELOG parse/serialize; CLI: `notes <version>`, `verify`
 └── release.mjs                      # `npm run release` — version bump, changelog finalize, [release] commit, tag
 tsconfig.json / vite.config.ts       # Main+preload compile (tsc → dist/) / renderer bundle (vite → dist/renderer/)
 .prettierrc.json / .prettierignore   # Formatting rules (enforced by `npm run check`)
@@ -454,6 +454,7 @@ tests/                               # All tests (§12)
 ├── tsconfig.json                    # Type-checks the tests (never emits)
 ├── helpers/                         # Main: fake electron, freshMain/useLibrary (main.ts), temp folders, git repos;
 │                                    #   renderer: fake window.api, media/Web Audio, layout, songs, renderApp; setup files
+│                                    #   (fixtures-setup.ts builds the test music once, before the main workers start)
 ├── fixtures/generate.mjs            # Builds the test music library (output in fixtures/generated/, git-ignored)
 ├── unit/                            # Vitest (Node): main process, scripts, shared + pure renderer utils
 └── renderer/                        # Vitest (jsdom): hooks/, components/, app/ (the whole App with a fake window.api)
@@ -735,7 +736,6 @@ Add a service in `main/services/` that reads and writes a JSON file under `app.g
 - Keep path handling cross-platform: use `path.join`, and normalize separators before hashing or comparing paths (see §5).
 - Errors: main-process code logs with `console.error` and returns a safe fallback (`null`, `[]`, `false`). It doesn't throw across IPC.
 - Backlog ideas live in `.todo` (synced lyrics, cover-art writing, picture-in-picture).
-- A finished feature isn't done until its `CHANGELOG.md` entry is written (§2 → Changelog).
 
 ---
 

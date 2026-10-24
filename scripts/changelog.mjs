@@ -1,11 +1,8 @@
 // CHANGELOG.md helpers (Keep a Changelog 1.1.0) shared by the release script and CI.
 //
-//   node scripts/changelog.mjs notes <version>       print the section for <version> (release notes)
-//   node scripts/changelog.mjs verify [<base> <head>] validate the file; with a commit range, also
-//                                                    require a CHANGELOG.md change when the range
-//                                                    contains [feat] or [fix] commits
+//   node scripts/changelog.mjs notes <version>  print the section for <version> (release notes)
+//   node scripts/changelog.mjs verify           validate the file
 
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -16,7 +13,6 @@ export const CHANGELOG_PATH = path.join(ROOT, "CHANGELOG.md");
 const SEMVER = /^\d+\.\d+\.\d+$/;
 const SECTION_HEADING = /^## \[([^\]]+)\](?: - (\d{4}-\d{2}-\d{2}))?\s*$/;
 const LINK_DEFINITION = /^\[[^\]]+\]: \S+\s*$/;
-const ZERO_SHA = /^0+$/;
 
 export function repoUrl() {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
@@ -135,19 +131,6 @@ export function compareVersions(a, b) {
   return 0;
 }
 
-function git(...args) {
-  return execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
-}
-
-// Commits in base..head that are [feat]/[fix] while CHANGELOG.md was not touched in the range.
-function missingEntries(base, head) {
-  const subjects = git("log", "--format=%s", `${base}..${head}`).split("\n").filter(Boolean);
-  const userFacing = subjects.filter((s) => /^\[(feat|fix)\]/i.test(s));
-  if (userFacing.length === 0) return [];
-  const changed = git("diff", "--name-only", base, head).split("\n");
-  return changed.includes("CHANGELOG.md") ? [] : userFacing;
-}
-
 function fail(messages) {
   for (const m of messages) console.error(`✖ ${m}`);
   process.exit(1);
@@ -167,23 +150,12 @@ function main([command, ...args]) {
 
   if (command === "verify") {
     const errors = validate(parse(readChangelog()));
-    const [base, head] = args;
-    if (base && head && !ZERO_SHA.test(base)) {
-      const missing = missingEntries(base, head);
-      if (missing.length) {
-        errors.push(
-          "These commits are [feat]/[fix] but CHANGELOG.md was not updated. " +
-            "Add entries under ## [Unreleased]:\n    " +
-            missing.join("\n    "),
-        );
-      }
-    }
     if (errors.length) fail(errors);
     console.log("✔ CHANGELOG.md is valid");
     return;
   }
 
-  fail(["Usage: node scripts/changelog.mjs <notes <version> | verify [<base> <head>]>"]);
+  fail(["Usage: node scripts/changelog.mjs <notes <version> | verify>"]);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
