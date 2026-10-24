@@ -1,3 +1,5 @@
+import { IoSwapVertical } from "react-icons/io5";
+
 import { formatDuration } from "../../../utils/time";
 import { colors } from "../../theme/colors";
 
@@ -6,6 +8,7 @@ type QueueHeaderProps = {
   totalDuration: number;
   onClear: () => void;
   scrollToCurrent: () => void;
+  isCustomOrder: boolean;
 };
 
 export function QueueHeader({
@@ -13,6 +16,7 @@ export function QueueHeader({
   totalDuration,
   onClear,
   scrollToCurrent,
+  isCustomOrder,
 }: QueueHeaderProps) {
   return (
     <div
@@ -25,9 +29,28 @@ export function QueueHeader({
         backgroundColor: colors.bgSurface,
       }}
     >
-      <h2 style={{ margin: 0 }}>
-        Play Queue ({totalSongs} songs: {formatDuration(totalDuration)})
-      </h2>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <h2 style={{ margin: 0 }}>
+          Play Queue ({totalSongs} songs: {formatDuration(totalDuration)})
+        </h2>
+        {isCustomOrder && (
+          <span
+            title="You changed the order of the queue"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+              fontSize: "12px",
+              color: colors.textDim,
+              border: `1px solid ${colors.borderSubtle}`,
+              borderRadius: "10px",
+              padding: "2px 8px",
+            }}
+          >
+            <IoSwapVertical /> Custom order
+          </span>
+        )}
+      </div>
       <div>
         <button
           onClick={scrollToCurrent}

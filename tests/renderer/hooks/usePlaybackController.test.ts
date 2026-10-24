@@ -181,6 +181,44 @@ describe("next, previous and the end of a song", () => {
 });
 
 describe("changing the queue", () => {
+  it("playing a new list drops the custom order and goes back to the earlier mode", () => {
+    const { run, player } = setup();
+    run((p) => p.playTrack(a, [a, b, c]));
+    run((p) => p.queueState.moveInQueue(2, 0));
+    run((p) => p.playTrack(b, [a, b]));
+    expect(player().queueState.isCustomOrder).toBe(false);
+    expect(player().queueState.isShuffle).toBe(false);
+    expect(player().queueState.activeQueue).toEqual([a, b]);
+    expect(player().queueState.currentIndex).toBe(1);
+
+    // From a shuffled queue, the new list is shuffled again.
+    run((p) => p.queueState.handleShuffleToggle());
+    run((p) => p.queueState.moveInQueue(1, 0));
+    run((p) => p.playTrack(c, [a, b, c]));
+    expect(player().queueState.isCustomOrder).toBe(false);
+    expect(player().queueState.isShuffle).toBe(true);
+    expect(player().queueState.activeQueue[0]).toBe(c);
+  });
+
+  it("shuffle play drops the custom order", () => {
+    const { run, player } = setup();
+    run((p) => p.playTrack(a, [a, b, c]));
+    run((p) => p.queueState.moveInQueue(2, 0));
+    run((p) => p.handleShufflePlay([a, b, c]));
+    expect(player().queueState.isCustomOrder).toBe(false);
+    expect(player().queueState.isShuffle).toBe(true);
+  });
+
+  it("next follows the custom order", () => {
+    const { run, playing } = setup();
+    run((p) => p.playTrack(a, [a, b, c]));
+    run((p) => p.queueState.moveInQueue(2, 1));
+    run((p) => p.handleNext());
+    expect(playing()).toBe(c);
+    run((p) => p.handleNext());
+    expect(playing()).toBe(b);
+  });
+
   it("play next inserts the song after the current one", () => {
     const { run, player, playing } = setup();
     run((p) => p.playTrack(a, [a, b]));

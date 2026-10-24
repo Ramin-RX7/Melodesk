@@ -8,6 +8,7 @@ import {
   IoPlaySkipBack,
   IoPlaySkipForward,
   IoShuffle,
+  IoSwapVertical,
   IoRepeat,
   IoList,
   IoDocumentTextOutline,
@@ -31,6 +32,8 @@ interface PlaybackBarProps {
   onNext: () => void;
   onPrevious: () => void;
   isShuffle: boolean;
+  /** The user reordered the queue by hand (shown on the shuffle button). */
+  isCustomOrder?: boolean;
   onToggleShuffle: () => void;
   repeatMode: "none" | "one" | "all";
   onToggleRepeat: () => void;
@@ -56,6 +59,7 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
   onNext,
   onPrevious,
   isShuffle,
+  isCustomOrder,
   onToggleShuffle,
   repeatMode,
   onToggleRepeat,
@@ -298,11 +302,27 @@ export const PlaybackBar: React.FC<PlaybackBarProps> = ({
           }}
         >
           <button
-            style={{ ...buttonStyle, color: isShuffle ? themeColor : colors.textPrimary }}
+            style={{
+              ...buttonStyle,
+              color: isShuffle ? themeColor : colors.textPrimary,
+              position: "relative",
+            }}
             onClick={onToggleShuffle}
-            title="Shuffle"
+            title={isCustomOrder ? "Custom order (click for the normal order)" : "Shuffle"}
           >
             <IoShuffle />
+            {isCustomOrder && (
+              <IoSwapVertical
+                aria-label="Custom queue order"
+                style={{
+                  position: "absolute",
+                  fontSize: "10px",
+                  top: "0",
+                  right: "-4px",
+                  color: themeColor,
+                }}
+              />
+            )}
           </button>
           <button style={buttonStyle} onClick={onPrevious} title="Previous">
             <IoPlaySkipBack />

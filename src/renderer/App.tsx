@@ -164,6 +164,11 @@ export default function App() {
     setShuffledQueue,
 
     activeQueue,
+    customOrder,
+    setCustomOrder,
+    isCustomOrder,
+    resetCustomOrder,
+    moveInQueue,
     handleShuffleToggle,
     handleRepeatToggle,
   } = queueState;
@@ -326,6 +331,9 @@ export default function App() {
               setShuffledQueue(restoredShuffled.length > 0 ? restoredShuffled : restoredQueue);
               setIsShuffle(session.isShuffle);
               setRepeatMode(session.repeatMode);
+              if (session.customOrder === "normal" || session.customOrder === "shuffle") {
+                setCustomOrder(session.customOrder);
+              }
               const activeLen = session.isShuffle ? restoredShuffled.length : restoredQueue.length;
               const clampedIndex = Math.max(0, Math.min(session.currentIndex, activeLen - 1));
               const activeList = session.isShuffle ? restoredShuffled : restoredQueue;
@@ -402,6 +410,7 @@ export default function App() {
       currentIndex,
       isShuffle,
       repeatMode,
+      customOrder,
     };
     // A different song starts from the beginning; the same song keeps its saved position
     // (usePlaybackPositionSaver keeps it up to date).
@@ -410,7 +419,16 @@ export default function App() {
       data.position = 0;
     }
     window.api.saveSession(data);
-  }, [currentTrack, queue, shuffledQueue, currentIndex, isShuffle, repeatMode, restoreSession]);
+  }, [
+    currentTrack,
+    queue,
+    shuffledQueue,
+    currentIndex,
+    isShuffle,
+    repeatMode,
+    customOrder,
+    restoreSession,
+  ]);
 
   const handleScrollRef = (el: HTMLElement | null) => {
     scrollContainerRef.current = el;
@@ -769,8 +787,11 @@ export default function App() {
                       setQueue(kept);
                       setShuffledQueue(kept);
                       setCurrentIndex(0);
+                      resetCustomOrder();
                     }}
                     onRemoveFromQueue={handleRemoveFromQueue}
+                    onMoveInQueue={moveInQueue}
+                    isCustomOrder={isCustomOrder}
                     activeItemRemovable={config?.removeCurrentSongBehavior === "play-next"}
                     onContextMenu={showContextMenu}
                   />
@@ -837,6 +858,7 @@ export default function App() {
             onNext={handleNext}
             onPrevious={handlePrevious}
             isShuffle={isShuffle}
+            isCustomOrder={isCustomOrder}
             onToggleShuffle={handleShuffleToggle}
             repeatMode={repeatMode}
             onToggleRepeat={handleRepeatToggle}

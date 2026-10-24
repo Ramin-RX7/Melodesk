@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Adding songs to a playlist now tells you which ones are already in it, and lets you add them anyway, skip them or cancel.
 - Playlists have a "Remove Duplicates" button (asks first, keeps the first copy of each song).
 - An "Unknown Artist" page on the Artists tab gathers all songs without an artist tag; "Go to Artist" and the song details page lead there for such songs.
+- Reorder the queue by dragging songs on the Queue page, in normal or shuffle mode. The queue then plays in your custom order, shown by a small icon on the shuffle button and a "Custom order" label on the Queue page; pressing the shuffle button goes back to the normal order. Playing a new list or shuffle-playing starts fresh, and the custom order is kept when MeloDesk restarts.
 - Moving or renaming song files no longer loses them: their play counts and history are kept, playlists and the queue follow them to the new location, and a song that's playing carries on. This also works for files moved while MeloDesk was closed, and for songs that leave your library and come back later.
 
 ### Changed

@@ -41,6 +41,11 @@ export interface SessionData {
   currentIndex: number;
   isShuffle: boolean;
   repeatMode: "none" | "one" | "all";
+  /**
+   * The queue was reordered by hand (the order is in `shuffledQueue`): the mode it was in before
+   * ("normal" or "shuffle"), or null.
+   */
+  customOrder?: "normal" | "shuffle" | null;
   /** Playback position (seconds) in the current track; restored on launch. */
   position?: number;
   windowBounds?: WindowBounds;

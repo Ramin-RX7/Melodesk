@@ -126,4 +126,78 @@ describe("useQueue", () => {
       expect(result.current.currentIndex).toBe(0);
     });
   });
+
+  describe("reordering by hand (custom order)", () => {
+    it("moving a song plays the queue in the new order, keeping the normal order", () => {
+      const { result } = setup(a, [a, b, c, d], 0);
+      act(() => result.current.moveInQueue(3, 1));
+      expect(result.current.activeQueue).toEqual([a, d, b, c]);
+      expect(result.current.queue).toEqual([a, b, c, d]);
+      expect(result.current.isCustomOrder).toBe(true);
+      expect(result.current.customOrder).toBe("normal");
+    });
+
+    it("the shuffle button then goes back to the normal order, at the playing song", () => {
+      const { result } = setup(c, [a, b, c, d], 2);
+      act(() => result.current.moveInQueue(2, 0));
+      act(() => result.current.handleShuffleToggle());
+      expect(result.current.isCustomOrder).toBe(false);
+      expect(result.current.isShuffle).toBe(false);
+      expect(result.current.activeQueue).toEqual([a, b, c, d]);
+      expect(result.current.currentIndex).toBe(2);
+      // …and from there, shuffle works as before.
+      act(() => result.current.handleShuffleToggle());
+      expect(result.current.isShuffle).toBe(true);
+      act(() => result.current.handleShuffleToggle());
+      expect(result.current.isShuffle).toBe(false);
+    });
+
+    it("reordering a shuffled queue keeps that order and remembers it came from shuffle", () => {
+      const { result } = setup(a, [a, b, c], 0);
+      act(() => result.current.handleShuffleToggle());
+      const shuffled = result.current.activeQueue;
+      act(() => result.current.moveInQueue(1, 2));
+      expect(result.current.activeQueue).toEqual([shuffled[0], shuffled[2], shuffled[1]]);
+      expect(result.current.customOrder).toBe("shuffle");
+      act(() => result.current.moveInQueue(0, 1));
+      expect(result.current.customOrder).toBe("shuffle");
+    });
+
+    it("the playing song stays the current one wherever it ends up", () => {
+      const { result } = setup(b, [a, b, c, d], 1);
+      act(() => result.current.moveInQueue(1, 3));
+      expect(result.current.currentIndex).toBe(3);
+      act(() => result.current.moveInQueue(0, 3));
+      expect(result.current.activeQueue).toEqual([c, d, b, a]);
+      expect(result.current.currentIndex).toBe(2);
+      act(() => result.current.moveInQueue(3, 0));
+      expect(result.current.activeQueue[result.current.currentIndex]).toBe(b);
+    });
+
+    it("ignores a move to the same place or outside the queue", () => {
+      const { result } = setup(a, [a, b], 0);
+      act(() => result.current.moveInQueue(1, 1));
+      act(() => result.current.moveInQueue(0, 5));
+      expect(result.current.isCustomOrder).toBe(false);
+      expect(result.current.activeQueue).toEqual([a, b]);
+    });
+
+    it("removing a song removes it from the normal order too", () => {
+      const { result } = setup(a, [a, b, c], 0);
+      act(() => result.current.moveInQueue(2, 0));
+      act(() => result.current.removeFromQueue(2));
+      expect(result.current.activeQueue).toEqual([c, a]);
+      expect(result.current.queue).toEqual([a, c]);
+    });
+
+    it("resetCustomOrder goes back to the mode the user was in before", () => {
+      const { result } = setup(a, [a, b], 0);
+      act(() => result.current.moveInQueue(0, 1));
+      let shuffle!: boolean;
+      act(() => void (shuffle = result.current.resetCustomOrder()));
+      expect(shuffle).toBe(false);
+      expect(result.current.isShuffle).toBe(false);
+      expect(result.current.isCustomOrder).toBe(false);
+    });
+  });
 });

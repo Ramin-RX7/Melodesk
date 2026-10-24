@@ -74,6 +74,22 @@ describe("restoring the last session", () => {
     expect(screen.getByTitle("Repeat: one")).toBeInTheDocument();
   });
 
+  it("restores and saves a queue order changed by hand", async () => {
+    const { api } = await renderApp({
+      library,
+      session: {
+        queue: [a.path, b.path, c.path],
+        shuffledQueue: [c.path, a.path, b.path],
+        isShuffle: true,
+        currentTrackPath: c.path,
+        customOrder: "normal",
+      },
+    });
+    expect(screen.getByTitle("Custom order (click for the normal order)")).toBeInTheDocument();
+    await waitFor(() => expect(api.saveSession).toHaveBeenCalled());
+    expect(api.saveSession.mock.calls.at(-1)![0].customOrder).toBe("normal");
+  });
+
   it("forgets the session when restoring it is turned off", async () => {
     const { api } = await renderApp({
       library,

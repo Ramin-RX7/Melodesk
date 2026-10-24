@@ -1,4 +1,4 @@
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -13,13 +13,19 @@ const renderQueue = (
   queue: FileItem[],
   props: Partial<React.ComponentProps<typeof QueueView>> = {},
 ) => {
-  const handlers = { onPlayTrack: vi.fn(), onClearQueue: vi.fn(), onRemoveFromQueue: vi.fn() };
+  const handlers = {
+    onPlayTrack: vi.fn(),
+    onClearQueue: vi.fn(),
+    onRemoveFromQueue: vi.fn(),
+    onMoveInQueue: vi.fn(),
+  };
   render(
     <QueueView
       queue={queue}
       currentIndex={0}
       themeColor="#000"
       activeItemRemovable={false}
+      isCustomOrder={false}
       {...handlers}
       {...props}
     />,
@@ -49,6 +55,22 @@ describe("QueueView", () => {
     renderQueue([a, b]);
     expect(removeIn(rows()[0])).toBeNull();
     expect(removeIn(rows()[1])).not.toBeNull();
+  });
+
+  it("dragging a row onto another moves it there, once", () => {
+    const { onMoveInQueue, onPlayTrack } = renderQueue([a, b, a]);
+    const row = (i: number) => rows()[i].parentElement!;
+    fireEvent.dragStart(row(2));
+    fireEvent.dragEnter(row(0));
+    fireEvent.drop(row(0));
+    fireEvent.dragEnd(row(2));
+    expect(onMoveInQueue).toHaveBeenCalledExactlyOnceWith(2, 0);
+    expect(onPlayTrack).not.toHaveBeenCalled();
+
+    fireEvent.dragStart(row(1));
+    fireEvent.dragEnter(row(1));
+    fireEvent.dragEnd(row(1));
+    expect(onMoveInQueue).toHaveBeenCalledTimes(1);
   });
 
   it("renders only the visible rows of a long queue", () => {

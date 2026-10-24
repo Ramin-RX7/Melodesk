@@ -34,6 +34,7 @@ export function usePlaybackController({
     activeQueue,
     setIsShuffle,
     removeFromQueue,
+    resetCustomOrder,
     repeatMode,
   } = queueState;
   const { audioRef, isPlaying, setDuration, setIsPlaying, startPlayback } = audioState;
@@ -45,8 +46,9 @@ export function usePlaybackController({
       // The list becomes the queue. With shuffle on, the chosen song plays first and the rest
       // of the list (songs before and after it) follows in random order.
       setQueue(newQueue);
+      const shuffle = resetCustomOrder();
       const index = explicitIndex ?? newQueue.findIndex((t) => t.path === track.path);
-      if (isShuffle) {
+      if (shuffle) {
         const rest = newQueue.filter((_, i) => i !== index);
         setShuffledQueue([track, ...shuffleArray(rest)]);
         setCurrentIndex(0);
@@ -173,6 +175,7 @@ export function usePlaybackController({
     const firstSong = shuffled[0];
 
     setQueue(songs); // Original queue
+    resetCustomOrder();
     setShuffledQueue(shuffled);
     setCurrentIndex(0);
     setIsShuffle(true);

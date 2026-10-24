@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 import { QueueHeader } from "./QueueHeader";
 import { QueueItem } from "./QueueItem";
@@ -14,6 +14,10 @@ type QueueViewProps = {
   onPlayTrack: (track: FileItem, index: number) => void;
   onClearQueue: () => void;
   onRemoveFromQueue: (index: number) => void;
+  /** Moves the row at `from` to `to` (drag and drop). */
+  onMoveInQueue: (from: number, to: number) => void;
+  /** The user changed the order by hand (shown in the header). */
+  isCustomOrder: boolean;
   activeItemRemovable: boolean;
   onContextMenu?: (e: React.MouseEvent, song: FileItem) => void;
 };
@@ -25,6 +29,8 @@ export function QueueView({
   onPlayTrack,
   onClearQueue,
   onRemoveFromQueue,
+  onMoveInQueue,
+  isCustomOrder,
   activeItemRemovable,
   onContextMenu,
 }: QueueViewProps) {
@@ -35,6 +41,17 @@ export function QueueView({
   const list = useVirtualGrid(queue, { gap: 0, estimateRowHeight: 60 });
   const scrollToCurrent = () => {
     if (currentIndex >= 0) list.scrollToItem(currentIndex, "center");
+  };
+
+  // Drag and drop to reorder, as in playlists.
+  const dragFrom = useRef<number | null>(null);
+  const dragTo = useRef<number | null>(null);
+  const finishDrag = () => {
+    const from = dragFrom.current;
+    const to = dragTo.current;
+    dragFrom.current = null;
+    dragTo.current = null;
+    if (from !== null && to !== null && from !== to) onMoveInQueue(from, to);
   };
 
   return (
@@ -51,6 +68,7 @@ export function QueueView({
         totalDuration={totalDuration}
         onClear={onClearQueue}
         scrollToCurrent={scrollToCurrent}
+        isCustomOrder={isCustomOrder}
       />
 
       <div
@@ -81,6 +99,14 @@ export function QueueView({
                   key={row.key}
                   ref={list.measureRow}
                   data-index={row.index}
+                  draggable
+                  onDragStart={() => (dragFrom.current = index)}
+                  onDragEnter={() => (dragTo.current = index)}
+                  onDragEnd={finishDrag}
+                  // A row dragged far enough is unmounted and may never get dragend; the drop
+                  // target finishes the move instead (finishDrag only acts once).
+                  onDrop={finishDrag}
+                  onDragOver={(e) => e.preventDefault()}
                   style={{
                     position: "absolute",
                     top: 0,
