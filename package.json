@@ -1,6 +1,6 @@
 {
   "name": "melodesk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Music Player App",
   "main": "dist/main.js",
   "engines": {

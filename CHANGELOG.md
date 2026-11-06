@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-07
+
 ### Added
 
 - You're told when a library folder can't be found (for example an unplugged drive), and again when it's back.
@@ -139,5 +141,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Windows installer, portable zip and portable single executable; Linux AppImage; macOS disk images for Intel and Apple Silicon.
 
-[Unreleased]: https://github.com/Ramin-RX7/Melodesk/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Ramin-RX7/Melodesk/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Ramin-RX7/Melodesk/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Ramin-RX7/Melodesk/releases/tag/v0.2.0
