@@ -19,6 +19,7 @@ Point it at your music folders and enjoy your collection with a themeable interf
 ## Features
 
 ### 📚 Library
+
 - Add one or several music folders; MeloDesk scans them in the background and reads tags and embedded cover art from **MP3, FLAC, M4A, OGG and WAV** files.
 - Instant startup thanks to a cached library, with incremental rescans that only re-read new or changed files.
 - Watches your folders and updates itself when songs are added, changed, moved or removed, and tells you what changed.
@@ -28,6 +29,7 @@ Point it at your music folders and enjoy your collection with a themeable interf
 - Stays smooth with libraries of thousands of songs.
 
 ### 🔎 Browsing
+
 - Home page with recently played, most played, popular artists, never-played songs and library statistics.
 - Artists, Albums and Genres pages with search and sorting. Songs with several artists ("A feat. B", "A & B") appear under each of them.
 - Artist pages with an editable bio and picture, plus an "Unknown Artist" page for untagged songs.
@@ -35,6 +37,7 @@ Point it at your music folders and enjoy your collection with a themeable interf
 - Back navigation (button, `Esc` or mouse back button) that remembers where you were, including scroll position.
 
 ### ▶️ Playback
+
 - Play queue with play next, remove, clear, shuffle and repeat (all / one).
 - Drag songs to reorder the queue, in normal or shuffle mode.
 - Your session is restored on launch: queue, current song, playback position, shuffle and repeat state.
@@ -46,15 +49,18 @@ Point it at your music folders and enjoy your collection with a themeable interf
 - Play counts are recorded only once you've listened to a configurable share of a song.
 
 ### 📃 Playlists
+
 - Create, rename and delete playlists, with optional descriptions.
 - Add songs from anywhere via the right-click menu; reorder by dragging or sort by title, artist or duration.
 - Duplicate detection when adding songs, and a one-click "Remove Duplicates".
 
 ### ✏️ Song details & tags
+
 - Full song details page with metadata, cover art and lyrics.
 - Edit tags for MP3 files in your library.
 
 ### 🎨 Personalization
+
 - 9 built-in themes: Dark, Light, Midnight, Dracula, Nord, Ocean, Ember, Forest and Graphite.
 - Per-color overrides and a custom accent color.
 - Rebindable keyboard shortcuts.
@@ -62,6 +68,7 @@ Point it at your music folders and enjoy your collection with a themeable interf
 - Frameless window with a custom title bar, and an always-on-top **mini-player**.
 
 ### 🛡️ Reliable and safe
+
 - Settings, playlists, play counts, session and artist info are backed up automatically and restored if a file gets damaged.
 - Writes are crash-safe: a power cut can't leave half-written data behind.
 - Hardened Electron setup: restricted file access, no arbitrary navigation, and only web links can be opened.
@@ -70,11 +77,11 @@ Point it at your music folders and enjoy your collection with a themeable interf
 
 Grab the latest build from the [Releases page](https://github.com/Ramin-RX7/Melodesk/releases).
 
-| Platform | Package |
-| --- | --- |
-| **Windows** | Installer, portable `.zip`, or portable single `.exe` |
-| **Linux** | AppImage |
-| **macOS** | Disk image for Intel and Apple Silicon (requires **macOS 13 Ventura** or later) |
+| Platform    | Package                                                                         |
+| ----------- | ------------------------------------------------------------------------------- |
+| **Windows** | Installer, portable `.zip`, or portable single `.exe`                           |
+| **Linux**   | AppImage                                                                        |
+| **macOS**   | Disk image for Intel and Apple Silicon (requires **macOS 13 Ventura** or later) |
 
 ## Development
 
@@ -140,4 +147,5 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes. This project follows [Semant
 ## License
 
 <!-- Add a LICENSE file to the repo and name it here, e.g. MIT. -->
+
 Distributed under the terms of the license in the [LICENSE](LICENSE) file.
